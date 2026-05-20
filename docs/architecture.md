@@ -34,6 +34,35 @@ Examples:
 - `GET /api/v1/notifications`
 - `GET /api/v1/chat/rooms/{roomId}/messages`
 
+## API Response Convention
+
+Successful responses use a stable envelope.
+
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "요청이 성공했습니다."
+}
+```
+
+Error responses also use a stable envelope.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "STUDY-001",
+    "message": "스터디를 찾을 수 없습니다.",
+    "detail": null
+  },
+  "timestamp": "2026-05-21T03:49:00",
+  "path": "/api/v1/studies/1"
+}
+```
+
+Error codes use the `DOMAIN-XXX` format. Global framework-level errors use `GLOBAL-XXX`; domain errors should use names such as `AUTH-001`, `MEMBER-001`, `STUDY-001`, `CHAT-001`, and `NOTIFICATION-001`.
+
 ## Core Domains
 
 - `member`: users, roles, profile, account status
