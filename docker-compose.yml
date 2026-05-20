@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: studywithme-postgres
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_DB: studywithme
+      POSTGRES_USER: studywithme
+      POSTGRES_PASSWORD: studywithme
+    volumes:
+      - studywithme-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studywithme -d studywithme"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  studywithme-postgres-data:
