@@ -129,3 +129,36 @@ The first package boundary is intentionally simple:
 - deeper `controller`, `service`, `domain`, `repository`, and `dto` packages should be added inside a domain when that domain is implemented.
 
 Tests use an H2 in-memory database for the first context-load baseline. PostgreSQL remains the real local and deployment database.
+
+## Local Database Baseline
+
+Local development uses Docker Compose PostgreSQL.
+
+```bash
+docker compose up -d postgres
+```
+
+Default local connection values:
+
+- app port: `8081`
+- database: `studywithme`
+- username: `studywithme`
+- password: `studywithme`
+- host port: `15432`
+- container port: `5432`
+
+The application uses these values by default, but each value can be overridden with environment variables:
+
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SERVER_PORT`
+
+Flyway owns schema creation. Hibernate is configured with `ddl-auto: validate`, so the app checks entity/schema alignment instead of generating tables automatically.
+
+The first migration creates:
+
+- `members`
+- `member_roles`
+
+OAuth identity is stored as `(oauth_provider, oauth_subject)` and must be unique. Member roles are stored separately in `member_roles` so a member can later hold both user/admin style authorities without changing the `members` table shape.
