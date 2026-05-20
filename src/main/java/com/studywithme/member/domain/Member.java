@@ -98,6 +98,11 @@ public class Member {
 		return new Member(email, nickname, oauthProvider, oauthSubject, profileImageUrl);
 	}
 
+	public void updateOAuthProfile(String email, String profileImageUrl) {
+		this.email = email;
+		this.profileImageUrl = profileImageUrl;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();

@@ -162,3 +162,38 @@ The first migration creates:
 - `member_roles`
 
 OAuth identity is stored as `(oauth_provider, oauth_subject)` and must be unique. Member roles are stored separately in `member_roles` so a member can later hold both user/admin style authorities without changing the `members` table shape.
+
+## OAuth Login Baseline
+
+OAuth login starts with a provider profile normalization layer.
+
+Current supported providers:
+
+- Google
+- Kakao
+
+Provider-specific OAuth2 attributes are converted into `OAuth2UserProfile`.
+
+```text
+Provider OAuth attributes
+  -> OAuth2UserProfileFactory
+  -> OAuth2UserProfile
+  -> OAuthLoginService
+  -> MemberRepository
+```
+
+`OAuthLoginService` owns the first login rule:
+
+- find member by `(oauthProvider, oauthSubject)`;
+- if found, update the latest email/profile image and return the existing member;
+- if not found, create a new member with `USER` role;
+- if nickname is already taken, append a deterministic suffix.
+
+`CustomOAuth2UserService` adapts Spring Security's `OAuth2UserService` to the StudyWithMe member model. It returns `StudyWithMeOAuth2User`, which exposes:
+
+- `memberId`
+- provider subject as `name`
+- provider attributes
+- service role authorities such as `ROLE_USER`
+
+OAuth client credentials and JWT issuing are intentionally not added yet. The next authentication step should wire the security filter chain, OAuth success handling, and token issuing policy.
