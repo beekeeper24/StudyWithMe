@@ -81,6 +81,9 @@ public class JwtTokenProvider {
 			}
 
 			List<String> roles = jwt.getClaimAsStringList("roles");
+			if (roles == null || roles.isEmpty()) {
+				throw new BusinessException(AuthErrorCode.INVALID_ACCESS_TOKEN);
+			}
 			return new AccessTokenClaims(
 				Long.parseLong(jwt.getSubject()),
 				Set.copyOf(roles),
