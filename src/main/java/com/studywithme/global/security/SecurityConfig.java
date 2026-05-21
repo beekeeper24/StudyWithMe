@@ -54,16 +54,21 @@ public class SecurityConfig {
 				.requestMatchers("/api/v1/auth/me").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/studies", "/api/v1/studies/*").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments").permitAll()
 				.requestMatchers(
 					HttpMethod.POST,
 					"/api/v1/studies",
 					"/api/v1/studies/*/join",
 					"/api/v1/studies/*/leave",
 					"/api/v1/studies/*/close",
-					"/api/v1/posts"
+					"/api/v1/posts",
+					"/api/v1/posts/*/comments",
+					"/api/v1/comments/*/replies"
 				).authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*").authenticated()
+				.requestMatchers(HttpMethod.PUT, "/api/v1/comments/*").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/api/v1/comments/*").authenticated()
 				.requestMatchers(
 					"/actuator/health",
 					"/actuator/info",
