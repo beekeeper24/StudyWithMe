@@ -69,6 +69,8 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/comments/*").authenticated()
+				.requestMatchers(HttpMethod.GET, "/api/v1/notifications").authenticated()
+				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/*/read").authenticated()
 				.requestMatchers(
 					"/actuator/health",
 					"/actuator/info",

@@ -5,6 +5,8 @@ import com.studywithme.comment.domain.CommentStatus;
 import com.studywithme.comment.exception.CommentErrorCode;
 import com.studywithme.comment.repository.CommentRepository;
 import com.studywithme.global.exception.BusinessException;
+import com.studywithme.outbox.application.OutboxEventPublisher;
+import com.studywithme.post.domain.Post;
 import com.studywithme.post.domain.PostStatus;
 import com.studywithme.post.exception.PostErrorCode;
 import com.studywithme.post.repository.PostRepository;
@@ -19,24 +21,33 @@ public class CommentService {
 
 	private final CommentRepository commentRepository;
 	private final PostRepository postRepository;
+	private final OutboxEventPublisher outboxEventPublisher;
 
 	public CommentService(
 		CommentRepository commentRepository,
-		PostRepository postRepository
+		PostRepository postRepository,
+		OutboxEventPublisher outboxEventPublisher
 	) {
 		this.commentRepository = commentRepository;
 		this.postRepository = postRepository;
+		this.outboxEventPublisher = outboxEventPublisher;
 	}
 
 	@Transactional
 	public CommentResult create(Long postId, Long requesterMemberId, CommentCreateCommand command) {
-		ensurePublishedPost(postId);
+		Post post = getPublishedPost(postId);
 		Comment comment = commentRepository.save(Comment.create(
 			postId,
 			requesterMemberId,
 			null,
 			command.content()
 		));
+		outboxEventPublisher.publishCommentCreated(
+			postId,
+			comment.getId(),
+			post.getAuthorMemberId(),
+			requesterMemberId
+		);
 		return CommentResult.from(comment);
 	}
 
@@ -53,6 +64,13 @@ public class CommentService {
 			parent.getId(),
 			command.content()
 		));
+		outboxEventPublisher.publishReplyCreated(
+			parent.getPostId(),
+			parent.getId(),
+			reply.getId(),
+			parent.getAuthorMemberId(),
+			requesterMemberId
+		);
 		return CommentResult.from(reply);
 	}
 
@@ -87,10 +105,13 @@ public class CommentService {
 		return CommentResult.from(comment);
 	}
 
+	private Post getPublishedPost(Long postId) {
+		return postRepository.findByIdAndStatus(postId, PostStatus.PUBLISHED)
+			.orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
+	}
+
 	private void ensurePublishedPost(Long postId) {
-		if (postRepository.findByIdAndStatus(postId, PostStatus.PUBLISHED).isEmpty()) {
-			throw new BusinessException(PostErrorCode.POST_NOT_FOUND);
-		}
+		getPublishedPost(postId);
 	}
 
 	private Comment getPublishedComment(Long commentId) {

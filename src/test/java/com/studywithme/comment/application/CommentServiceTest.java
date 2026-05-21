@@ -3,6 +3,7 @@ package com.studywithme.comment.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studywithme.comment.domain.CommentStatus;
 import com.studywithme.comment.exception.CommentErrorCode;
 import com.studywithme.comment.repository.CommentRepository;
@@ -10,6 +11,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.post.application.PostCreateCommand;
 import com.studywithme.post.application.PostResult;
 import com.studywithme.post.application.PostService;
@@ -22,7 +24,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 @DataJpaTest
-@Import({PostService.class, CommentService.class})
+@Import({PostService.class, CommentService.class, OutboxEventPublisher.class, ObjectMapper.class})
 class CommentServiceTest {
 
 	@Autowired
