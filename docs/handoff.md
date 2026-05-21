@@ -95,7 +95,7 @@ Completed and merged into `develop`:
    - Kafka publish retry/dead state is independent from in-app notification processing;
    - Kafka relay worker is available but disabled by default.
 
-`feature/kafka-outbox-relay` is the current work branch until its PR is merged. After merge, start the next branch from `develop`.
+No active feature work is currently in progress after PR #16. Start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -162,7 +162,7 @@ Known merged PRs:
 - PR #13: `docs/post-merge-handoff`
 - PR #14: `feature/comment-baseline`
 - PR #15: `feature/notification-outbox-baseline`
-- PR #16: `feature/kafka-outbox-relay` once merged
+- PR #16: `feature/kafka-outbox-relay`
 
 ## Important Local State
 
@@ -277,7 +277,7 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Merge Kafka relay PR, then start mention extraction from `develop`.
+1. Start mention extraction from `develop`.
 2. Mention extraction should parse comment content for `@nickname` and create mention events/notifications without duplicating existing comment/reply notifications.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
@@ -332,7 +332,7 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - Kafka relay는 domain transaction을 건드리지 않고, 별도 `kafka_publish_status`로 publish/retry/dead 상태를 관리함.
 
 다음 작업:
-- Kafka relay PR merge 후 mention extraction 시작
+- mention extraction 시작
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.

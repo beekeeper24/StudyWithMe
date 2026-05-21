@@ -40,8 +40,8 @@
 - [x] Run full tests.
 - [x] Run `git diff --check`.
 - [x] Run focused cso review for data exposure/retry/idempotency.
-- [ ] Update `docs/handoff.md`, add learning note, update Notion.
-- [ ] Commit, open PR to `develop`, merge PR, sync local `develop`.
+- [x] Update `docs/handoff.md`, add learning note, update Notion.
+- [x] Commit, open PR to `develop`, merge PR, sync local `develop`.
 
 ## Self-Review
 
