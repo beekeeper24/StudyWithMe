@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-05-21
+Last updated: 2026-05-22
 
 ## Read This First
 
@@ -63,6 +63,8 @@ Completed and merged into `develop`:
    - JWT `Authorization: Bearer ...` authentication filter;
    - OAuth success handler that issues a token pair;
    - `GET /api/v1/auth/me`.
+6. Refresh/reissue/logout HTTP endpoint and refresh token cookie delivery.
+7. OAuth client environment-variable configuration under the `oauth` Spring profile.
 
 Known merged PRs:
 
@@ -70,16 +72,20 @@ Known merged PRs:
 - PR #2: `feature/postgres-flyway-setup`
 - PR #3: `feature/oauth-login-baseline`
 - PR #4: `feature/jwt-refresh-token-baseline`
-- Current branch work: `feature/security-auth-entrypoint`
+- PR #6: `feature/security-auth-entrypoint`
+- PR #7: `feature/auth-refresh-endpoints`
+- PR #8: `feature/oauth-client-env-config`
+- Current branch work: `feature/local-oauth-env-script`
 
 ## Important Local State
 
 At the time this handoff was written:
 
-- branch should be `develop` tracking `origin/develop`;
+- active branch is `feature/local-oauth-env-script` based on `develop`;
 - `gradlew` may appear modified only because its file mode changed from executable to non-executable;
 - do not revert that user/environment change unless the user explicitly asks;
 - Docker Postgres may already be running as `studywithme-postgres`.
+- Local `.env` may exist with real OAuth credentials. It is ignored by git and must stay untracked.
 
 Local defaults:
 
@@ -149,7 +155,8 @@ OAuth client config:
 
 - Real provider registrations live in `src/main/resources/application-oauth.yml`.
 - The registrations are active only when the `oauth` Spring profile is enabled.
-- Start local browser testing with `SPRING_PROFILES_ACTIVE=oauth`.
+- Start local browser testing with `scripts/run-oauth-local.sh` after creating a local `.env`.
+- `.env` is ignored by git. Keep real client ids/secrets there, and keep `.env.example` as the committed template only.
 - Required environment variables:
   - `GOOGLE_CLIENT_ID`
   - `GOOGLE_CLIENT_SECRET`
@@ -158,25 +165,28 @@ OAuth client config:
 
 ## Next Work
 
-After the current auth branches are reviewed/merged, the next implementation tasks are:
+Completed local OAuth verification on 2026-05-22:
 
-1. Set Google/Kakao client id and secret outside git through the required environment variables.
-2. Register provider redirect URIs.
-3. Browser-test actual OAuth login end-to-end with `SPRING_PROFILES_ACTIVE=oauth`.
-4. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
-5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+- Google browser login callback succeeded.
+- Kakao browser login callback succeeded.
+- Both providers created/updated ACTIVE members with USER role.
+- Refresh token rows were issued and remained active.
+- `GET /api/v1/auth/me` without an access token still returns `AUTH-003`.
+- gstack browse could not run in this WSL/Windows setup because its Windows ACL hardening failed on the WSL UNC `.gstack` path, so browser login was verified through the user's default browser and DB checks.
+
+Next implementation tasks:
+
+1. Commit/PR `feature/local-oauth-env-script` if the local `.env` helper should be kept.
+2. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
+3. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+4. Start the next domain feature branch from `develop`, likely study recruitment or board/post baseline.
 
 Recommended verification:
 
 ```bash
 ./gradlew test --no-daemon --console=plain
 docker compose up -d postgres
-SPRING_PROFILES_ACTIVE=oauth \
-GOOGLE_CLIENT_ID=<google-client-id> \
-GOOGLE_CLIENT_SECRET=<google-client-secret> \
-KAKAO_CLIENT_ID=<kakao-client-id> \
-KAKAO_CLIENT_SECRET=<kakao-client-secret> \
-./gradlew bootRun --no-daemon --console=plain
+scripts/run-oauth-local.sh
 ```
 
 Actual OAuth browser login test should happen after:
@@ -210,8 +220,9 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - 테스트는 ./gradlew test --no-daemon --console=plain 통과.
 
 다음 작업:
-- Google/Kakao client id/secret 및 redirect URI 설정 후 실제 OAuth 브라우저 로그인 검증
+- feature/local-oauth-env-script 커밋/PR
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
+- 다음 도메인 feature 브랜치 시작
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
 커밋 메시지는 한국어 Lore 프로토콜을 지키고, PR은 develop 대상으로 만들어.
