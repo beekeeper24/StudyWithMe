@@ -23,4 +23,6 @@ First login behavior:
 
 `CustomOAuth2UserService` is the Spring Security adapter. It delegates provider user-info loading to `DefaultOAuth2UserService`, normalizes attributes, persists/loads the member, then returns `StudyWithMeOAuth2User`.
 
+Provider client registrations should stay in `application-oauth.yml` under the `oauth` profile. Keep real client id/secret values outside git and pass them through environment variables or the deployment secret store.
+
 JWT issuing and the final security filter chain are still separate follow-up work.

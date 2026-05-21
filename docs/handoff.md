@@ -145,13 +145,24 @@ Production secrets policy:
 - Do not rely on the local `studywithme-local-development-secret-key-change-me` fallback outside local development.
 - Google/Kakao client id and client secret must be configured outside git through environment variables or the deployment secret store.
 
+OAuth client config:
+
+- Real provider registrations live in `src/main/resources/application-oauth.yml`.
+- The registrations are active only when the `oauth` Spring profile is enabled.
+- Start local browser testing with `SPRING_PROFILES_ACTIVE=oauth`.
+- Required environment variables:
+  - `GOOGLE_CLIENT_ID`
+  - `GOOGLE_CLIENT_SECRET`
+  - `KAKAO_CLIENT_ID`
+  - `KAKAO_CLIENT_SECRET`
+
 ## Next Work
 
-After `feature/security-auth-entrypoint` is reviewed/merged, the next implementation tasks are:
+After the current auth branches are reviewed/merged, the next implementation tasks are:
 
-1. Register Google/Kakao client id and secret outside git.
+1. Set Google/Kakao client id and secret outside git through the required environment variables.
 2. Register provider redirect URIs.
-3. Browser-test actual OAuth login end-to-end.
+3. Browser-test actual OAuth login end-to-end with `SPRING_PROFILES_ACTIVE=oauth`.
 4. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
@@ -160,6 +171,11 @@ Recommended verification:
 ```bash
 ./gradlew test --no-daemon --console=plain
 docker compose up -d postgres
+SPRING_PROFILES_ACTIVE=oauth \
+GOOGLE_CLIENT_ID=<google-client-id> \
+GOOGLE_CLIENT_SECRET=<google-client-secret> \
+KAKAO_CLIENT_ID=<kakao-client-id> \
+KAKAO_CLIENT_SECRET=<kakao-client-secret> \
 ./gradlew bootRun --no-daemon --console=plain
 ```
 
