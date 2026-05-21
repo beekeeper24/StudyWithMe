@@ -71,13 +71,18 @@ Completed and merged into `develop`:
    - public list/detail;
    - pessimistic write lock for join/leave/close decisions;
    - owner/member role tracking.
+10. Free-board post baseline:
+   - authenticated create/update/delete;
+   - public list/detail;
+   - author-only update/delete;
+   - soft delete with `DELETED` status.
 
-Current branch work:
+No active feature work is currently in progress after PR #12. Start the next branch from `develop`.
 
-- Branch: `feature/post-baseline`
-- Adds Flyway V4 post schema:
-  - `posts`
-- Adds free-board post baseline:
+Post baseline details:
+
+- Flyway V4 schema: `posts`.
+- API:
   - authenticated `POST /api/v1/posts`;
   - public `GET /api/v1/posts`;
   - public `GET /api/v1/posts/{postId}`;
@@ -98,13 +103,13 @@ Known merged PRs:
 - PR #9: `feature/local-oauth-env-script`
 - PR #10: `feature/study-recruitment-baseline`
 - PR #11: `docs/pr-merge-workflow-rule`
-- Current branch work: `feature/post-baseline`
+- PR #12: `feature/post-baseline`
 
 ## Important Local State
 
 At the time this handoff was written:
 
-- active branch is `feature/post-baseline` based on `develop`;
+- active branch should be `develop`;
 - `gradlew` may appear modified only because its file mode changed from executable to non-executable;
 - do not revert that user/environment change unless the user explicitly asks;
 - Docker Postgres may already be running as `studywithme-postgres`.
@@ -209,8 +214,8 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Finish, commit, PR, and merge `feature/post-baseline`.
-2. After merge, start the next MVP domain slice: comments/replies or studyroom baseline.
+1. Start the next MVP domain slice from `develop`: comments/replies or studyroom baseline.
+2. For comments/replies, connect them to posts first, then add notification/mention hooks later.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
@@ -254,11 +259,10 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - feature/local-oauth-env-script에서 `.env` 기반 로컬 OAuth 실행 스크립트를 추가하고 Google/Kakao 실제 브라우저 로그인을 검증함.
 - feature/study-recruitment-baseline에서 스터디 생성/목록/상세/참여/탈퇴/마감 기본 API를 구현함.
 - study join/leave/close는 같은 study row에 pessimistic write lock을 걸어 상태/멤버십 결정을 직렬화함.
-- 현재 feature/post-baseline에서 자유게시판 글 생성/목록/상세/수정/삭제 기본 API를 구현 중임.
+- feature/post-baseline에서 자유게시판 글 생성/목록/상세/수정/삭제 기본 API를 구현하고 develop에 merge함.
 - 게시글 삭제는 DELETED soft delete로 처리하고, 공개 조회에서는 삭제 글을 숨김.
 
 다음 작업:
-- feature/post-baseline 마무리, 검증, 커밋/PR/머지
 - 다음 도메인 slice 결정: comments/replies 또는 studyroom baseline
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
