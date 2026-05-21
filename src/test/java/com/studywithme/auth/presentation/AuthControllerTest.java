@@ -1,10 +1,16 @@
 package com.studywithme.auth.presentation;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.studywithme.auth.token.RefreshTokenHash;
+import com.studywithme.auth.token.RefreshTokenRepository;
 import com.studywithme.auth.token.JwtTokenProvider;
+import com.studywithme.auth.token.TokenPair;
+import com.studywithme.auth.token.TokenService;
 import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
@@ -16,12 +22,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockCookie;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -36,8 +44,15 @@ class AuthControllerTest {
 	@Autowired
 	private JwtTokenProvider jwtTokenProvider;
 
+	@Autowired
+	private TokenService tokenService;
+
+	@Autowired
+	private RefreshTokenRepository refreshTokenRepository;
+
 	@AfterEach
 	void tearDown() {
+		refreshTokenRepository.deleteAll();
 		memberRepository.deleteAll();
 	}
 
@@ -115,5 +130,72 @@ class AuthControllerTest {
 		mockMvc.perform(get("/api/v1/auth/me").session(session))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
+	}
+
+	@Test
+	@DisplayName("refresh token cookie로 access token을 재발급하고 refresh token을 회전한다")
+	void refreshWithCookie() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"refresh@example.com",
+			"refresh-user",
+			OAuthProvider.GOOGLE,
+			"google-refresh",
+			null
+		));
+		TokenPair tokenPair = tokenService.issue(member);
+
+		MvcResult result = mockMvc.perform(post("/api/v1/auth/refresh")
+				.cookie(new MockCookie("refreshToken", tokenPair.refreshToken())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+			.andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+			.andReturn();
+
+		String responseBody = result.getResponse().getContentAsString();
+		String setCookie = result.getResponse().getHeader("Set-Cookie");
+		assertThat(setCookie).contains("refreshToken=");
+		assertThat(setCookie).contains("HttpOnly");
+		assertThat(setCookie).contains("SameSite=Lax");
+		assertThat(responseBody).doesNotContain("refreshToken");
+		assertThat(refreshTokenRepository.findByTokenHash(RefreshTokenHash.sha256(tokenPair.refreshToken()))
+			.orElseThrow()
+			.isRotated()).isTrue();
+	}
+
+	@Test
+	@DisplayName("refresh token cookie가 없으면 AUTH-004 응답을 반환한다")
+	void rejectRefreshWithoutCookie() throws Exception {
+		mockMvc.perform(post("/api/v1/auth/refresh"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("AUTH-004"));
+	}
+
+	@Test
+	@DisplayName("logout 시 refresh token을 폐기하고 cookie를 삭제한다")
+	void logoutRevokesRefreshTokenAndClearsCookie() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"logout@example.com",
+			"logout-user",
+			OAuthProvider.GOOGLE,
+			"google-logout",
+			null
+		));
+		TokenPair tokenPair = tokenService.issue(member);
+
+		String setCookie = mockMvc.perform(post("/api/v1/auth/logout")
+				.cookie(new MockCookie("refreshToken", tokenPair.refreshToken())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andReturn()
+			.getResponse()
+			.getHeader("Set-Cookie");
+
+		assertThat(setCookie).contains("refreshToken=");
+		assertThat(setCookie).contains("Max-Age=0");
+		assertThat(refreshTokenRepository.findByTokenHash(RefreshTokenHash.sha256(tokenPair.refreshToken()))
+			.orElseThrow()
+			.isRevoked()).isTrue();
 	}
 }

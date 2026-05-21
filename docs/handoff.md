@@ -125,16 +125,19 @@ Security filter chain:
 - API authentication is intentionally JWT-only. OAuth may use an HTTP session temporarily for provider state, but Spring Security does not persist the authenticated security context into the session.
 - Routes not explicitly permitted are denied by default, so new endpoints must be intentionally added to the security rules.
 
-OAuth success token delivery for the local MVP:
+Refresh/reissue/logout HTTP policy:
 
-- OAuth login success writes HTTP `200` JSON with `accessToken`, `refreshToken`, expiry times, and `tokenType: Bearer`.
-- Tokens are not placed in redirect query strings.
-- This JSON refresh-token response is only for local/manual MVP inspection.
-- Before connecting a real browser frontend, move refresh-token delivery to a cookie:
+- OAuth login success and `POST /api/v1/auth/refresh` return access-token-only JSON.
+- The raw refresh token is not included in JSON response bodies.
+- Refresh tokens are delivered through a cookie:
+  - name: `refreshToken`;
+  - path: `/api/v1/auth`;
   - `HttpOnly` so frontend JavaScript cannot read the refresh token;
-  - `Secure` in production so the cookie is sent only over HTTPS;
-  - `SameSite=Lax` by default, or `SameSite=None; Secure` only if frontend and API must run cross-site.
-- After that change, OAuth/login responses should expose the access token to the frontend but not the raw refresh token in JSON.
+  - `SameSite=Lax` by default;
+  - `Secure` is configurable and must be enabled in production HTTPS.
+- `POST /api/v1/auth/refresh` reads the refresh-token cookie, rotates it, writes a new refresh-token cookie, and returns the new access token.
+- `POST /api/v1/auth/logout` reads the refresh-token cookie when present, revokes the matching DB refresh token, and clears the cookie.
+- Tokens are not placed in redirect query strings.
 
 Production secrets policy:
 
@@ -155,14 +158,13 @@ OAuth client config:
 
 ## Next Work
 
-After `feature/security-auth-entrypoint` is reviewed/merged, the next implementation tasks are:
+After the current auth branches are reviewed/merged, the next implementation tasks are:
 
-1. Add explicit refresh/reissue and logout HTTP endpoints.
-2. Implement the production refresh-token delivery policy before any real frontend launch: refresh token in `HttpOnly; Secure; SameSite` cookie, not JSON.
-3. Set Google/Kakao client id and secret outside git through the required environment variables.
-4. Register provider redirect URIs.
-5. Browser-test actual OAuth login end-to-end.
-6. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+1. Set Google/Kakao client id and secret outside git through the required environment variables.
+2. Register provider redirect URIs.
+3. Browser-test actual OAuth login end-to-end with `SPRING_PROFILES_ACTIVE=oauth`.
+4. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
+5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
 Recommended verification:
 
@@ -203,14 +205,13 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - PR #4에서 JWT access token + DB hash 기반 refresh token 회전 구조를 develop에 merge함.
 - feature/security-auth-entrypoint에서 SecurityFilterChain, JWT 인증 필터, OAuth 성공 핸들러, /api/v1/auth/me를 구현함.
 - access token은 stateless JWT, refresh token은 DB 저장 hash/rotation/revoke 정책.
-- local MVP에서는 OAuth 성공 시 token pair JSON을 반환하지만, frontend 연결 전 refresh token은 HttpOnly Secure SameSite cookie로 전환하기로 결정함.
+- feature/auth-refresh-endpoints에서 refresh/reissue/logout HTTP endpoint와 refresh token cookie delivery를 구현함.
+- OAuth 성공/refresh 응답 body에는 access token만 담고, refresh token은 HttpOnly SameSite cookie로 전달함.
 - 테스트는 ./gradlew test --no-daemon --console=plain 통과.
 
 다음 작업:
-- 현재 feature/security-auth-entrypoint 변경을 리뷰하고 PR로 develop에 병합
-- refresh/reissue/logout HTTP endpoint 추가
-- refresh token cookie delivery 구현
 - Google/Kakao client id/secret 및 redirect URI 설정 후 실제 OAuth 브라우저 로그인 검증
+- production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
 커밋 메시지는 한국어 Lore 프로토콜을 지키고, PR은 develop 대상으로 만들어.

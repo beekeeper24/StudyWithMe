@@ -22,10 +22,11 @@ Refresh token:
 
 Browser frontend delivery:
 
-- local/manual MVP may temporarily return the raw refresh token in JSON for inspection;
-- before a real frontend launch, deliver the refresh token through an `HttpOnly; Secure; SameSite` cookie instead;
+- deliver the refresh token through an `HttpOnly; Secure; SameSite` cookie instead of JSON;
 - default to `SameSite=Lax` for same-site frontend/API deployment;
-- use `SameSite=None; Secure` only when a cross-site frontend/API deployment requires credentialed requests.
+- use `SameSite=None; Secure` only when a cross-site frontend/API deployment requires credentialed requests;
+- keep `Secure=false` only for local HTTP development and enable it in production HTTPS;
+- clear the cookie on logout and revoke the matching DB refresh token when present.
 
 This is the current speed/safety balance:
 
