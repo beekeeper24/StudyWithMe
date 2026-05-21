@@ -38,3 +38,9 @@ out/
 
 ### Local agent/runtime state ###
 .omx/
+
+### Local secrets ###
+.env
+.env.*
+!.env.example
+.gstack/

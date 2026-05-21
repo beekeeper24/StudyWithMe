@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-05-21
+Last updated: 2026-05-22
 
 ## Read This First
 
@@ -69,6 +69,10 @@ Completed and merged into `develop`:
 Current branch work:
 
 - Branch: `feature/study-recruitment-baseline`
+- Includes local OAuth `.env` helper from merged PR #9:
+  - `.env.example`;
+  - `.gitignore` entries for local env files;
+  - `scripts/run-oauth-local.sh`.
 - Adds Flyway V3 study schema:
   - `studies`
   - `study_members`
@@ -93,16 +97,18 @@ Known merged PRs:
 - PR #6: `feature/security-auth-entrypoint`
 - PR #7: `feature/auth-refresh-endpoints`
 - PR #8: `feature/oauth-client-env-config`
-- Draft PR #9: `feature/local-oauth-env-script`
+- PR #9: `feature/local-oauth-env-script`
+- Current branch work: `feature/study-recruitment-baseline`
 
 ## Important Local State
 
 At the time this handoff was written:
 
-- branch should be `develop` tracking `origin/develop`;
+- active branch is `feature/local-oauth-env-script` based on `develop`;
 - `gradlew` may appear modified only because its file mode changed from executable to non-executable;
 - do not revert that user/environment change unless the user explicitly asks;
 - Docker Postgres may already be running as `studywithme-postgres`.
+- Local `.env` may exist with real OAuth credentials. It is ignored by git and must stay untracked.
 
 Local defaults:
 
@@ -172,7 +178,8 @@ OAuth client config:
 
 - Real provider registrations live in `src/main/resources/application-oauth.yml`.
 - The registrations are active only when the `oauth` Spring profile is enabled.
-- Start local browser testing with `SPRING_PROFILES_ACTIVE=oauth`.
+- Start local browser testing with `scripts/run-oauth-local.sh` after creating a local `.env`.
+- `.env` is ignored by git. Keep real client ids/secrets there, and keep `.env.example` as the committed template only.
 - Required environment variables:
   - `GOOGLE_CLIENT_ID`
   - `GOOGLE_CLIENT_SECRET`
@@ -190,6 +197,15 @@ Current branch verification:
 - `GET /actuator/health` returns `{"status":"UP"}`.
 - `bootRun` may show exit `143` after manual verification shutdown; that is expected when the agent stops the running app.
 
+Completed local OAuth verification on 2026-05-22:
+
+- Google browser login callback succeeded.
+- Kakao browser login callback succeeded.
+- Both providers created/updated ACTIVE members with USER role.
+- Refresh token rows were issued and remained active.
+- `GET /api/v1/auth/me` without an access token still returns `AUTH-003`.
+- gstack browse could not run in this WSL/Windows setup because its Windows ACL hardening failed on the WSL UNC `.gstack` path, so browser login was verified through the user's default browser and DB checks.
+
 Next implementation tasks:
 
 1. Commit and open PR for `feature/study-recruitment-baseline`.
@@ -203,6 +219,7 @@ Recommended verification:
 ./gradlew test --no-daemon --console=plain
 docker compose up -d postgres
 ./gradlew bootRun --no-daemon --console=plain
+scripts/run-oauth-local.sh
 ```
 
 Actual OAuth browser login test should happen after:
@@ -241,6 +258,7 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - feature/study-recruitment-baseline 커밋/PR
 - 다음 도메인 slice 결정: study board/post baseline 또는 study listing filters/pagination
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
+- 다음 도메인 feature 브랜치 시작
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
 커밋 메시지는 한국어 Lore 프로토콜을 지키고, PR은 develop 대상으로 만들어.
