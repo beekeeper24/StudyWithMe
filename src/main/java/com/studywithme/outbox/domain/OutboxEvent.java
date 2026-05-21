@@ -48,6 +48,22 @@ public class OutboxEvent {
 	@Column(name = "last_error", length = 1000)
 	private String lastError;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "kafka_publish_status", nullable = false, length = 20)
+	private OutboxKafkaPublishStatus kafkaPublishStatus;
+
+	@Column(name = "kafka_retry_count", nullable = false)
+	private int kafkaRetryCount;
+
+	@Column(name = "kafka_next_attempt_at", nullable = false)
+	private LocalDateTime kafkaNextAttemptAt;
+
+	@Column(name = "kafka_published_at")
+	private LocalDateTime kafkaPublishedAt;
+
+	@Column(name = "kafka_last_error", length = 1000)
+	private String kafkaLastError;
+
 	protected OutboxEvent() {
 	}
 
@@ -62,6 +78,9 @@ public class OutboxEvent {
 		this.retryCount = 0;
 		this.nextAttemptAt = now;
 		this.occurredAt = now;
+		this.kafkaPublishStatus = OutboxKafkaPublishStatus.PENDING;
+		this.kafkaRetryCount = 0;
+		this.kafkaNextAttemptAt = now;
 	}
 
 	public static OutboxEvent create(String eventType, String aggregateType, Long aggregateId, String payload) {
@@ -85,6 +104,25 @@ public class OutboxEvent {
 		if (status == OutboxEventStatus.FAILED) {
 			this.status = OutboxEventStatus.PENDING;
 		}
+	}
+
+	public boolean isKafkaPublished() {
+		return kafkaPublishStatus == OutboxKafkaPublishStatus.PUBLISHED;
+	}
+
+	public void markKafkaPublished() {
+		this.kafkaPublishStatus = OutboxKafkaPublishStatus.PUBLISHED;
+		this.kafkaPublishedAt = LocalDateTime.now();
+		this.kafkaLastError = null;
+	}
+
+	public void markKafkaPublishFailed(String errorMessage) {
+		this.kafkaRetryCount++;
+		this.kafkaPublishStatus = kafkaRetryCount >= 5
+			? OutboxKafkaPublishStatus.DEAD
+			: OutboxKafkaPublishStatus.FAILED;
+		this.kafkaNextAttemptAt = LocalDateTime.now().plusSeconds(Math.min(600L, 10L * kafkaRetryCount * kafkaRetryCount));
+		this.kafkaLastError = errorMessage == null ? null : errorMessage.substring(0, Math.min(1000, errorMessage.length()));
 	}
 
 	public String getId() {
@@ -129,5 +167,25 @@ public class OutboxEvent {
 
 	public String getLastError() {
 		return lastError;
+	}
+
+	public OutboxKafkaPublishStatus getKafkaPublishStatus() {
+		return kafkaPublishStatus;
+	}
+
+	public int getKafkaRetryCount() {
+		return kafkaRetryCount;
+	}
+
+	public LocalDateTime getKafkaNextAttemptAt() {
+		return kafkaNextAttemptAt;
+	}
+
+	public LocalDateTime getKafkaPublishedAt() {
+		return kafkaPublishedAt;
+	}
+
+	public String getKafkaLastError() {
+		return kafkaLastError;
 	}
 }

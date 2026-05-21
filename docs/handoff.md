@@ -88,8 +88,14 @@ Completed and merged into `develop`:
    - self-notifications are suppressed;
    - outbox retry/dead states are modeled;
    - polling worker is available but disabled by default.
+13. Kafka outbox relay baseline:
+   - Spring Kafka dependency and local Kafka Docker Compose service;
+   - V7 Kafka publish state columns on `outbox_events`;
+   - relay publishes due outbox rows to Kafka with the outbox event id as key;
+   - Kafka publish retry/dead state is independent from in-app notification processing;
+   - Kafka relay worker is available but disabled by default.
 
-No active feature work is currently in progress after PR #15. Start the next branch from `develop`.
+`feature/kafka-outbox-relay` is the current work branch until its PR is merged. After merge, start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -105,7 +111,15 @@ No active feature work is currently in progress after PR #15. Start the next bra
   - authenticated `POST /api/v1/notifications/{notificationId}/read`.
 - `NotificationOutboxProcessor` handles at-least-once processing.
 - `NotificationOutboxWorker` is disabled by default and enabled with `app.notification.outbox.worker-enabled=true`.
-- Kafka is not introduced yet. The next Kafka slice should relay `outbox_events` after this DB reliability boundary.
+- Flyway V7 Kafka relay schema adds:
+  - `kafka_publish_status`;
+  - `kafka_retry_count`;
+  - `kafka_next_attempt_at`;
+  - `kafka_published_at`;
+  - `kafka_last_error`.
+- `OutboxKafkaRelay` sends a JSON envelope to Kafka topic `studywithme.outbox.events` by default.
+- Kafka key is the outbox event id, so downstream consumers can deduplicate at-least-once delivery.
+- `OutboxKafkaRelayWorker` is disabled by default and enabled with `OUTBOX_KAFKA_RELAY_ENABLED=true`.
 
 Comment baseline details:
 
@@ -148,6 +162,7 @@ Known merged PRs:
 - PR #13: `docs/post-merge-handoff`
 - PR #14: `feature/comment-baseline`
 - PR #15: `feature/notification-outbox-baseline`
+- PR #16: `feature/kafka-outbox-relay` once merged
 
 ## Important Local State
 
@@ -157,12 +172,14 @@ At the time this handoff was written:
 - `gradlew` may appear modified only because its file mode changed from executable to non-executable;
 - do not revert that user/environment change unless the user explicitly asks;
 - Docker Postgres may already be running as `studywithme-postgres`.
+- Docker Kafka may already be running as `studywithme-kafka`.
 - Local `.env` may exist with real OAuth credentials. It is ignored by git and must stay untracked.
 
 Local defaults:
 
 - app port: `8081`
 - PostgreSQL host port: `15432`
+- Kafka host port: `9092`
 - database: `studywithme`
 - username: `studywithme`
 - password: `studywithme`
@@ -260,8 +277,8 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Add mention extraction or Kafka relay as the next slice from `develop`.
-2. If Kafka relay comes next, publish `outbox_events` to Kafka without changing the domain transaction boundary.
+1. Merge Kafka relay PR, then start mention extraction from `develop`.
+2. Mention extraction should parse comment content for `@nickname` and create mention events/notifications without duplicating existing comment/reply notifications.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
@@ -270,6 +287,7 @@ Recommended verification:
 ```bash
 ./gradlew test --no-daemon --console=plain
 docker compose up -d postgres
+docker compose up -d kafka
 ./gradlew bootRun --no-daemon --console=plain
 scripts/run-oauth-local.sh
 ```
@@ -310,10 +328,11 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - feature/comment-baseline에서 게시글 댓글/1단계 답글 기본 API를 구현하고 develop에 merge함.
 - 댓글 삭제는 DELETED soft delete로 처리하고, 공개 목록에서는 삭제 댓글과 삭제 부모 아래 답글을 숨김.
 - feature/notification-outbox-baseline에서 댓글/답글 이벤트 outbox와 in-app notification baseline을 구현하고 develop에 merge함.
-- Kafka는 아직 도입하지 않고, Kafka relay가 읽을 DB outbox reliability boundary를 먼저 구축함.
+- feature/kafka-outbox-relay에서 DB outbox를 Kafka topic으로 publish하는 relay baseline을 구현함.
+- Kafka relay는 domain transaction을 건드리지 않고, 별도 `kafka_publish_status`로 publish/retry/dead 상태를 관리함.
 
 다음 작업:
-- 다음 도메인 slice 결정: mention extraction 또는 Kafka relay
+- Kafka relay PR merge 후 mention extraction 시작
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.

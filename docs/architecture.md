@@ -13,9 +13,11 @@ The important portfolio point is not simple CRUD. The important point is event-d
 - Spring Security OAuth2 Client
 - JWT authentication
 - Spring Data JPA
+- Spring Kafka
 - QueryDSL
 - PostgreSQL
 - Redis
+- Kafka
 - WebSocket/STOMP
 - Flyway
 - JUnit5, AssertJ, Testcontainers
@@ -95,6 +97,7 @@ com.studywithme
   ├─ comment
   ├─ mention
   ├─ notification
+  ├─ outbox
   ├─ chat
   ├─ admin
   └─ report
@@ -109,12 +112,13 @@ com.studywithme
 5. Study-room information CRUD and filtering.
 6. Comments and one-level replies.
 7. Notification domain and event-based notification creation.
-8. Mention parsing and duplicate notification prevention.
-9. Private chat REST MVP.
-10. Study chat REST MVP.
-11. WebSocket real-time chat and notifications.
-12. Admin member/post/comment/notice features.
-13. Reports and sanctions.
+8. Kafka outbox relay.
+9. Mention parsing and duplicate notification prevention.
+10. Private chat REST MVP.
+11. Study chat REST MVP.
+12. WebSocket real-time chat and notifications.
+13. Admin member/post/comment/notice features.
+14. Reports and sanctions.
 
 ## Current Scaffold
 
@@ -132,10 +136,11 @@ Tests use an H2 in-memory database for the first context-load baseline. PostgreS
 
 ## Local Database Baseline
 
-Local development uses Docker Compose PostgreSQL.
+Local development uses Docker Compose PostgreSQL and Kafka.
 
 ```bash
 docker compose up -d postgres
+docker compose up -d kafka
 ```
 
 Default local connection values:
@@ -146,6 +151,7 @@ Default local connection values:
 - password: `studywithme`
 - host port: `15432`
 - container port: `5432`
+- Kafka host port: `9092`
 
 The application uses these values by default, but each value can be overridden with environment variables:
 
