@@ -24,3 +24,11 @@ management:
     web:
       exposure:
         include: health,info
+
+app:
+  auth:
+    token:
+      issuer: ${JWT_ISSUER:studywithme}
+      secret: ${JWT_SECRET:studywithme-local-development-secret-key-change-me}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:30m}
+      refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:14d}
