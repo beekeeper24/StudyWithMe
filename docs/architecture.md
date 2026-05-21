@@ -196,4 +196,31 @@ Provider OAuth attributes
 - provider attributes
 - service role authorities such as `ROLE_USER`
 
-OAuth client credentials and JWT issuing are intentionally not added yet. The next authentication step should wire the security filter chain, OAuth success handling, and token issuing policy.
+OAuth client credentials and the final success redirect flow are intentionally not added yet. The next authentication step should wire the security filter chain and OAuth success handling.
+
+## JWT And Refresh Token Baseline
+
+StudyWithMe uses different strategies for access tokens and refresh tokens.
+
+```text
+Access token  -> JWT, short-lived, stateless validation
+Refresh token -> opaque random token, long-lived, hash stored in DB
+```
+
+Access token policy:
+
+- token type: JWT signed with HS256;
+- default TTL: `30m`;
+- claims include issuer, subject member id, and service roles;
+- API authentication can validate the access token without checking the refresh token table.
+
+Refresh token policy:
+
+- token type: random opaque string;
+- default TTL: `14d`;
+- raw token is returned to the client only once;
+- DB stores `SHA-256` hash, not the raw token;
+- refresh rotates the token: old row is marked `rotated_at`, a new row is saved;
+- rotated, revoked, expired, or unknown refresh tokens are rejected.
+
+This keeps normal API requests fast while preserving server-side control for logout, token rotation, and suspected token theft.

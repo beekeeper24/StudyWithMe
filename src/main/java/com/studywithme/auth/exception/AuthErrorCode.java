@@ -13,6 +13,21 @@ public enum AuthErrorCode implements ErrorCode {
 		"AUTH-002",
 		"OAuth 사용자 정보가 올바르지 않습니다.",
 		HttpStatus.BAD_REQUEST
+	),
+	INVALID_ACCESS_TOKEN(
+		"AUTH-003",
+		"Access token이 올바르지 않습니다.",
+		HttpStatus.UNAUTHORIZED
+	),
+	INVALID_REFRESH_TOKEN(
+		"AUTH-004",
+		"Refresh token이 올바르지 않습니다.",
+		HttpStatus.UNAUTHORIZED
+	),
+	EXPIRED_REFRESH_TOKEN(
+		"AUTH-005",
+		"Refresh token이 만료되었습니다.",
+		HttpStatus.UNAUTHORIZED
 	);
 
 	private final String code;
