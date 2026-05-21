@@ -5,6 +5,10 @@
 Use the harness stack automatically by task type and risk. Do not ask the user to name a harness for ordinary work.
 
 - Oh My Codex is the default orchestration and runtime layer when available.
+- Codex should decide when to use OMX team, parallel workers, or other orchestration based on task shape and risk. The user does not need to explicitly request sub-agents for substantial work.
+- Use OMX team/orchestration proactively when work can be split into independent implementation, review, research, or verification tracks without creating file conflicts.
+- Keep simple tasks in the main Codex flow. Do not add orchestration overhead for trivial edits, typo fixes, formatting-only changes, or clear one-file fixes.
+- If the active runtime blocks sub-agent or team execution, state the constraint briefly and continue with the best available harness fallback.
 - Use normal Codex flow for trivial edits, typo fixes, formatting-only changes, and clear one-file fixes; still verify before completion when feasible.
 - Use OMX `deep-interview` when requirements, boundaries, or acceptance criteria are unclear.
 - Use Superpowers `brainstorming` or `writing-plans` for new features, behavior changes, or implementation plans that need design choices.
@@ -13,6 +17,52 @@ Use the harness stack automatically by task type and risk. Do not ask the user t
 - Use Superpowers `verification-before-completion` before completing non-trivial work.
 - Use gstack only through `cso` / `/cso` for security review by default. Do not run full gstack review, QA, product, or release workflows unless the user explicitly expands scope.
 - Use Compound Engineering after meaningful work to codify operational learnings, missed assumptions, reusable project rules, and repetition-prevention notes. Keep these notes separate from human-facing work logs.
+
+## Harness Composition
+
+Use harnesses together when they cover different parts of the work. The default question is not "did the user ask for a harness?" but "which harness combination reduces risk or improves throughput for this task?"
+
+- Do not run multiple planning harnesses by default. Pick one lead planning harness, then add other harnesses only for distinct follow-up roles such as parallel execution, security review, verification, or learning capture.
+- Use OMX-led planning when the main uncertainty is requirements, boundaries, acceptance criteria, or how to split work across agents.
+- Use Superpowers-led planning when the main uncertainty is engineering method: TDD shape, implementation sequence, debugging discipline, or a concrete written plan.
+- If both OMX and Superpowers could apply, choose the lighter one that answers the blocking question. Combining both is justified only when the second harness answers a different question, not when it repeats the same planning work.
+- Simple direct work:
+  - Use main Codex flow.
+  - Examples: typo fixes, one-file docs edits, small config edits, obvious test expectation updates.
+- Ambiguous requirements:
+  - Use OMX `deep-interview` before implementation.
+  - Stop once acceptance criteria, boundaries, and non-goals are clear.
+- New feature or behavior change:
+  - Use Superpowers `brainstorming` or `writing-plans` to shape the approach when the feature goal is clear enough to plan implementation.
+  - Use OMX `deep-interview` first only when the feature goal, boundaries, or acceptance criteria are still unclear.
+  - Use OMX team/orchestration if implementation, tests, docs, and review can be split safely.
+  - Use main Codex for final integration and verification.
+- High-risk backend logic:
+  - Use Superpowers `test-driven-development`.
+  - Prefer OMX team/orchestration when independent test, implementation, and review tracks exist.
+  - Applies to authentication, authorization, token handling, data migration, concurrency, and state transitions.
+- Unclear bug:
+  - Use Superpowers `systematic-debugging`.
+  - Add OMX team/orchestration when one track can reproduce the issue while another inspects code/history/config.
+- Security-sensitive change:
+  - Use the appropriate implementation harness first.
+  - Then run gstack `cso` / `/cso` for focused security review.
+  - Applies to OAuth2, JWT, refresh tokens, secrets, deployment security, data exposure, chat access control, notifications, and WebSocket security.
+- Meaningful completed work:
+  - Use Superpowers `verification-before-completion` before claiming completion.
+  - Use Compound Engineering after review or implementation to capture repeated mistakes, missed assumptions, reusable project rules, and prevention notes.
+  - Update Notion work logs for human-facing study/progress context when the work is meaningful.
+
+OMX team/orchestration is preferred when at least two of these are true:
+
+- there are 2+ independent workstreams;
+- code changes span multiple modules or ownership boundaries;
+- a separate reviewer can catch risk while implementation continues;
+- external docs/research can run in parallel with local code reading;
+- browser/runtime verification can run separately from code edits;
+- the task has enough scope that orchestration overhead is smaller than the risk of serial blind spots.
+
+Do not use orchestration when it would create file conflicts, duplicate the same investigation, or slow down a clear small fix.
 
 ## Execution Principles
 
