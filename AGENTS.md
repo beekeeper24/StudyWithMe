@@ -116,6 +116,13 @@ Learning notes split:
 - Do not use a `codex/` branch prefix.
 - Push work branches and `develop` as needed. Promote to `main` only through an intentional release step.
 - Split commits by reviewable intent, not by tool run.
+- When the user asks to commit and organize work as a PR, treat the default completion path as:
+  1. commit the verified work;
+  2. open or update a PR into `develop`;
+  3. mark the PR ready;
+  4. merge it into `develop`;
+  5. sync local `develop`.
+- Stop at a draft/open PR only when the user explicitly asks for review-only handling, when verification is incomplete, or when CI/conflicts/blockers make merge unsafe. State the blocker and next activation step clearly.
 
 ## Reporting
 
