@@ -65,28 +65,26 @@ Completed and merged into `develop`:
    - `GET /api/v1/auth/me`.
 6. Refresh/reissue/logout HTTP endpoint and refresh token cookie delivery.
 7. OAuth client environment-variable configuration under the `oauth` Spring profile.
+8. Local OAuth `.env` helper and actual Google/Kakao browser login verification.
+9. Study recruitment baseline:
+   - authenticated create/join/leave/close;
+   - public list/detail;
+   - pessimistic write lock for join/leave/close decisions;
+   - owner/member role tracking.
 
 Current branch work:
 
-- Branch: `feature/study-recruitment-baseline`
-- Includes local OAuth `.env` helper from merged PR #9:
-  - `.env.example`;
-  - `.gitignore` entries for local env files;
-  - `scripts/run-oauth-local.sh`.
-- Adds Flyway V3 study schema:
-  - `studies`
-  - `study_members`
-- Adds study recruitment baseline:
-  - authenticated `POST /api/v1/studies`;
-  - public `GET /api/v1/studies`;
-  - public `GET /api/v1/studies/{studyId}`;
-  - authenticated `POST /api/v1/studies/{studyId}/join`;
-  - authenticated `POST /api/v1/studies/{studyId}/leave`;
-  - authenticated owner-only `POST /api/v1/studies/{studyId}/close`.
-- Study status values: `RECRUITING`, `CLOSED`.
-- Study membership roles: `OWNER`, `MEMBER`.
-- Mutating study membership/status use a pessimistic write lock on the study row to serialize join/leave/close decisions.
-- `leave` rejects non-members with `STUDY-006` instead of returning a false success.
+- Branch: `feature/post-baseline`
+- Adds Flyway V4 post schema:
+  - `posts`
+- Adds free-board post baseline:
+  - authenticated `POST /api/v1/posts`;
+  - public `GET /api/v1/posts`;
+  - public `GET /api/v1/posts/{postId}`;
+  - authenticated author-only `PUT /api/v1/posts/{postId}`;
+  - authenticated author-only `DELETE /api/v1/posts/{postId}`.
+- Post status values: `PUBLISHED`, `DELETED`.
+- Delete is a soft delete so future comments/notifications can keep a stable post reference.
 
 Known merged PRs:
 
@@ -98,13 +96,15 @@ Known merged PRs:
 - PR #7: `feature/auth-refresh-endpoints`
 - PR #8: `feature/oauth-client-env-config`
 - PR #9: `feature/local-oauth-env-script`
-- Current branch work: `feature/study-recruitment-baseline`
+- PR #10: `feature/study-recruitment-baseline`
+- PR #11: `docs/pr-merge-workflow-rule`
+- Current branch work: `feature/post-baseline`
 
 ## Important Local State
 
 At the time this handoff was written:
 
-- active branch is `feature/local-oauth-env-script` based on `develop`;
+- active branch is `feature/post-baseline` based on `develop`;
 - `gradlew` may appear modified only because its file mode changed from executable to non-executable;
 - do not revert that user/environment change unless the user explicitly asks;
 - Docker Postgres may already be running as `studywithme-postgres`.
@@ -153,6 +153,7 @@ Security filter chain:
 - Invalid or missing credentials for protected endpoints return the existing error envelope with `AUTH-003`.
 - API authentication is intentionally JWT-only. OAuth may use an HTTP session temporarily for provider state, but Spring Security does not persist the authenticated security context into the session.
 - Routes not explicitly permitted are denied by default, so new endpoints must be intentionally added to the security rules.
+- Study and post public reads are explicitly permitted; mutating routes require JWT authentication.
 
 Refresh/reissue/logout HTTP policy:
 
@@ -188,7 +189,7 @@ OAuth client config:
 
 ## Next Work
 
-Current branch verification:
+Recent study branch verification:
 
 - `./gradlew test --no-daemon --console=plain` passes.
 - `git diff --check` passes.
@@ -208,8 +209,8 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Commit and open PR for `feature/study-recruitment-baseline`.
-2. After merge, start the next domain slice: study board/post baseline or study listing filters/pagination.
+1. Finish, commit, PR, and merge `feature/post-baseline`.
+2. After merge, start the next MVP domain slice: comments/replies or studyroom baseline.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
@@ -250,18 +251,19 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - access token은 stateless JWT, refresh token은 DB 저장 hash/rotation/revoke 정책.
 - feature/auth-refresh-endpoints에서 refresh/reissue/logout HTTP endpoint와 refresh token cookie delivery를 구현함.
 - OAuth 성공/refresh 응답 body에는 access token만 담고, refresh token은 HttpOnly SameSite cookie로 전달함.
+- feature/local-oauth-env-script에서 `.env` 기반 로컬 OAuth 실행 스크립트를 추가하고 Google/Kakao 실제 브라우저 로그인을 검증함.
 - feature/study-recruitment-baseline에서 스터디 생성/목록/상세/참여/탈퇴/마감 기본 API를 구현함.
 - study join/leave/close는 같은 study row에 pessimistic write lock을 걸어 상태/멤버십 결정을 직렬화함.
-- 테스트는 ./gradlew test --no-daemon --console=plain 통과.
+- 현재 feature/post-baseline에서 자유게시판 글 생성/목록/상세/수정/삭제 기본 API를 구현 중임.
+- 게시글 삭제는 DELETED soft delete로 처리하고, 공개 조회에서는 삭제 글을 숨김.
 
 다음 작업:
-- feature/study-recruitment-baseline 커밋/PR
-- 다음 도메인 slice 결정: study board/post baseline 또는 study listing filters/pagination
+- feature/post-baseline 마무리, 검증, 커밋/PR/머지
+- 다음 도메인 slice 결정: comments/replies 또는 studyroom baseline
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
-- 다음 도메인 feature 브랜치 시작
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
-커밋 메시지는 한국어 Lore 프로토콜을 지키고, PR은 develop 대상으로 만들어.
+커밋 메시지는 한국어로 쓰고, PR은 develop 대상으로 만든 뒤 명시적 보류가 없으면 검증 후 develop에 머지한다.
 ```
 
 ## Work Rules To Preserve
