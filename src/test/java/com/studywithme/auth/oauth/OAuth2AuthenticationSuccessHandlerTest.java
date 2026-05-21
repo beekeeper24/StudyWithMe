@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.studywithme.auth.presentation.RefreshTokenCookieProperties;
+import com.studywithme.auth.presentation.RefreshTokenCookieWriter;
 import com.studywithme.auth.token.TokenPair;
 import com.studywithme.auth.token.TokenService;
 import com.studywithme.member.domain.Member;
@@ -24,14 +26,18 @@ class OAuth2AuthenticationSuccessHandlerTest {
 
 	private final TokenService tokenService = Mockito.mock(TokenService.class);
 	private final MemberRepository memberRepository = Mockito.mock(MemberRepository.class);
+	private final RefreshTokenCookieWriter refreshTokenCookieWriter = new RefreshTokenCookieWriter(
+		new RefreshTokenCookieProperties("refreshToken", "/api/v1/auth", false, "Lax")
+	);
 	private final OAuth2AuthenticationSuccessHandler successHandler = new OAuth2AuthenticationSuccessHandler(
 		tokenService,
 		memberRepository,
+		refreshTokenCookieWriter,
 		new ObjectMapper().findAndRegisterModules()
 	);
 
 	@Test
-	@DisplayName("OAuth 인증 성공 시 회원의 token pair를 JSON 응답으로 반환한다")
+	@DisplayName("OAuth 인증 성공 시 access token은 JSON으로 반환하고 refresh token은 cookie로 설정한다")
 	void writeTokenPairResponse() throws Exception {
 		Member member = Member.createOAuthMember(
 			"bee@example.com",
@@ -68,9 +74,13 @@ class OAuth2AuthenticationSuccessHandlerTest {
 		assertThat(response.getContentType()).startsWith("application/json");
 		assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
 		assertThat(response.getHeader("Pragma")).isEqualTo("no-cache");
+		assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=refresh-token");
+		assertThat(response.getHeader("Set-Cookie")).contains("Path=/api/v1/auth");
+		assertThat(response.getHeader("Set-Cookie")).contains("HttpOnly");
+		assertThat(response.getHeader("Set-Cookie")).contains("SameSite=Lax");
 		assertThat(response.getContentAsString()).contains("\"success\":true");
 		assertThat(response.getContentAsString()).contains("\"accessToken\":\"access-token\"");
-		assertThat(response.getContentAsString()).contains("\"refreshToken\":\"refresh-token\"");
+		assertThat(response.getContentAsString()).doesNotContain("refreshToken");
 		assertThat(response.getContentAsString()).contains("\"tokenType\":\"Bearer\"");
 	}
 }

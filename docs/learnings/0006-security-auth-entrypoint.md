@@ -12,16 +12,16 @@ Rules:
 - Return the existing error envelope with `AUTH-003` for missing or invalid credentials on protected endpoints.
 - Deny routes by default. Add future public routes explicitly in `SecurityConfig`.
 
-Local MVP token delivery:
+Token delivery:
 
-- OAuth success returns a JSON `ApiResponse<TokenResponse>`.
+- OAuth success and refresh responses return access-token-only JSON.
 - Do not put access or refresh tokens in redirect query strings.
-- Treat JSON refresh-token delivery as local/manual MVP only.
-- Before connecting a real browser frontend, move the refresh token to a cookie:
+- Deliver refresh tokens through a cookie:
   - `HttpOnly` so frontend JavaScript cannot read it;
   - `Secure` in production so it only travels over HTTPS;
   - `SameSite=Lax` by default, or `SameSite=None; Secure` only when frontend/API are intentionally cross-site.
-- Once cookie delivery is implemented, response bodies may include access-token data but must not include the raw refresh token.
+- Response bodies may include access-token data but must not include the raw refresh token.
+- Logout should revoke the matching DB refresh token when present and clear the cookie.
 
 Production activation rules:
 

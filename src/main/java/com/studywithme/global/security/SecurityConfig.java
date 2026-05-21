@@ -7,6 +7,7 @@ import com.studywithme.auth.token.JwtTokenProvider;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -49,6 +50,7 @@ public class SecurityConfig {
 			.securityContext(securityContext -> securityContext.securityContextRepository(new NullSecurityContextRepository()))
 			.exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
 			.authorizeHttpRequests(authorize -> authorize
+				.requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
 				.requestMatchers("/api/v1/auth/me").authenticated()
 				.requestMatchers(
 					"/actuator/health",
