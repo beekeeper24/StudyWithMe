@@ -83,12 +83,12 @@ Completed and merged into `develop`:
    - one-level replies only;
    - soft delete with deleted-parent reply hiding.
 
-Current branch work:
+No active feature work is currently in progress after PR #14. Start the next branch from `develop`.
 
-- Branch: `feature/comment-baseline`
-- Adds Flyway V5 comment schema:
-  - `comments`
-- Adds comment/reply baseline:
+Comment baseline details:
+
+- Flyway V5 schema: `comments`.
+- API:
   - authenticated `POST /api/v1/posts/{postId}/comments`;
   - public `GET /api/v1/posts/{postId}/comments`;
   - authenticated `POST /api/v1/comments/{commentId}/replies`;
@@ -124,13 +124,13 @@ Known merged PRs:
 - PR #11: `docs/pr-merge-workflow-rule`
 - PR #12: `feature/post-baseline`
 - PR #13: `docs/post-merge-handoff`
-- Current branch work: `feature/comment-baseline`
+- PR #14: `feature/comment-baseline`
 
 ## Important Local State
 
 At the time this handoff was written:
 
-- active branch is `feature/comment-baseline` based on `develop`;
+- active branch should be `develop`;
 - `gradlew` may appear modified only because its file mode changed from executable to non-executable;
 - do not revert that user/environment change unless the user explicitly asks;
 - Docker Postgres may already be running as `studywithme-postgres`.
@@ -236,8 +236,8 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Finish, commit, PR, and merge `feature/comment-baseline`.
-2. After merge, start notification/mention hook planning or studyroom baseline.
+1. Start notification/mention hook planning or studyroom baseline from `develop`.
+2. If notification/mention comes next, use post/comment/reply actions as the first event sources.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
@@ -283,11 +283,10 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - study join/leave/close는 같은 study row에 pessimistic write lock을 걸어 상태/멤버십 결정을 직렬화함.
 - feature/post-baseline에서 자유게시판 글 생성/목록/상세/수정/삭제 기본 API를 구현하고 develop에 merge함.
 - 게시글 삭제는 DELETED soft delete로 처리하고, 공개 조회에서는 삭제 글을 숨김.
-- 현재 feature/comment-baseline에서 게시글 댓글/1단계 답글 기본 API를 구현 중임.
+- feature/comment-baseline에서 게시글 댓글/1단계 답글 기본 API를 구현하고 develop에 merge함.
 - 댓글 삭제는 DELETED soft delete로 처리하고, 공개 목록에서는 삭제 댓글과 삭제 부모 아래 답글을 숨김.
 
 다음 작업:
-- feature/comment-baseline 마무리, 검증, 커밋/PR/머지
 - 다음 도메인 slice 결정: notification/mention hook 또는 studyroom baseline
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
