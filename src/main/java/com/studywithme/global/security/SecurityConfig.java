@@ -52,6 +52,14 @@ public class SecurityConfig {
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
 				.requestMatchers("/api/v1/auth/me").authenticated()
+				.requestMatchers(HttpMethod.GET, "/api/v1/studies", "/api/v1/studies/*").permitAll()
+				.requestMatchers(
+					HttpMethod.POST,
+					"/api/v1/studies",
+					"/api/v1/studies/*/join",
+					"/api/v1/studies/*/leave",
+					"/api/v1/studies/*/close"
+				).authenticated()
 				.requestMatchers(
 					"/actuator/health",
 					"/actuator/info",
