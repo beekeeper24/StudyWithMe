@@ -82,8 +82,31 @@ Completed and merged into `develop`:
    - author-only update/delete;
    - one-level replies only;
    - soft delete with deleted-parent reply hiding.
+12. Notification outbox baseline:
+   - comment/reply creation stores outbox events in the same transaction;
+   - processor creates in-app notifications idempotently;
+   - self-notifications are suppressed;
+   - outbox retry/dead states are modeled;
+   - polling worker is available but disabled by default.
 
-No active feature work is currently in progress after PR #14. Start the next branch from `develop`.
+Current branch work:
+
+- Branch: `feature/notification-outbox-baseline`
+- Adds Flyway V6 notification/outbox schema:
+  - `outbox_events`
+  - `notifications`
+- Adds outbox events:
+  - `COMMENT_CREATED`
+  - `REPLY_CREATED`
+- Adds notification types:
+  - `COMMENT_ON_POST`
+  - `REPLY_ON_COMMENT`
+- Adds in-app notification API:
+  - authenticated `GET /api/v1/notifications`;
+  - authenticated `POST /api/v1/notifications/{notificationId}/read`.
+- Adds `NotificationOutboxProcessor` for at-least-once processing.
+- Adds disabled-by-default `NotificationOutboxWorker`, enabled with `app.notification.outbox.worker-enabled=true`.
+- Kafka is not introduced yet. The next Kafka slice should relay `outbox_events` after this DB reliability boundary.
 
 Comment baseline details:
 
@@ -125,12 +148,13 @@ Known merged PRs:
 - PR #12: `feature/post-baseline`
 - PR #13: `docs/post-merge-handoff`
 - PR #14: `feature/comment-baseline`
+- Current branch work: `feature/notification-outbox-baseline`
 
 ## Important Local State
 
 At the time this handoff was written:
 
-- active branch should be `develop`;
+- active branch is `feature/notification-outbox-baseline` based on `develop`;
 - `gradlew` may appear modified only because its file mode changed from executable to non-executable;
 - do not revert that user/environment change unless the user explicitly asks;
 - Docker Postgres may already be running as `studywithme-postgres`.
@@ -181,6 +205,7 @@ Security filter chain:
 - Routes not explicitly permitted are denied by default, so new endpoints must be intentionally added to the security rules.
 - Study and post public reads are explicitly permitted; mutating routes require JWT authentication.
 - Comment public list is explicitly permitted; comment/reply create/update/delete require JWT authentication.
+- Notification list/read routes require JWT authentication and only expose the authenticated member's notifications.
 
 Refresh/reissue/logout HTTP policy:
 
@@ -236,8 +261,8 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Start notification/mention hook planning or studyroom baseline from `develop`.
-2. If notification/mention comes next, use post/comment/reply actions as the first event sources.
+1. Finish, commit, PR, and merge `feature/notification-outbox-baseline`.
+2. After merge, add mention extraction or Kafka relay as the next slice.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
@@ -285,9 +310,12 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - 게시글 삭제는 DELETED soft delete로 처리하고, 공개 조회에서는 삭제 글을 숨김.
 - feature/comment-baseline에서 게시글 댓글/1단계 답글 기본 API를 구현하고 develop에 merge함.
 - 댓글 삭제는 DELETED soft delete로 처리하고, 공개 목록에서는 삭제 댓글과 삭제 부모 아래 답글을 숨김.
+- 현재 feature/notification-outbox-baseline에서 댓글/답글 이벤트 outbox와 in-app notification baseline을 구현 중임.
+- Kafka는 아직 도입하지 않고, Kafka relay가 읽을 DB outbox reliability boundary를 먼저 구축함.
 
 다음 작업:
-- 다음 도메인 slice 결정: notification/mention hook 또는 studyroom baseline
+- feature/notification-outbox-baseline 마무리, 검증, 커밋/PR/머지
+- 다음 도메인 slice 결정: mention extraction 또는 Kafka relay
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
