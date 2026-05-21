@@ -84,6 +84,25 @@ class RefreshTokenServiceTest {
 			.isEqualTo(AuthErrorCode.INVALID_REFRESH_TOKEN);
 	}
 
+	@Test
+	@DisplayName("logout 시 refresh token을 폐기한다")
+	void revokeRefreshToken() {
+		TokenService tokenService = tokenService();
+		Member member = saveMember();
+		TokenPair tokenPair = tokenService.issue(member);
+
+		tokenService.revoke(tokenPair.refreshToken());
+
+		RefreshToken savedToken = refreshTokenRepository.findByTokenHash(
+			RefreshTokenHash.sha256(tokenPair.refreshToken())
+		).orElseThrow();
+		assertThat(savedToken.isRevoked()).isTrue();
+		assertThatThrownBy(() -> tokenService.refresh(tokenPair.refreshToken()))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(AuthErrorCode.INVALID_REFRESH_TOKEN);
+	}
+
 	private TokenService tokenService() {
 		TokenProperties tokenProperties = new TokenProperties(
 			"studywithme-test",

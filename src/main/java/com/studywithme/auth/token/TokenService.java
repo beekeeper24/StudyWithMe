@@ -106,4 +106,10 @@ public class TokenService {
 			.orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 		return issue(member);
 	}
+
+	@Transactional
+	public void revoke(String rawRefreshToken) {
+		refreshTokenRepository.findByTokenHash(RefreshTokenHash.sha256(rawRefreshToken))
+			.ifPresent(refreshToken -> refreshToken.revoke(clock.instant()));
+	}
 }
