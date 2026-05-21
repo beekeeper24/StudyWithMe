@@ -53,13 +53,17 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
 				.requestMatchers("/api/v1/auth/me").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/studies", "/api/v1/studies/*").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*").permitAll()
 				.requestMatchers(
 					HttpMethod.POST,
 					"/api/v1/studies",
 					"/api/v1/studies/*/join",
 					"/api/v1/studies/*/leave",
-					"/api/v1/studies/*/close"
+					"/api/v1/studies/*/close",
+					"/api/v1/posts"
 				).authenticated()
+				.requestMatchers(HttpMethod.PUT, "/api/v1/posts/*").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*").authenticated()
 				.requestMatchers(
 					"/actuator/health",
 					"/actuator/info",
