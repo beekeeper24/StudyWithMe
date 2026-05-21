@@ -63,6 +63,26 @@ Completed and merged into `develop`:
    - JWT `Authorization: Bearer ...` authentication filter;
    - OAuth success handler that issues a token pair;
    - `GET /api/v1/auth/me`.
+6. Refresh/reissue/logout HTTP endpoint and refresh token cookie delivery.
+7. OAuth client environment-variable configuration under the `oauth` Spring profile.
+
+Current branch work:
+
+- Branch: `feature/study-recruitment-baseline`
+- Adds Flyway V3 study schema:
+  - `studies`
+  - `study_members`
+- Adds study recruitment baseline:
+  - authenticated `POST /api/v1/studies`;
+  - public `GET /api/v1/studies`;
+  - public `GET /api/v1/studies/{studyId}`;
+  - authenticated `POST /api/v1/studies/{studyId}/join`;
+  - authenticated `POST /api/v1/studies/{studyId}/leave`;
+  - authenticated owner-only `POST /api/v1/studies/{studyId}/close`.
+- Study status values: `RECRUITING`, `CLOSED`.
+- Study membership roles: `OWNER`, `MEMBER`.
+- Mutating study membership/status use a pessimistic write lock on the study row to serialize join/leave/close decisions.
+- `leave` rejects non-members with `STUDY-006` instead of returning a false success.
 
 Known merged PRs:
 
@@ -70,7 +90,10 @@ Known merged PRs:
 - PR #2: `feature/postgres-flyway-setup`
 - PR #3: `feature/oauth-login-baseline`
 - PR #4: `feature/jwt-refresh-token-baseline`
-- Current branch work: `feature/security-auth-entrypoint`
+- PR #6: `feature/security-auth-entrypoint`
+- PR #7: `feature/auth-refresh-endpoints`
+- PR #8: `feature/oauth-client-env-config`
+- Draft PR #9: `feature/local-oauth-env-script`
 
 ## Important Local State
 
@@ -158,24 +181,27 @@ OAuth client config:
 
 ## Next Work
 
-After the current auth branches are reviewed/merged, the next implementation tasks are:
+Current branch verification:
 
-1. Set Google/Kakao client id and secret outside git through the required environment variables.
-2. Register provider redirect URIs.
-3. Browser-test actual OAuth login end-to-end with `SPRING_PROFILES_ACTIVE=oauth`.
-4. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
-5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+- `./gradlew test --no-daemon --console=plain` passes.
+- `git diff --check` passes.
+- `docker compose up -d postgres` plus `./gradlew bootRun --no-daemon --console=plain` starts successfully.
+- PostgreSQL Flyway schema history reaches version `3 - create study schema`.
+- `GET /actuator/health` returns `{"status":"UP"}`.
+- `bootRun` may show exit `143` after manual verification shutdown; that is expected when the agent stops the running app.
+
+Next implementation tasks:
+
+1. Commit and open PR for `feature/study-recruitment-baseline`.
+2. After merge, start the next domain slice: study board/post baseline or study listing filters/pagination.
+3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
+4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
 Recommended verification:
 
 ```bash
 ./gradlew test --no-daemon --console=plain
 docker compose up -d postgres
-SPRING_PROFILES_ACTIVE=oauth \
-GOOGLE_CLIENT_ID=<google-client-id> \
-GOOGLE_CLIENT_SECRET=<google-client-secret> \
-KAKAO_CLIENT_ID=<kakao-client-id> \
-KAKAO_CLIENT_SECRET=<kakao-client-secret> \
 ./gradlew bootRun --no-daemon --console=plain
 ```
 
@@ -207,10 +233,13 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - access token은 stateless JWT, refresh token은 DB 저장 hash/rotation/revoke 정책.
 - feature/auth-refresh-endpoints에서 refresh/reissue/logout HTTP endpoint와 refresh token cookie delivery를 구현함.
 - OAuth 성공/refresh 응답 body에는 access token만 담고, refresh token은 HttpOnly SameSite cookie로 전달함.
+- feature/study-recruitment-baseline에서 스터디 생성/목록/상세/참여/탈퇴/마감 기본 API를 구현함.
+- study join/leave/close는 같은 study row에 pessimistic write lock을 걸어 상태/멤버십 결정을 직렬화함.
 - 테스트는 ./gradlew test --no-daemon --console=plain 통과.
 
 다음 작업:
-- Google/Kakao client id/secret 및 redirect URI 설정 후 실제 OAuth 브라우저 로그인 검증
+- feature/study-recruitment-baseline 커밋/PR
+- 다음 도메인 slice 결정: study board/post baseline 또는 study listing filters/pagination
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
