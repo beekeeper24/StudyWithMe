@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-05-22
+Last updated: 2026-05-23
 
 ## Read This First
 
@@ -17,7 +17,9 @@ When resuming work:
 ## Project
 
 - Repository: `beekeeper24/StudyWithMe`
+- Frontend repository: `beekeeper24/StudyWithMe-Front`
 - Local WSL path: `/home/beekeeper24/projects/StudyWithMe`
+- Frontend local WSL path: `/home/beekeeper24/projects/StudyWithMe-Front`
 - Windows UNC path: `//wsl.localhost/Ubuntu/home/beekeeper24/projects/StudyWithMe`
 - Integration branch: `develop`
 - Stable release branch: `main`, intentionally not used yet
@@ -135,8 +137,16 @@ Completed and merged into `develop`:
    - OAuth success redirects to the frontend callback with the access token in the URL fragment;
    - default frontend callback is `http://localhost:5173/auth/callback`;
    - override with `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` when Vite runs on another port.
+21. Frontend repository baseline:
+   - Vite React TypeScript app exists at `/home/beekeeper24/projects/StudyWithMe-Front`;
+   - Google/Kakao OAuth login buttons call the backend OAuth authorization endpoints;
+   - `/auth/callback` parses the URL fragment access token and removes the fragment from browser history;
+   - refresh token stays in the backend HttpOnly cookie and is used through `credentials: "include"`;
+   - README documents the backend redirect override for a non-5173 Vite port.
+22. Local work-rule update:
+   - `AGENTS.md` includes the Superpowers TDD rule: no happy-path-only tests, include meaningful edge cases, avoid absurd cases, and split tests by behavior/unit boundary.
 
-No active feature work is currently in progress after PR #28. Start the next branch from `develop`.
+No active feature work is currently in progress after PR #33. Start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -281,6 +291,14 @@ Known merged PRs:
 - PR #27: `docs/notification-websocket-post-merge-handoff`
 - PR #28: `test/websocket-stomp-integration`
 - PR #29: `docs/websocket-integration-post-merge-handoff`
+- PR #30: `fix/local-frontend-cors-origin`
+- PR #31: `fix/websocket-local-frontend-origin`
+- PR #32: `feature/oauth-frontend-callback`
+- PR #33: `docs/tdd-test-design-rule`
+
+Frontend merged PRs:
+
+- PR #1: `feature/oauth-login-baseline`
 
 ## Important Local State
 
@@ -299,6 +317,7 @@ Local defaults:
 - PostgreSQL host port: `15432`
 - Kafka host port: `9092`
 - frontend dev server: `5173`
+- fallback frontend dev server when another Vite process owns 5173: `5174`
 - default allowed browser origins: `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:5174`, `http://127.0.0.1:5174`
 - database: `studywithme`
 - username: `studywithme`
@@ -401,6 +420,13 @@ Completed local OAuth verification on 2026-05-22:
 - `GET /api/v1/auth/me` without an access token still returns `AUTH-003`.
 - gstack browse could not run in this WSL/Windows setup because its Windows ACL hardening failed on the WSL UNC `.gstack` path, so browser login was verified through the user's default browser and DB checks.
 
+Completed OAuth frontend callback work on 2026-05-23:
+
+- Backend PR #32 redirects OAuth success to the frontend callback and keeps the refresh token in an HttpOnly cookie.
+- Frontend PR #1 parses the callback fragment, keeps the access token in memory state, and verifies `/me`, refresh, and logout flows.
+- Backend PR #33 updates `AGENTS.md` with the TDD test-design rule requested by the user.
+- Backend `develop` and frontend `develop` were clean and synced with origin after those merges.
+
 Next implementation tasks:
 
 1. Expand frontend screens from realtime console into study/post/community flows.
@@ -459,9 +485,17 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - Kafka relay는 domain transaction을 건드리지 않고, 별도 `kafka_publish_status`로 publish/retry/dead 상태를 관리함.
 - feature/mention-notification-baseline에서 댓글/답글 `@nickname` 멘션 outbox와 mention notification baseline을 구현함.
 - feature/kafka-notification-consumer에서 Kafka outbox event를 읽어 기존 notification processor에 위임하는 consumer baseline을 구현함.
+- feature/chat-mvp-baseline에서 1:1/private study chat REST MVP를 구현함.
+- feature/chat-websocket-delivery에서 STOMP 기반 채팅 실시간 전달을 구현함.
+- feature/notification-websocket-delivery에서 `/user/queue/notifications` 실시간 알림 전달을 구현함.
+- test/websocket-stomp-integration에서 실제 STOMP 프레임 기반 채팅/알림 통합 검증을 추가함.
+- feature/oauth-frontend-callback에서 OAuth 성공 시 frontend callback으로 redirect하고 access token은 URL fragment, refresh token은 HttpOnly cookie로 전달하도록 변경함.
+- StudyWithMe-Front PR #1에서 Vite React TS 프론트 baseline과 Google/Kakao OAuth callback 처리를 구현함.
+- docs/tdd-test-design-rule에서 Superpowers TDD 규칙을 AGENTS.md에 추가함.
 
 다음 작업:
-- chat MVP 또는 실시간 알림 전달 시작
+- OAuth 브라우저 E2E를 backend/frontend dev server로 재검증
+- frontend study/post/community 화면 확장
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
