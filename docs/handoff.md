@@ -130,6 +130,11 @@ Completed and merged into `develop`:
    - verifies chat STOMP send/subscribe delivery with real broker frames;
    - verifies notification user queue delivery from outbox processing;
    - no extra runtime dependency was needed for the test client.
+20. Frontend OAuth flow baseline:
+   - OAuth success writes the refresh token as an HttpOnly cookie;
+   - OAuth success redirects to the frontend callback with the access token in the URL fragment;
+   - default frontend callback is `http://localhost:5173/auth/callback`;
+   - override with `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` when Vite runs on another port.
 
 No active feature work is currently in progress after PR #28. Start the next branch from `develop`.
 
@@ -345,7 +350,8 @@ Security filter chain:
 
 Refresh/reissue/logout HTTP policy:
 
-- OAuth login success and `POST /api/v1/auth/refresh` return access-token-only JSON.
+- OAuth login success redirects to the configured frontend callback with access-token data in the URL fragment.
+- `POST /api/v1/auth/refresh` returns access-token-only JSON.
 - The raw refresh token is not included in JSON response bodies.
 - Refresh tokens are delivered through a cookie:
   - name: `refreshToken`;
@@ -355,7 +361,7 @@ Refresh/reissue/logout HTTP policy:
   - `Secure` is configurable and must be enabled in production HTTPS.
 - `POST /api/v1/auth/refresh` reads the refresh-token cookie, rotates it, writes a new refresh-token cookie, and returns the new access token.
 - `POST /api/v1/auth/logout` reads the refresh-token cookie when present, revokes the matching DB refresh token, and clears the cookie.
-- Tokens are not placed in redirect query strings.
+- Tokens are not placed in redirect query strings. The OAuth access token uses the URL fragment so it is not sent back to the frontend server in the callback request.
 
 Production secrets policy:
 
@@ -397,12 +403,11 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Continue frontend MVP integration in sibling repo `/home/beekeeper24/projects/StudyWithMe-Front`.
-2. Wire login/token capture into the frontend once the API shape for OAuth success UX is settled.
-3. Expand frontend screens from realtime console into study/post/community flows.
-4. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
-5. Set `APP_CORS_ALLOWED_ORIGINS` to the real frontend origin in production.
-6. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+1. Expand frontend screens from realtime console into study/post/community flows.
+2. Add browser verification for Google/Kakao login after starting the backend with the correct `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI`.
+3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
+4. Set `APP_CORS_ALLOWED_ORIGINS` and `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` to the real frontend origin in production.
+5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
 Recommended verification:
 
