@@ -12,10 +12,13 @@ import com.studywithme.outbox.repository.OutboxEventRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class NotificationOutboxProcessor {
@@ -23,15 +26,18 @@ public class NotificationOutboxProcessor {
 	private final ObjectMapper objectMapper;
 	private final OutboxEventRepository outboxEventRepository;
 	private final NotificationRepository notificationRepository;
+	private final ObjectProvider<NotificationRealtimePublisher> notificationRealtimePublisher;
 
 	public NotificationOutboxProcessor(
 		ObjectMapper objectMapper,
 		OutboxEventRepository outboxEventRepository,
-		NotificationRepository notificationRepository
+		NotificationRepository notificationRepository,
+		ObjectProvider<NotificationRealtimePublisher> notificationRealtimePublisher
 	) {
 		this.objectMapper = objectMapper;
 		this.outboxEventRepository = outboxEventRepository;
 		this.notificationRepository = notificationRepository;
+		this.notificationRealtimePublisher = notificationRealtimePublisher;
 	}
 
 	@Transactional
@@ -163,7 +169,7 @@ public class NotificationOutboxProcessor {
 			return;
 		}
 		try {
-			notificationRepository.save(Notification.create(
+			Notification notification = notificationRepository.save(Notification.create(
 				receiverMemberId,
 				actorMemberId,
 				type,
@@ -172,8 +178,26 @@ public class NotificationOutboxProcessor {
 				sourceEventId,
 				message
 			));
+			publishAfterCommit(NotificationResult.from(notification));
 		} catch (DataIntegrityViolationException ignored) {
 			// Another worker may have processed the same at-least-once event first.
 		}
+	}
+
+	private void publishAfterCommit(NotificationResult notification) {
+		NotificationRealtimePublisher publisher = notificationRealtimePublisher.getIfAvailable();
+		if (publisher == null) {
+			return;
+		}
+		if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+			publisher.publish(notification);
+			return;
+		}
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				publisher.publish(notification);
+			}
+		});
 	}
 }
