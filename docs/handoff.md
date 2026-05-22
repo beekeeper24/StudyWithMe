@@ -429,11 +429,26 @@ Completed OAuth frontend callback work on 2026-05-23:
 
 Next implementation tasks:
 
-1. Expand frontend screens from realtime console into study/post/community flows.
+1. Finish and merge frontend branch `feature/frontend-community-screens` in `/home/beekeeper24/projects/StudyWithMe-Front`.
 2. Add browser verification for Google/Kakao login after starting the backend with the correct `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI`.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Set `APP_CORS_ALLOWED_ORIGINS` and `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` to the real frontend origin in production.
 5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+
+In-progress frontend branch details:
+
+- Branch: `feature/frontend-community-screens`
+- Adds study/post/community tabs on top of the OAuth/realtime console.
+- Frontend API helpers now cover:
+  - study list/create/join/leave/close;
+  - post list/detail/create/update/delete;
+  - comment list/create and one-level reply create.
+- Verification run during implementation:
+  - `npm run lint`
+  - `npm run build`
+  - `git diff --check`
+  - Playwright desktop/mobile screenshots against `http://localhost:5174/`
+- WSL Playwright Korean screenshots require Korean fonts. See `docs/learnings/0023-frontend-playwright-korean-fonts.md`.
 
 Recommended verification:
 
