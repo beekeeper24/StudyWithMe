@@ -101,7 +101,7 @@ Completed and merged into `develop`:
    - create `MENTIONED_IN_COMMENT` notifications;
    - replace ordinary comment/reply notifications with mention notifications for the same receiver and comment.
 
-`feature/mention-notification-baseline` is the current work branch until its PR is merged. After merge, start the next branch from `develop`.
+No active feature work is currently in progress after PR #18. Start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -178,7 +178,7 @@ Known merged PRs:
 - PR #14: `feature/comment-baseline`
 - PR #15: `feature/notification-outbox-baseline`
 - PR #16: `feature/kafka-outbox-relay`
-- PR #18: `feature/mention-notification-baseline` once merged
+- PR #18: `feature/mention-notification-baseline`
 
 ## Important Local State
 
@@ -293,7 +293,7 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Merge mention notification PR, then start Kafka consumer or chat MVP from `develop`.
+1. Start Kafka consumer or chat MVP from `develop`.
 2. If Kafka consumer comes next, read `studywithme.outbox.events` and keep downstream idempotency by outbox `eventId`.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
@@ -349,7 +349,7 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - feature/mention-notification-baseline에서 댓글/답글 `@nickname` 멘션 outbox와 mention notification baseline을 구현함.
 
 다음 작업:
-- mention notification PR merge 후 Kafka consumer 또는 chat MVP 시작
+- Kafka consumer 또는 chat MVP 시작
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
