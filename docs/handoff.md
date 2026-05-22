@@ -125,6 +125,11 @@ Completed and merged into `develop`:
    - realtime publish runs after transaction commit;
    - server publishes with `convertAndSendToUser`;
    - client `SEND` to the notification user queue is rejected.
+19. WebSocket STOMP integration verification:
+   - random-port Spring Boot integration test connects to `/ws`;
+   - verifies chat STOMP send/subscribe delivery with real broker frames;
+   - verifies notification user queue delivery from outbox processing;
+   - no extra runtime dependency was needed for the test client.
 
 No active feature work is currently in progress after PR #26. Start the next branch from `develop`.
 
@@ -174,6 +179,16 @@ Notification WebSocket delivery details:
 - `NotificationOutboxProcessor` creates the DB notification first, then schedules realtime delivery after transaction commit.
 - Server publishes `NotificationResponse` with `convertAndSendToUser(receiverMemberId.toString(), "/queue/notifications", response)`.
 - Realtime delivery is best-effort. Polling `GET /api/v1/notifications` remains the durable catch-up path.
+
+WebSocket integration test:
+
+- `src/test/java/com/studywithme/websocket/WebSocketStompIntegrationTest.java`
+- Run with:
+  - `./gradlew test --tests com.studywithme.websocket.WebSocketStompIntegrationTest --no-daemon --console=plain`
+- Covers:
+  - real STOMP `CONNECT` to `/ws` with bearer token;
+  - chat subscribe/send/receive through `/topic/chat.rooms.{roomId}` and `/app/chat.rooms.{roomId}.messages`;
+  - notification receive through `/user/queue/notifications` after outbox processing.
 
 Chat REST MVP details:
 
