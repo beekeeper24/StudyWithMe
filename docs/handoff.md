@@ -119,8 +119,14 @@ Completed and merged into `develop`:
    - STOMP `CONNECT` authenticates `Authorization: Bearer <access-token>`;
    - STOMP `SUBSCRIBE` and `SEND` validate chat room membership;
    - WebSocket sends persist messages through `ChatService` before publishing to room topics.
+18. Notification WebSocket delivery baseline:
+   - authenticated members subscribe to `/user/queue/notifications`;
+   - notification outbox processing still creates DB notification rows first;
+   - realtime publish runs after transaction commit;
+   - server publishes with `convertAndSendToUser`;
+   - client `SEND` to the notification user queue is rejected.
 
-No active feature work is currently in progress after PR #24. Start the next branch from `develop`.
+The current feature branch is `feature/notification-websocket-delivery`. After it is merged, start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -158,6 +164,16 @@ No active feature work is currently in progress after PR #24. Start the next bra
   - `COMMENT_MENTIONED`
 - Notification type:
   - `MENTIONED_IN_COMMENT`
+
+Notification WebSocket delivery details:
+
+- Client subscribes to `/user/queue/notifications`.
+- STOMP `CONNECT` still requires `Authorization: Bearer <access-token>`.
+- `SUBSCRIBE /user/queue/notifications` requires an authenticated principal.
+- Client `SEND /user/queue/notifications` is rejected.
+- `NotificationOutboxProcessor` creates the DB notification first, then schedules realtime delivery after transaction commit.
+- Server publishes `NotificationResponse` with `convertAndSendToUser(receiverMemberId.toString(), "/queue/notifications", response)`.
+- Realtime delivery is best-effort. Polling `GET /api/v1/notifications` remains the durable catch-up path.
 
 Chat REST MVP details:
 
@@ -301,6 +317,7 @@ Security filter chain:
 - Notification list/read routes require JWT authentication and only expose the authenticated member's notifications.
 - Chat room list/create and message list/create routes require JWT authentication; message list/create also require room membership inside `ChatService`.
 - `/ws` handshake is permitAll, but STOMP `CONNECT` requires a bearer access token and STOMP `SUBSCRIBE`/`SEND` require chat room membership.
+- Notification user queue subscription also requires STOMP authentication; clients cannot publish to the notification user queue.
 
 Refresh/reissue/logout HTTP policy:
 

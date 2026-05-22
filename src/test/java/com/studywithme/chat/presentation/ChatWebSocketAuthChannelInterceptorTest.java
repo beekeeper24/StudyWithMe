@@ -89,6 +89,40 @@ class ChatWebSocketAuthChannelInterceptorTest {
 		assertThat(result).isSameAs(message);
 	}
 
+	@Test
+	@DisplayName("인증한 회원은 알림 user queue를 구독할 수 있다")
+	void allowNotificationSubscribeByAuthenticatedMember() {
+		AuthenticatedMemberPrincipal principal = new AuthenticatedMemberPrincipal(1L, java.util.Set.of("USER"));
+		Message<byte[]> message = stompMessage(StompCommand.SUBSCRIBE, "/user/queue/notifications", principal, null);
+
+		Message<?> result = interceptor.preSend(message, null);
+
+		assertThat(result).isSameAs(message);
+	}
+
+	@Test
+	@DisplayName("인증하지 않은 알림 user queue 구독은 AUTH-003으로 거부한다")
+	void rejectNotificationSubscribeWithoutPrincipal() {
+		Message<byte[]> message = stompMessage(StompCommand.SUBSCRIBE, "/user/queue/notifications", null, null);
+
+		assertThatThrownBy(() -> interceptor.preSend(message, null))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(AuthErrorCode.INVALID_ACCESS_TOKEN);
+	}
+
+	@Test
+	@DisplayName("알림 user queue로 직접 STOMP SEND를 보낼 수 없다")
+	void rejectSendToNotificationUserQueue() {
+		AuthenticatedMemberPrincipal principal = new AuthenticatedMemberPrincipal(1L, java.util.Set.of("USER"));
+		Message<byte[]> message = stompMessage(StompCommand.SEND, "/user/queue/notifications", principal, null);
+
+		assertThatThrownBy(() -> interceptor.preSend(message, null))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+	}
+
 	private Message<byte[]> stompMessage(
 		StompCommand command,
 		String destination,

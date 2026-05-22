@@ -21,6 +21,7 @@ public class ChatWebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
 	private static final String AUTHORIZATION = "Authorization";
 	private static final String BEARER_PREFIX = "Bearer ";
+	private static final String NOTIFICATION_QUEUE_DESTINATION = "/user/queue/notifications";
 
 	private final JwtTokenProvider jwtTokenProvider;
 	private final ChatService chatService;
@@ -45,6 +46,10 @@ public class ChatWebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
 		if (accessor.getCommand() == StompCommand.SUBSCRIBE || accessor.getCommand() == StompCommand.SEND) {
 			AuthenticatedMemberPrincipal principal = requirePrincipal(accessor.getUser());
+			if (accessor.getCommand() == StompCommand.SUBSCRIBE
+				&& NOTIFICATION_QUEUE_DESTINATION.equals(accessor.getDestination())) {
+				return message;
+			}
 			Long roomId = ChatWebSocketDestination.parseRoomId(accessor.getDestination());
 			chatService.validateRoomMembership(roomId, principal.memberId());
 		}
