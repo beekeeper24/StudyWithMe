@@ -106,7 +106,7 @@ Completed and merged into `develop`:
    - consumer delegates to existing notification processor policy;
    - Kafka replay/retry idempotency uses outbox event id as notification source event id.
 
-`feature/kafka-notification-consumer` is the current work branch until its PR is merged. After merge, start the next branch from `develop`.
+No active feature work is currently in progress after PR #20. Start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -188,7 +188,7 @@ Known merged PRs:
 - PR #15: `feature/notification-outbox-baseline`
 - PR #16: `feature/kafka-outbox-relay`
 - PR #18: `feature/mention-notification-baseline`
-- PR #20: `feature/kafka-notification-consumer` once merged
+- PR #20: `feature/kafka-notification-consumer`
 
 ## Important Local State
 
@@ -303,7 +303,7 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Merge Kafka notification consumer PR, then start chat MVP or real-time notification delivery from `develop`.
+1. Start chat MVP or real-time notification delivery from `develop`.
 2. If chat comes next, fix private/study chat membership authorization before message storage.
 3. If real-time notification comes next, send already-created notifications over WebSocket/SSE without bypassing DB notification records.
 4. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
@@ -361,7 +361,7 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - feature/kafka-notification-consumer에서 Kafka outbox event를 읽어 기존 notification processor에 위임하는 consumer baseline을 구현함.
 
 다음 작업:
-- Kafka notification consumer PR merge 후 chat MVP 또는 실시간 알림 전달 시작
+- chat MVP 또는 실시간 알림 전달 시작
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
