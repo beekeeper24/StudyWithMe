@@ -271,8 +271,11 @@ Known merged PRs:
 - PR #20: `feature/kafka-notification-consumer`
 - PR #22: `feature/chat-mvp-baseline`
 - PR #24: `feature/chat-websocket-delivery`
+- PR #25: `docs/chat-websocket-post-merge-handoff`
 - PR #26: `feature/notification-websocket-delivery`
+- PR #27: `docs/notification-websocket-post-merge-handoff`
 - PR #28: `test/websocket-stomp-integration`
+- PR #29: `docs/websocket-integration-post-merge-handoff`
 
 ## Important Local State
 
@@ -290,6 +293,8 @@ Local defaults:
 - app port: `8081`
 - PostgreSQL host port: `15432`
 - Kafka host port: `9092`
+- frontend dev server: `5173`
+- default allowed browser origins: `http://localhost:5173`, `http://127.0.0.1:5173`
 - database: `studywithme`
 - username: `studywithme`
 - password: `studywithme`
@@ -335,6 +340,8 @@ Security filter chain:
 - Chat room list/create and message list/create routes require JWT authentication; message list/create also require room membership inside `ChatService`.
 - `/ws` handshake is permitAll, but STOMP `CONNECT` requires a bearer access token and STOMP `SUBSCRIBE`/`SEND` require chat room membership.
 - Notification user queue subscription also requires STOMP authentication; clients cannot publish to the notification user queue.
+- Browser CORS is enabled only for configured origins. The local default allows Vite frontend origins on port `5173`; production must set `APP_CORS_ALLOWED_ORIGINS` to the deployed frontend origins.
+- WebSocket `/ws` uses the same configured allowed origins, while STOMP authentication still happens through the `Authorization: Bearer <access-token>` `CONNECT` header.
 
 Refresh/reissue/logout HTTP policy:
 
@@ -390,11 +397,12 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Start chat MVP or real-time notification delivery from `develop`.
-2. If chat comes next, fix private/study chat membership authorization before message storage.
-3. If real-time notification comes next, send already-created notifications over WebSocket/SSE without bypassing DB notification records.
+1. Continue frontend MVP integration in sibling repo `/home/beekeeper24/projects/StudyWithMe-Front`.
+2. Wire login/token capture into the frontend once the API shape for OAuth success UX is settled.
+3. Expand frontend screens from realtime console into study/post/community flows.
 4. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
-5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+5. Set `APP_CORS_ALLOWED_ORIGINS` to the real frontend origin in production.
+6. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
 Recommended verification:
 
