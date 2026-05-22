@@ -120,7 +120,7 @@ Completed and merged into `develop`:
    - STOMP `SUBSCRIBE` and `SEND` validate chat room membership;
    - WebSocket sends persist messages through `ChatService` before publishing to room topics.
 
-The current feature branch is `feature/chat-websocket-delivery`. After it is merged, start the next branch from `develop`.
+No active feature work is currently in progress after PR #24. Start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -239,6 +239,7 @@ Known merged PRs:
 - PR #18: `feature/mention-notification-baseline`
 - PR #20: `feature/kafka-notification-consumer`
 - PR #22: `feature/chat-mvp-baseline`
+- PR #24: `feature/chat-websocket-delivery`
 
 ## Important Local State
 
