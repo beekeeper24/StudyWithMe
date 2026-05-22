@@ -66,7 +66,7 @@ public class OutboxKafkaRelay {
 
 	private String toKafkaPayload(OutboxEvent event) throws Exception {
 		JsonNode payload = objectMapper.readTree(event.getPayload());
-		OutboxKafkaEnvelope envelope = new OutboxKafkaEnvelope(
+		OutboxKafkaEvent envelope = new OutboxKafkaEvent(
 			event.getId(),
 			event.getEventType(),
 			event.getAggregateType(),
@@ -83,15 +83,5 @@ public class OutboxKafkaRelay {
 			current = current.getCause();
 		}
 		return current.getMessage();
-	}
-
-	private record OutboxKafkaEnvelope(
-		String eventId,
-		String eventType,
-		String aggregateType,
-		Long aggregateId,
-		String occurredAt,
-		JsonNode payload
-	) {
 	}
 }

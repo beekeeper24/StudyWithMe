@@ -49,27 +49,40 @@ public class NotificationOutboxProcessor {
 	public void processOne(String eventId) {
 		OutboxEvent event = outboxEventRepository.findById(eventId).orElseThrow();
 		try {
-			if ("COMMENT_CREATED".equals(event.getEventType())) {
-				processCommentCreated(event);
-			} else if ("REPLY_CREATED".equals(event.getEventType())) {
-				processReplyCreated(event);
-			} else if ("COMMENT_MENTIONED".equals(event.getEventType())) {
-				processCommentMentioned(event);
-			}
+			processEvent(event.getId(), event.getEventType(), event.getAggregateId(), event.getPayload());
 			event.markProcessed();
 		} catch (Exception exception) {
 			event.markFailed(exception.getMessage());
 		}
 	}
 
-	private void processCommentCreated(OutboxEvent event) throws Exception {
-		JsonNode payload = objectMapper.readTree(event.getPayload());
+	@Transactional
+	public void processKafkaEvent(String sourceEventId, String eventType, Long aggregateId, String payload) {
+		try {
+			processEvent(sourceEventId, eventType, aggregateId, payload);
+		} catch (Exception exception) {
+			throw new IllegalStateException("Failed to process Kafka notification event", exception);
+		}
+	}
+
+	private void processEvent(String sourceEventId, String eventType, Long aggregateId, String payload) throws Exception {
+		if ("COMMENT_CREATED".equals(eventType)) {
+			processCommentCreated(sourceEventId, payload);
+		} else if ("REPLY_CREATED".equals(eventType)) {
+			processReplyCreated(sourceEventId, payload);
+		} else if ("COMMENT_MENTIONED".equals(eventType)) {
+			processCommentMentioned(sourceEventId, payload);
+		}
+	}
+
+	private void processCommentCreated(String sourceEventId, String eventPayload) throws Exception {
+		JsonNode payload = objectMapper.readTree(eventPayload);
 		Long receiverMemberId = payload.required("postAuthorMemberId").asLong();
 		if (isReplacedByMention(payload.required("commentId").asLong(), receiverMemberId)) {
 			return;
 		}
 		createNotificationIfNeeded(
-			event,
+			sourceEventId,
 			receiverMemberId,
 			payload.required("actorMemberId").asLong(),
 			NotificationType.COMMENT_ON_POST,
@@ -78,14 +91,14 @@ public class NotificationOutboxProcessor {
 		);
 	}
 
-	private void processReplyCreated(OutboxEvent event) throws Exception {
-		JsonNode payload = objectMapper.readTree(event.getPayload());
+	private void processReplyCreated(String sourceEventId, String eventPayload) throws Exception {
+		JsonNode payload = objectMapper.readTree(eventPayload);
 		Long receiverMemberId = payload.required("parentCommentAuthorMemberId").asLong();
 		if (isReplacedByMention(payload.required("commentId").asLong(), receiverMemberId)) {
 			return;
 		}
 		createNotificationIfNeeded(
-			event,
+			sourceEventId,
 			receiverMemberId,
 			payload.required("actorMemberId").asLong(),
 			NotificationType.REPLY_ON_COMMENT,
@@ -94,13 +107,13 @@ public class NotificationOutboxProcessor {
 		);
 	}
 
-	private void processCommentMentioned(OutboxEvent event) throws Exception {
-		JsonNode payload = objectMapper.readTree(event.getPayload());
+	private void processCommentMentioned(String sourceEventId, String eventPayload) throws Exception {
+		JsonNode payload = objectMapper.readTree(eventPayload);
 		Long actorMemberId = payload.required("actorMemberId").asLong();
 		Long commentId = payload.required("commentId").asLong();
 		for (Long mentionedMemberId : readLongArray(payload.required("mentionedMemberIds"))) {
 			createNotificationIfNeeded(
-				event,
+				sourceEventId,
 				mentionedMemberId,
 				actorMemberId,
 				NotificationType.MENTIONED_IN_COMMENT,
@@ -132,7 +145,7 @@ public class NotificationOutboxProcessor {
 	}
 
 	private void createNotificationIfNeeded(
-		OutboxEvent event,
+		String sourceEventId,
 		Long receiverMemberId,
 		Long actorMemberId,
 		NotificationType type,
@@ -143,7 +156,7 @@ public class NotificationOutboxProcessor {
 			return;
 		}
 		if (notificationRepository.existsBySourceEventIdAndReceiverMemberIdAndType(
-			event.getId(),
+			sourceEventId,
 			receiverMemberId,
 			type
 		)) {
@@ -156,7 +169,7 @@ public class NotificationOutboxProcessor {
 				type,
 				NotificationTargetType.COMMENT,
 				targetId,
-				event.getId(),
+				sourceEventId,
 				message
 			));
 		} catch (DataIntegrityViolationException ignored) {
