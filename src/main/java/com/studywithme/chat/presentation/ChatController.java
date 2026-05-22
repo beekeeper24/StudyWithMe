@@ -1,0 +1,94 @@
+package com.studywithme.chat.presentation;
+
+import com.studywithme.auth.exception.AuthErrorCode;
+import com.studywithme.chat.application.ChatMessageCreateCommand;
+import com.studywithme.chat.application.ChatService;
+import com.studywithme.global.common.ApiResponse;
+import com.studywithme.global.exception.BusinessException;
+import com.studywithme.global.security.AuthenticatedMemberPrincipal;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1")
+public class ChatController {
+
+	private final ChatService chatService;
+
+	public ChatController(ChatService chatService) {
+		this.chatService = chatService;
+	}
+
+	@PostMapping("/chat/private-rooms")
+	public ApiResponse<ChatRoomResponse> createPrivateRoom(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal,
+		@Valid @RequestBody PrivateChatRoomCreateRequest request
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(ChatRoomResponse.from(
+			chatService.createPrivateRoom(authenticatedPrincipal.memberId(), request.targetMemberId())
+		));
+	}
+
+	@PostMapping("/studies/{studyId}/chat-room")
+	public ApiResponse<ChatRoomResponse> createStudyRoom(
+		@PathVariable Long studyId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(ChatRoomResponse.from(
+			chatService.createStudyRoom(studyId, authenticatedPrincipal.memberId())
+		));
+	}
+
+	@GetMapping("/chat/rooms")
+	public ApiResponse<List<ChatRoomResponse>> findMyRooms(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(chatService.findMyRooms(authenticatedPrincipal.memberId()).stream()
+			.map(ChatRoomResponse::from)
+			.toList());
+	}
+
+	@PostMapping("/chat/rooms/{roomId}/messages")
+	public ApiResponse<ChatMessageResponse> sendMessage(
+		@PathVariable Long roomId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal,
+		@Valid @RequestBody ChatMessageCreateRequest request
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(ChatMessageResponse.from(
+			chatService.sendMessage(
+				roomId,
+				authenticatedPrincipal.memberId(),
+				new ChatMessageCreateCommand(request.content())
+			)
+		));
+	}
+
+	@GetMapping("/chat/rooms/{roomId}/messages")
+	public ApiResponse<List<ChatMessageResponse>> findMessages(
+		@PathVariable Long roomId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(chatService.findMessages(roomId, authenticatedPrincipal.memberId()).stream()
+			.map(ChatMessageResponse::from)
+			.toList());
+	}
+
+	private AuthenticatedMemberPrincipal requirePrincipal(AuthenticatedMemberPrincipal principal) {
+		if (principal == null) {
+			throw new BusinessException(AuthErrorCode.INVALID_ACCESS_TOKEN);
+		}
+		return principal;
+	}
+}

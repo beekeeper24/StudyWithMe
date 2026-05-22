@@ -105,8 +105,15 @@ Completed and merged into `develop`:
    - disabled-by-default Kafka notification consumer;
    - consumer delegates to existing notification processor policy;
    - Kafka replay/retry idempotency uses outbox event id as notification source event id.
+16. Chat REST MVP baseline:
+   - authenticated 1:1 private chat room creation;
+   - authenticated study chat room creation for study members;
+   - authenticated room list for rooms joined by the requester;
+   - authenticated message create/list;
+   - room membership is checked before every message write/read;
+   - study chat room membership syncs current study members when the room is requested.
 
-No active feature work is currently in progress after PR #20. Start the next branch from `develop`.
+The current feature branch is `feature/chat-mvp-baseline`. After it is merged, start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -144,6 +151,25 @@ No active feature work is currently in progress after PR #20. Start the next bra
   - `COMMENT_MENTIONED`
 - Notification type:
   - `MENTIONED_IN_COMMENT`
+
+Chat REST MVP details:
+
+- Flyway V8 schema:
+  - `chat_rooms`;
+  - `chat_room_members`;
+  - `chat_messages`.
+- Chat room types:
+  - `PRIVATE`;
+  - `STUDY`.
+- API:
+  - authenticated `POST /api/v1/chat/private-rooms`;
+  - authenticated `POST /api/v1/studies/{studyId}/chat-room`;
+  - authenticated `GET /api/v1/chat/rooms`;
+  - authenticated `POST /api/v1/chat/rooms/{roomId}/messages`;
+  - authenticated `GET /api/v1/chat/rooms/{roomId}/messages`.
+- Private rooms use deterministic room keys so the same two members reuse one room.
+- Study rooms use deterministic room keys by study id and sync current study members into `chat_room_members`.
+- WebSocket delivery, unread counts, read receipts, chat notifications, moderation, and retention policy are not implemented yet.
 
 Comment baseline details:
 
@@ -248,6 +274,7 @@ Security filter chain:
 - Study and post public reads are explicitly permitted; mutating routes require JWT authentication.
 - Comment public list is explicitly permitted; comment/reply create/update/delete require JWT authentication.
 - Notification list/read routes require JWT authentication and only expose the authenticated member's notifications.
+- Chat room list/create and message list/create routes require JWT authentication; message list/create also require room membership inside `ChatService`.
 
 Refresh/reissue/logout HTTP policy:
 
