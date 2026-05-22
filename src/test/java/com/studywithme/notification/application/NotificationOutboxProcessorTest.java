@@ -237,6 +237,38 @@ class NotificationOutboxProcessorTest {
 			.satisfies(notification -> assertThat(notification.getType()).isEqualTo(NotificationType.MENTIONED_IN_COMMENT));
 	}
 
+	@Test
+	@DisplayName("Kafka event 처리도 source event id 기준으로 멘션 알림을 idempotent하게 만든다")
+	void processKafkaEventCreatesMentionNotificationIdempotently() {
+		Member postAuthor = saveMember("post-author");
+		Member commentAuthor = saveMember("comment-author");
+		Member mentionedMember = saveMember("mentioned");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("게시글", "내용"));
+		CommentResult comment = commentService.create(
+			post.id(),
+			commentAuthor.getId(),
+			new CommentCreateCommand("일반 댓글")
+		);
+		String payload = """
+			{
+			  "postId": %d,
+			  "commentId": %d,
+			  "actorMemberId": %d,
+			  "mentionedMemberIds": [%d],
+			  "replacedNotificationReceiverMemberIds": []
+			}
+			""".formatted(post.id(), comment.id(), commentAuthor.getId(), mentionedMember.getId());
+
+		processor.processKafkaEvent("kafka-event-1", "COMMENT_MENTIONED", comment.id(), payload);
+		processor.processKafkaEvent("kafka-event-1", "COMMENT_MENTIONED", comment.id(), payload);
+
+		assertThat(notificationRepository.findAll()).filteredOn(
+			notification -> notification.getReceiverMemberId().equals(mentionedMember.getId())
+				&& notification.getSourceEventId().equals("kafka-event-1")
+				&& notification.getType() == NotificationType.MENTIONED_IN_COMMENT
+		).hasSize(1);
+	}
+
 	private Member saveMember(String name) {
 		return memberRepository.saveAndFlush(Member.createOAuthMember(
 			name + "@example.com",

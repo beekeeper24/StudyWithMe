@@ -100,8 +100,13 @@ Completed and merged into `develop`:
    - store `COMMENT_MENTIONED` outbox events;
    - create `MENTIONED_IN_COMMENT` notifications;
    - replace ordinary comment/reply notifications with mention notifications for the same receiver and comment.
+15. Kafka notification consumer baseline:
+   - shared `OutboxKafkaEvent` envelope between relay and consumer;
+   - disabled-by-default Kafka notification consumer;
+   - consumer delegates to existing notification processor policy;
+   - Kafka replay/retry idempotency uses outbox event id as notification source event id.
 
-No active feature work is currently in progress after PR #18. Start the next branch from `develop`.
+`feature/kafka-notification-consumer` is the current work branch until its PR is merged. After merge, start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -126,6 +131,10 @@ No active feature work is currently in progress after PR #18. Start the next bra
 - `OutboxKafkaRelay` sends a JSON envelope to Kafka topic `studywithme.outbox.events` by default.
 - Kafka key is the outbox event id, so downstream consumers can deduplicate at-least-once delivery.
 - `OutboxKafkaRelayWorker` is disabled by default and enabled with `OUTBOX_KAFKA_RELAY_ENABLED=true`.
+- `NotificationKafkaConsumer` reads the same Kafka envelope and delegates to `NotificationOutboxProcessor`.
+- `NotificationKafkaConsumer` is disabled by default and enabled with `NOTIFICATION_KAFKA_CONSUMER_ENABLED=true`.
+- Kafka consumer group defaults to `studywithme-notification` and can be changed with `NOTIFICATION_KAFKA_GROUP_ID`.
+- During MVP transition, DB outbox polling and Kafka consumer can coexist because notification idempotency is guarded by source event id.
 - Mention extraction:
   - `@nickname` exact, case-sensitive matching;
   - ACTIVE members only;
@@ -179,6 +188,7 @@ Known merged PRs:
 - PR #15: `feature/notification-outbox-baseline`
 - PR #16: `feature/kafka-outbox-relay`
 - PR #18: `feature/mention-notification-baseline`
+- PR #20: `feature/kafka-notification-consumer` once merged
 
 ## Important Local State
 
@@ -293,10 +303,11 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Start Kafka consumer or chat MVP from `develop`.
-2. If Kafka consumer comes next, read `studywithme.outbox.events` and keep downstream idempotency by outbox `eventId`.
-3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
-4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+1. Merge Kafka notification consumer PR, then start chat MVP or real-time notification delivery from `develop`.
+2. If chat comes next, fix private/study chat membership authorization before message storage.
+3. If real-time notification comes next, send already-created notifications over WebSocket/SSE without bypassing DB notification records.
+4. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
+5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
 Recommended verification:
 
@@ -347,9 +358,10 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - feature/kafka-outbox-relay에서 DB outbox를 Kafka topic으로 publish하는 relay baseline을 구현함.
 - Kafka relay는 domain transaction을 건드리지 않고, 별도 `kafka_publish_status`로 publish/retry/dead 상태를 관리함.
 - feature/mention-notification-baseline에서 댓글/답글 `@nickname` 멘션 outbox와 mention notification baseline을 구현함.
+- feature/kafka-notification-consumer에서 Kafka outbox event를 읽어 기존 notification processor에 위임하는 consumer baseline을 구현함.
 
 다음 작업:
-- Kafka consumer 또는 chat MVP 시작
+- Kafka notification consumer PR merge 후 chat MVP 또는 실시간 알림 전달 시작
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
