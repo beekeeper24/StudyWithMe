@@ -145,8 +145,14 @@ Completed and merged into `develop`:
    - README documents the backend redirect override for a non-5173 Vite port.
 22. Local work-rule update:
    - `AGENTS.md` includes the Superpowers TDD rule: no happy-path-only tests, include meaningful edge cases, avoid absurd cases, and split tests by behavior/unit boundary.
+23. Frontend community screen expansion:
+   - frontend PR #2 expands the React app from OAuth/realtime verification console into study/post/comment/chat/notification tabs;
+   - user-facing screens hide access token, backend URL, manual sync, activity log, and roomId entry behind a developer-tools toggle;
+   - startup attempts refresh-cookie session recovery and then loads profile, notifications, and chat rooms;
+   - study detail can open a study chat room;
+   - chat tab lists the authenticated member's chat rooms and loads message history before realtime participation.
 
-No active feature work is currently in progress after PR #33. Start the next branch from `develop`.
+No active feature work is currently in progress after backend PR #36 and frontend PR #2. Start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -295,10 +301,13 @@ Known merged PRs:
 - PR #31: `fix/websocket-local-frontend-origin`
 - PR #32: `feature/oauth-frontend-callback`
 - PR #33: `docs/tdd-test-design-rule`
+- PR #35: `docs/frontend-playwright-font-learning`
+- PR #36: `docs/frontend-community-post-merge-handoff`
 
 Frontend merged PRs:
 
 - PR #1: `feature/oauth-login-baseline`
+- PR #2: `feature/frontend-community-screens`
 
 ## Important Local State
 
@@ -429,33 +438,22 @@ Completed OAuth frontend callback work on 2026-05-23:
 
 Next implementation tasks:
 
-1. Finish and merge frontend branch `feature/frontend-community-screens` in `/home/beekeeper24/projects/StudyWithMe-Front`.
-2. Add browser verification for Google/Kakao login after starting the backend with the correct `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI`.
+1. Add authenticated frontend route guards and friendlier error states for failed create/join/comment/chat actions.
+2. Add notification reconnect/polling catch-up polish beyond the current login/connect-time sync.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Set `APP_CORS_ALLOWED_ORIGINS` and `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` to the real frontend origin in production.
 5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
-In-progress frontend branch details:
+Frontend community screen verification already completed:
 
-- Branch: `feature/frontend-community-screens`
-- Adds study/post/community tabs on top of the OAuth/realtime console.
-- Follow-up commit turns the screen from a backend verification console toward a user-facing app:
-  - access token, backend URL, manual sync, roomId input, and activity log are hidden behind a small developer-tools toggle;
-  - app startup automatically attempts `POST /api/v1/auth/refresh` session recovery through the HttpOnly refresh cookie;
-  - successful session recovery loads profile, notifications, and chat rooms;
-  - study list now has a selected-study detail panel and study chat-room entry point;
-  - chat tab can list the authenticated member's rooms and load room messages before joining realtime delivery.
-- Frontend API helpers now cover:
-  - study list/create/join/leave/close;
-  - post list/detail/create/update/delete;
-  - comment list/create and one-level reply create.
-  - chat room list, study chat-room creation, and message history loading.
-- Verification run during implementation:
-  - `npm run lint`
-  - `npm run build`
-  - `git diff --check`
-  - Playwright desktop/mobile screenshots against `http://localhost:5174/`
-- WSL Playwright Korean screenshots require Korean fonts. See `docs/learnings/0023-frontend-playwright-korean-fonts.md`.
+- OAuth browser E2E for Google/Kakao against backend `8081` and frontend `5174`;
+- `npm run lint`;
+- `npm run build`;
+- `git diff --check`;
+- public API smoke for `GET /api/v1/studies` and `GET /api/v1/posts`;
+- Playwright desktop/mobile screenshots against `http://localhost:5174/`.
+
+WSL Playwright Korean screenshots require Korean fonts. See `docs/learnings/0023-frontend-playwright-korean-fonts.md`.
 
 Recommended verification:
 
