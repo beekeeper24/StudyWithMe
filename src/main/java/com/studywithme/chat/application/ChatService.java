@@ -114,6 +114,11 @@ public class ChatService {
 			.toList();
 	}
 
+	public void validateRoomMembership(Long roomId, Long memberId) {
+		ChatRoom room = findRoom(roomId);
+		validateRoomMember(room.getId(), memberId);
+	}
+
 	private void validateActiveTargetMember(Long targetMemberId) {
 		memberRepository.findById(targetMemberId)
 			.filter(member -> member.getStatus() == MemberStatus.ACTIVE)
