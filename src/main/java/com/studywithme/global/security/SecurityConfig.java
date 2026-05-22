@@ -61,15 +61,19 @@ public class SecurityConfig {
 					"/api/v1/studies/*/join",
 					"/api/v1/studies/*/leave",
 					"/api/v1/studies/*/close",
+					"/api/v1/studies/*/chat-room",
 					"/api/v1/posts",
 					"/api/v1/posts/*/comments",
-					"/api/v1/comments/*/replies"
+					"/api/v1/comments/*/replies",
+					"/api/v1/chat/private-rooms",
+					"/api/v1/chat/rooms/*/messages"
 				).authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/notifications").authenticated()
+				.requestMatchers(HttpMethod.GET, "/api/v1/chat/rooms", "/api/v1/chat/rooms/*/messages").authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/*/read").authenticated()
 				.requestMatchers(
 					"/actuator/health",
