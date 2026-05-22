@@ -41,6 +41,11 @@ Use harnesses together when they cover different parts of the work. The default 
   - Use Superpowers `test-driven-development`.
   - Prefer OMX team/orchestration when independent test, implementation, and review tracks exist.
   - Applies to authentication, authorization, token handling, data migration, concurrency, and state transitions.
+- Superpowers TDD test design:
+  - Do not stop at happy-path-only tests.
+  - Include meaningful edge cases that affect the feature's correctness, security, or state transitions.
+  - Do not add absurd or unrealistic cases just to increase test count.
+  - Split tests by feature behavior and unit boundary so each test has one clear reason to fail.
 - Unclear bug:
   - Use Superpowers `systematic-debugging`.
   - Add OMX team/orchestration when one track can reproduce the issue while another inspects code/history/config.
