@@ -113,7 +113,7 @@ Completed and merged into `develop`:
    - room membership is checked before every message write/read;
    - study chat room membership syncs current study members when the room is requested.
 
-The current feature branch is `feature/chat-mvp-baseline`. After it is merged, start the next branch from `develop`.
+No active feature work is currently in progress after PR #22. Start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -215,6 +215,7 @@ Known merged PRs:
 - PR #16: `feature/kafka-outbox-relay`
 - PR #18: `feature/mention-notification-baseline`
 - PR #20: `feature/kafka-notification-consumer`
+- PR #22: `feature/chat-mvp-baseline`
 
 ## Important Local State
 
