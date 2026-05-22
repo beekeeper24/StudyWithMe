@@ -112,8 +112,15 @@ Completed and merged into `develop`:
    - authenticated message create/list;
    - room membership is checked before every message write/read;
    - study chat room membership syncs current study members when the room is requested.
+17. Chat WebSocket delivery baseline:
+   - STOMP endpoint `/ws`;
+   - application destination prefix `/app`;
+   - simple broker topic prefix `/topic`;
+   - STOMP `CONNECT` authenticates `Authorization: Bearer <access-token>`;
+   - STOMP `SUBSCRIBE` and `SEND` validate chat room membership;
+   - WebSocket sends persist messages through `ChatService` before publishing to room topics.
 
-No active feature work is currently in progress after PR #22. Start the next branch from `develop`.
+The current feature branch is `feature/chat-websocket-delivery`. After it is merged, start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -169,7 +176,23 @@ Chat REST MVP details:
   - authenticated `GET /api/v1/chat/rooms/{roomId}/messages`.
 - Private rooms use deterministic room keys so the same two members reuse one room.
 - Study rooms use deterministic room keys by study id and sync current study members into `chat_room_members`.
-- WebSocket delivery, unread counts, read receipts, chat notifications, moderation, and retention policy are not implemented yet.
+- Unread counts, read receipts, chat notifications, moderation, and retention policy are not implemented yet.
+
+Chat WebSocket delivery details:
+
+- Endpoint:
+  - WebSocket handshake: `/ws`
+  - STOMP connect header: `Authorization: Bearer <access-token>`
+- Publish:
+  - client sends to `/app/chat.rooms.{roomId}.messages`
+  - payload: `{ "content": "..." }`
+  - server stores through `ChatService.sendMessage(...)`
+  - server publishes `ChatMessageResponse` to `/topic/chat.rooms.{roomId}`
+- Subscribe:
+  - client subscribes to `/topic/chat.rooms.{roomId}`
+  - server validates room membership before allowing the subscription frame.
+- Current broker is Spring's in-memory simple broker. Multi-instance deployment will need broker relay or an external fan-out strategy.
+- Unread counts, read receipts, chat notifications, moderation, and retention policy are still not implemented.
 
 Comment baseline details:
 
@@ -276,6 +299,7 @@ Security filter chain:
 - Comment public list is explicitly permitted; comment/reply create/update/delete require JWT authentication.
 - Notification list/read routes require JWT authentication and only expose the authenticated member's notifications.
 - Chat room list/create and message list/create routes require JWT authentication; message list/create also require room membership inside `ChatService`.
+- `/ws` handshake is permitAll, but STOMP `CONNECT` requires a bearer access token and STOMP `SUBSCRIBE`/`SEND` require chat room membership.
 
 Refresh/reissue/logout HTTP policy:
 
