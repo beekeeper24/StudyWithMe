@@ -429,11 +429,33 @@ Completed OAuth frontend callback work on 2026-05-23:
 
 Next implementation tasks:
 
-1. Expand frontend screens from realtime console into study/post/community flows.
+1. Finish and merge frontend branch `feature/frontend-community-screens` in `/home/beekeeper24/projects/StudyWithMe-Front`.
 2. Add browser verification for Google/Kakao login after starting the backend with the correct `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI`.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Set `APP_CORS_ALLOWED_ORIGINS` and `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` to the real frontend origin in production.
 5. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+
+In-progress frontend branch details:
+
+- Branch: `feature/frontend-community-screens`
+- Adds study/post/community tabs on top of the OAuth/realtime console.
+- Follow-up commit turns the screen from a backend verification console toward a user-facing app:
+  - access token, backend URL, manual sync, roomId input, and activity log are hidden behind a small developer-tools toggle;
+  - app startup automatically attempts `POST /api/v1/auth/refresh` session recovery through the HttpOnly refresh cookie;
+  - successful session recovery loads profile, notifications, and chat rooms;
+  - study list now has a selected-study detail panel and study chat-room entry point;
+  - chat tab can list the authenticated member's rooms and load room messages before joining realtime delivery.
+- Frontend API helpers now cover:
+  - study list/create/join/leave/close;
+  - post list/detail/create/update/delete;
+  - comment list/create and one-level reply create.
+  - chat room list, study chat-room creation, and message history loading.
+- Verification run during implementation:
+  - `npm run lint`
+  - `npm run build`
+  - `git diff --check`
+  - Playwright desktop/mobile screenshots against `http://localhost:5174/`
+- WSL Playwright Korean screenshots require Korean fonts. See `docs/learnings/0023-frontend-playwright-korean-fonts.md`.
 
 Recommended verification:
 
