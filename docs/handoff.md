@@ -94,8 +94,14 @@ Completed and merged into `develop`:
    - relay publishes due outbox rows to Kafka with the outbox event id as key;
    - Kafka publish retry/dead state is independent from in-app notification processing;
    - Kafka relay worker is available but disabled by default.
+14. Mention notification baseline:
+   - extract `@nickname` from comment/reply content;
+   - resolve exact ACTIVE member nicknames;
+   - store `COMMENT_MENTIONED` outbox events;
+   - create `MENTIONED_IN_COMMENT` notifications;
+   - replace ordinary comment/reply notifications with mention notifications for the same receiver and comment.
 
-No active feature work is currently in progress after PR #16. Start the next branch from `develop`.
+`feature/mention-notification-baseline` is the current work branch until its PR is merged. After merge, start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -120,6 +126,15 @@ No active feature work is currently in progress after PR #16. Start the next bra
 - `OutboxKafkaRelay` sends a JSON envelope to Kafka topic `studywithme.outbox.events` by default.
 - Kafka key is the outbox event id, so downstream consumers can deduplicate at-least-once delivery.
 - `OutboxKafkaRelayWorker` is disabled by default and enabled with `OUTBOX_KAFKA_RELAY_ENABLED=true`.
+- Mention extraction:
+  - `@nickname` exact, case-sensitive matching;
+  - ACTIVE members only;
+  - self-mentions suppressed;
+  - duplicate mentions inside one comment/reply collapsed into one notification.
+- Outbox event:
+  - `COMMENT_MENTIONED`
+- Notification type:
+  - `MENTIONED_IN_COMMENT`
 
 Comment baseline details:
 
@@ -163,6 +178,7 @@ Known merged PRs:
 - PR #14: `feature/comment-baseline`
 - PR #15: `feature/notification-outbox-baseline`
 - PR #16: `feature/kafka-outbox-relay`
+- PR #18: `feature/mention-notification-baseline` once merged
 
 ## Important Local State
 
@@ -277,8 +293,8 @@ Completed local OAuth verification on 2026-05-22:
 
 Next implementation tasks:
 
-1. Start mention extraction from `develop`.
-2. Mention extraction should parse comment content for `@nickname` and create mention events/notifications without duplicating existing comment/reply notifications.
+1. Merge mention notification PR, then start Kafka consumer or chat MVP from `develop`.
+2. If Kafka consumer comes next, read `studywithme.outbox.events` and keep downstream idempotency by outbox `eventId`.
 3. Enable `REFRESH_TOKEN_COOKIE_SECURE=true` in production HTTPS.
 4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
@@ -330,9 +346,10 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - feature/notification-outbox-baseline에서 댓글/답글 이벤트 outbox와 in-app notification baseline을 구현하고 develop에 merge함.
 - feature/kafka-outbox-relay에서 DB outbox를 Kafka topic으로 publish하는 relay baseline을 구현함.
 - Kafka relay는 domain transaction을 건드리지 않고, 별도 `kafka_publish_status`로 publish/retry/dead 상태를 관리함.
+- feature/mention-notification-baseline에서 댓글/답글 `@nickname` 멘션 outbox와 mention notification baseline을 구현함.
 
 다음 작업:
-- mention extraction 시작
+- mention notification PR merge 후 Kafka consumer 또는 chat MVP 시작
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.

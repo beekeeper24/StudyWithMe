@@ -9,6 +9,8 @@ import com.studywithme.comment.application.CommentService;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.mention.application.MentionExtractor;
+import com.studywithme.mention.application.MentionTargetResolver;
 import com.studywithme.notification.domain.Notification;
 import com.studywithme.notification.domain.NotificationType;
 import com.studywithme.notification.repository.NotificationRepository;
@@ -31,6 +33,8 @@ import org.springframework.context.annotation.Import;
 	PostService.class,
 	CommentService.class,
 	OutboxEventPublisher.class,
+	MentionExtractor.class,
+	MentionTargetResolver.class,
 	NotificationOutboxProcessor.class,
 	ObjectMapper.class
 })
@@ -126,6 +130,111 @@ class NotificationOutboxProcessorTest {
 		processor.processOne(event.getId());
 
 		assertThat(notificationRepository.findAll()).hasSize(1);
+	}
+
+	@Test
+	@DisplayName("COMMENT_MENTIONED event를 처리하면 멘션 대상자에게 알림을 만든다")
+	void processCommentMentionedCreatesNotificationForMentionedMember() {
+		Member postAuthor = saveMember("post-author");
+		Member commentAuthor = saveMember("comment-author");
+		Member mentionedMember = saveMember("mentioned");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("게시글", "내용"));
+		CommentResult comment = commentService.create(
+			post.id(),
+			commentAuthor.getId(),
+			new CommentCreateCommand("@mentioned 확인해주세요")
+		);
+
+		int processedCount = processor.processPending(10);
+
+		assertThat(processedCount).isEqualTo(2);
+		assertThat(notificationRepository.findAll()).anySatisfy(notification -> {
+			assertThat(notification.getReceiverMemberId()).isEqualTo(mentionedMember.getId());
+			assertThat(notification.getActorMemberId()).isEqualTo(commentAuthor.getId());
+			assertThat(notification.getType()).isEqualTo(NotificationType.MENTIONED_IN_COMMENT);
+			assertThat(notification.getTargetId()).isEqualTo(comment.id());
+		});
+	}
+
+	@Test
+	@DisplayName("같은 댓글에서 기본 댓글 알림 대상자가 멘션되면 멘션 알림만 만든다")
+	void mentionReplacesCommentNotificationForSameReceiver() {
+		Member postAuthor = saveMember("post-author");
+		Member commentAuthor = saveMember("comment-author");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("게시글", "내용"));
+		commentService.create(
+			post.id(),
+			commentAuthor.getId(),
+			new CommentCreateCommand("@post-author 확인해주세요")
+		);
+
+		processor.processPending(10);
+
+		List<Notification> notifications = notificationRepository.findAll();
+		assertThat(notifications).hasSize(1);
+		assertThat(notifications.getFirst().getReceiverMemberId()).isEqualTo(postAuthor.getId());
+		assertThat(notifications.getFirst().getType()).isEqualTo(NotificationType.MENTIONED_IN_COMMENT);
+	}
+
+	@Test
+	@DisplayName("같은 댓글에서 같은 회원을 여러 번 멘션해도 알림은 하나만 만든다")
+	void duplicateMentionsInSameCommentCreateOneNotification() {
+		Member postAuthor = saveMember("post-author");
+		Member commentAuthor = saveMember("comment-author");
+		Member mentionedMember = saveMember("mentioned");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("게시글", "내용"));
+		commentService.create(
+			post.id(),
+			commentAuthor.getId(),
+			new CommentCreateCommand("@mentioned @mentioned 확인해주세요")
+		);
+
+		processor.processPending(10);
+
+		assertThat(notificationRepository.findAll()).filteredOn(
+			notification -> notification.getReceiverMemberId().equals(mentionedMember.getId())
+				&& notification.getType() == NotificationType.MENTIONED_IN_COMMENT
+		).hasSize(1);
+	}
+
+	@Test
+	@DisplayName("자기 자신을 멘션해도 멘션 알림을 만들지 않는다")
+	void suppressSelfMentionNotification() {
+		Member author = saveMember("author");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("게시글", "내용"));
+		commentService.create(
+			post.id(),
+			author.getId(),
+			new CommentCreateCommand("@author 혼잣말")
+		);
+
+		int processedCount = processor.processPending(10);
+
+		assertThat(processedCount).isEqualTo(1);
+		assertThat(notificationRepository.findAll()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("같은 답글에서 기본 답글 알림 대상자가 멘션되면 멘션 알림만 만든다")
+	void mentionReplacesReplyNotificationForSameReceiver() {
+		Member postAuthor = saveMember("post-author");
+		Member commentAuthor = saveMember("comment-author");
+		Member replyAuthor = saveMember("reply-author");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("게시글", "내용"));
+		CommentResult parent = commentService.create(post.id(), commentAuthor.getId(), new CommentCreateCommand("댓글"));
+		CommentResult reply = commentService.reply(
+			parent.id(),
+			replyAuthor.getId(),
+			new CommentCreateCommand("@comment-author 답글 확인해주세요")
+		);
+
+		processor.processPending(10);
+
+		assertThat(notificationRepository.findAll()).filteredOn(
+			notification -> notification.getReceiverMemberId().equals(commentAuthor.getId())
+				&& notification.getTargetId().equals(reply.id())
+		).singleElement()
+			.satisfies(notification -> assertThat(notification.getType()).isEqualTo(NotificationType.MENTIONED_IN_COMMENT));
 	}
 
 	private Member saveMember(String name) {
