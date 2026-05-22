@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studywithme.outbox.domain.OutboxEvent;
 import com.studywithme.outbox.repository.OutboxEventRepository;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -54,6 +55,26 @@ public class OutboxEventPublisher {
 		save("REPLY_CREATED", commentId, payload);
 	}
 
+	public void publishCommentMentioned(
+		Long postId,
+		Long commentId,
+		Long actorMemberId,
+		List<Long> mentionedMemberIds,
+		List<Long> replacedNotificationReceiverMemberIds
+	) {
+		if (mentionedMemberIds == null || mentionedMemberIds.isEmpty()) {
+			return;
+		}
+		CommentMentionedPayload payload = new CommentMentionedPayload(
+			postId,
+			commentId,
+			actorMemberId,
+			mentionedMemberIds,
+			replacedNotificationReceiverMemberIds == null ? List.of() : replacedNotificationReceiverMemberIds
+		);
+		save("COMMENT_MENTIONED", commentId, payload);
+	}
+
 	private void save(String eventType, Long aggregateId, Object payload) {
 		try {
 			outboxEventRepository.save(OutboxEvent.create(
@@ -81,6 +102,15 @@ public class OutboxEventPublisher {
 		Long commentId,
 		Long parentCommentAuthorMemberId,
 		Long actorMemberId
+	) {
+	}
+
+	private record CommentMentionedPayload(
+		Long postId,
+		Long commentId,
+		Long actorMemberId,
+		List<Long> mentionedMemberIds,
+		List<Long> replacedNotificationReceiverMemberIds
 	) {
 	}
 }

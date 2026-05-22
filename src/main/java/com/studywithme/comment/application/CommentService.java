@@ -5,6 +5,9 @@ import com.studywithme.comment.domain.CommentStatus;
 import com.studywithme.comment.exception.CommentErrorCode;
 import com.studywithme.comment.repository.CommentRepository;
 import com.studywithme.global.exception.BusinessException;
+import com.studywithme.member.domain.Member;
+import com.studywithme.mention.application.MentionExtractor;
+import com.studywithme.mention.application.MentionTargetResolver;
 import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.post.domain.Post;
 import com.studywithme.post.domain.PostStatus;
@@ -22,15 +25,21 @@ public class CommentService {
 	private final CommentRepository commentRepository;
 	private final PostRepository postRepository;
 	private final OutboxEventPublisher outboxEventPublisher;
+	private final MentionExtractor mentionExtractor;
+	private final MentionTargetResolver mentionTargetResolver;
 
 	public CommentService(
 		CommentRepository commentRepository,
 		PostRepository postRepository,
-		OutboxEventPublisher outboxEventPublisher
+		OutboxEventPublisher outboxEventPublisher,
+		MentionExtractor mentionExtractor,
+		MentionTargetResolver mentionTargetResolver
 	) {
 		this.commentRepository = commentRepository;
 		this.postRepository = postRepository;
 		this.outboxEventPublisher = outboxEventPublisher;
+		this.mentionExtractor = mentionExtractor;
+		this.mentionTargetResolver = mentionTargetResolver;
 	}
 
 	@Transactional
@@ -47,6 +56,13 @@ public class CommentService {
 			comment.getId(),
 			post.getAuthorMemberId(),
 			requesterMemberId
+		);
+		publishMentionedEvent(
+			postId,
+			comment.getId(),
+			requesterMemberId,
+			command.content(),
+			List.of(post.getAuthorMemberId())
 		);
 		return CommentResult.from(comment);
 	}
@@ -70,6 +86,13 @@ public class CommentService {
 			reply.getId(),
 			parent.getAuthorMemberId(),
 			requesterMemberId
+		);
+		publishMentionedEvent(
+			parent.getPostId(),
+			reply.getId(),
+			requesterMemberId,
+			command.content(),
+			List.of(parent.getAuthorMemberId())
 		);
 		return CommentResult.from(reply);
 	}
@@ -117,5 +140,31 @@ public class CommentService {
 	private Comment getPublishedComment(Long commentId) {
 		return commentRepository.findByIdAndStatus(commentId, CommentStatus.PUBLISHED)
 			.orElseThrow(() -> new BusinessException(CommentErrorCode.COMMENT_NOT_FOUND));
+	}
+
+	private void publishMentionedEvent(
+		Long postId,
+		Long commentId,
+		Long actorMemberId,
+		String content,
+		List<Long> ordinaryNotificationReceiverMemberIds
+	) {
+		List<Long> mentionedMemberIds = mentionTargetResolver.resolve(mentionExtractor.extract(content))
+			.stream()
+			.map(Member::getId)
+			.filter(memberId -> !memberId.equals(actorMemberId))
+			.toList();
+
+		List<Long> replacedReceiverMemberIds = ordinaryNotificationReceiverMemberIds.stream()
+			.filter(mentionedMemberIds::contains)
+			.toList();
+
+		outboxEventPublisher.publishCommentMentioned(
+			postId,
+			commentId,
+			actorMemberId,
+			mentionedMemberIds,
+			replacedReceiverMemberIds
+		);
 	}
 }

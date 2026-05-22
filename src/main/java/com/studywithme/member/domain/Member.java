@@ -103,6 +103,10 @@ public class Member {
 		this.profileImageUrl = profileImageUrl;
 	}
 
+	public void withdraw() {
+		this.status = MemberStatus.WITHDRAWN;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();

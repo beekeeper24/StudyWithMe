@@ -9,6 +9,8 @@ import com.studywithme.comment.application.CommentService;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.mention.application.MentionExtractor;
+import com.studywithme.mention.application.MentionTargetResolver;
 import com.studywithme.outbox.domain.OutboxEvent;
 import com.studywithme.outbox.repository.OutboxEventRepository;
 import com.studywithme.post.application.PostCreateCommand;
@@ -23,7 +25,14 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 @DataJpaTest
-@Import({PostService.class, CommentService.class, OutboxEventPublisher.class, ObjectMapper.class})
+@Import({
+	PostService.class,
+	CommentService.class,
+	OutboxEventPublisher.class,
+	MentionExtractor.class,
+	MentionTargetResolver.class,
+	ObjectMapper.class
+})
 class CommentOutboxEventTest {
 
 	@Autowired
@@ -94,6 +103,79 @@ class CommentOutboxEventTest {
 		assertThat(event.getPayload()).contains("\"parentCommentId\":" + parent.id());
 		assertThat(event.getPayload()).contains("\"parentCommentAuthorMemberId\":" + commentAuthor.getId());
 		assertThat(event.getPayload()).contains("\"actorMemberId\":" + replyAuthor.getId());
+	}
+
+	@Test
+	@DisplayName("댓글에 멘션이 있으면 COMMENT_MENTIONED outbox event를 같은 트랜잭션에서 저장한다")
+	void createCommentStoresMentionedOutboxEvent() {
+		Member postAuthor = saveMember("post-author");
+		Member commentAuthor = saveMember("comment-author");
+		Member mentionedMember = saveMember("mentioned");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("게시글", "내용"));
+
+		CommentResult comment = commentService.create(
+			post.id(),
+			commentAuthor.getId(),
+			new CommentCreateCommand("@mentioned 확인해주세요 @mentioned")
+		);
+
+		List<OutboxEvent> events = outboxEventRepository.findAllByOrderByOccurredAtAsc();
+		assertThat(events).hasSize(2);
+		OutboxEvent event = events.get(1);
+		assertThat(event.getEventType()).isEqualTo("COMMENT_MENTIONED");
+		assertThat(event.getAggregateType()).isEqualTo("COMMENT");
+		assertThat(event.getAggregateId()).isEqualTo(comment.id());
+		assertThat(event.getPayload()).contains("\"commentId\":" + comment.id());
+		assertThat(event.getPayload()).contains("\"actorMemberId\":" + commentAuthor.getId());
+		assertThat(event.getPayload()).contains("\"mentionedMemberIds\":[" + mentionedMember.getId() + "]");
+		assertThat(event.getPayload()).contains("\"replacedNotificationReceiverMemberIds\":[]");
+	}
+
+	@Test
+	@DisplayName("댓글 작성 기본 알림 대상자를 멘션하면 멘션 event에 대체 대상자로 기록한다")
+	void mentionPostAuthorStoresReplacementReceiver() {
+		Member postAuthor = saveMember("post-author");
+		Member commentAuthor = saveMember("comment-author");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("게시글", "내용"));
+
+		commentService.create(
+			post.id(),
+			commentAuthor.getId(),
+			new CommentCreateCommand("@post-author 확인해주세요")
+		);
+
+		OutboxEvent event = outboxEventRepository.findAllByOrderByOccurredAtAsc().get(1);
+		assertThat(event.getPayload()).contains("\"mentionedMemberIds\":[" + postAuthor.getId() + "]");
+		assertThat(event.getPayload()).contains("\"replacedNotificationReceiverMemberIds\":[" + postAuthor.getId() + "]");
+	}
+
+	@Test
+	@DisplayName("답글에 멘션이 있으면 COMMENT_MENTIONED outbox event를 같은 트랜잭션에서 저장한다")
+	void createReplyStoresMentionedOutboxEvent() {
+		Member postAuthor = saveMember("post-author");
+		Member commentAuthor = saveMember("comment-author");
+		Member replyAuthor = saveMember("reply-author");
+		Member mentionedMember = saveMember("mentioned");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("게시글", "내용"));
+		CommentResult parent = commentService.create(
+			post.id(),
+			commentAuthor.getId(),
+			new CommentCreateCommand("댓글입니다.")
+		);
+
+		CommentResult reply = commentService.reply(
+			parent.id(),
+			replyAuthor.getId(),
+			new CommentCreateCommand("@mentioned 답글 확인해주세요")
+		);
+
+		List<OutboxEvent> events = outboxEventRepository.findAllByOrderByOccurredAtAsc();
+		assertThat(events).hasSize(3);
+		OutboxEvent event = events.get(2);
+		assertThat(event.getEventType()).isEqualTo("COMMENT_MENTIONED");
+		assertThat(event.getAggregateId()).isEqualTo(reply.id());
+		assertThat(event.getPayload()).contains("\"commentId\":" + reply.id());
+		assertThat(event.getPayload()).contains("\"mentionedMemberIds\":[" + mentionedMember.getId() + "]");
 	}
 
 	private Member saveMember(String name) {

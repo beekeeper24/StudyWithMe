@@ -23,4 +23,10 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
 		LocalDateTime kafkaNextAttemptAt,
 		Pageable pageable
 	);
+
+	List<OutboxEvent> findAllByEventTypeAndAggregateTypeAndAggregateIdOrderByOccurredAtAsc(
+		String eventType,
+		String aggregateType,
+		Long aggregateId
+	);
 }

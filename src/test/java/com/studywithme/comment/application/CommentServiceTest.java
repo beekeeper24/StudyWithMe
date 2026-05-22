@@ -11,6 +11,8 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.mention.application.MentionExtractor;
+import com.studywithme.mention.application.MentionTargetResolver;
 import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.post.application.PostCreateCommand;
 import com.studywithme.post.application.PostResult;
@@ -24,7 +26,14 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 @DataJpaTest
-@Import({PostService.class, CommentService.class, OutboxEventPublisher.class, ObjectMapper.class})
+@Import({
+	PostService.class,
+	CommentService.class,
+	OutboxEventPublisher.class,
+	MentionExtractor.class,
+	MentionTargetResolver.class,
+	ObjectMapper.class
+})
 class CommentServiceTest {
 
 	@Autowired
