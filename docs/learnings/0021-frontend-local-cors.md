@@ -8,7 +8,7 @@ The React/Vite frontend runs from a different browser origin than the Spring Boo
 
 ## Decisions
 
-- Keep local defaults narrow: `http://localhost:5173` and `http://127.0.0.1:5173`.
+- Keep local defaults narrow: `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:5174`, and `http://127.0.0.1:5174`.
 - Configure both HTTP CORS and STOMP endpoint allowed origins from `app.cors.allowed-origins`.
 - Keep `allowCredentials=true` because refresh-token cookies are part of the auth design.
 - Do not use wildcard origins with credentialed browser requests.

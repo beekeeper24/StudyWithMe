@@ -294,7 +294,7 @@ Local defaults:
 - PostgreSQL host port: `15432`
 - Kafka host port: `9092`
 - frontend dev server: `5173`
-- default allowed browser origins: `http://localhost:5173`, `http://127.0.0.1:5173`
+- default allowed browser origins: `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:5174`, `http://127.0.0.1:5174`
 - database: `studywithme`
 - username: `studywithme`
 - password: `studywithme`
@@ -340,7 +340,7 @@ Security filter chain:
 - Chat room list/create and message list/create routes require JWT authentication; message list/create also require room membership inside `ChatService`.
 - `/ws` handshake is permitAll, but STOMP `CONNECT` requires a bearer access token and STOMP `SUBSCRIBE`/`SEND` require chat room membership.
 - Notification user queue subscription also requires STOMP authentication; clients cannot publish to the notification user queue.
-- Browser CORS is enabled only for configured origins. The local default allows Vite frontend origins on port `5173`; production must set `APP_CORS_ALLOWED_ORIGINS` to the deployed frontend origins.
+- Browser CORS is enabled only for configured origins. The local default allows Vite frontend origins on ports `5173` and `5174`; production must set `APP_CORS_ALLOWED_ORIGINS` to the deployed frontend origins.
 - WebSocket `/ws` uses the same configured allowed origins, while STOMP authentication still happens through the `Authorization: Bearer <access-token>` `CONNECT` header.
 
 Refresh/reissue/logout HTTP policy:
