@@ -3,7 +3,6 @@ package com.studywithme.auth.oauth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studywithme.auth.presentation.RefreshTokenCookieProperties;
 import com.studywithme.auth.presentation.RefreshTokenCookieWriter;
 import com.studywithme.auth.token.TokenPair;
@@ -33,12 +32,56 @@ class OAuth2AuthenticationSuccessHandlerTest {
 		tokenService,
 		memberRepository,
 		refreshTokenCookieWriter,
-		new ObjectMapper().findAndRegisterModules()
+		new OAuthSuccessRedirectProperties("http://localhost:5173/auth/callback")
 	);
 
 	@Test
-	@DisplayName("OAuth 인증 성공 시 access token은 JSON으로 반환하고 refresh token은 cookie로 설정한다")
-	void writeTokenPairResponse() throws Exception {
+	@DisplayName("OAuth 인증 성공 시 refresh token cookie를 설정하고 access token fragment로 프론트 callback에 redirect한다")
+	void redirectToFrontendCallbackWithAccessTokenFragment() throws Exception {
+		Member member = Member.createOAuthMember(
+			"redirect@example.com",
+			"redirect-user",
+			OAuthProvider.GOOGLE,
+			"google-redirect",
+			null
+		);
+		ReflectionTestUtils.setField(member, "id", 2L);
+		OAuth2UserProfile profile = new OAuth2UserProfile(
+			OAuthProvider.GOOGLE,
+			"google-redirect",
+			"redirect@example.com",
+			"redirect-user",
+			null
+		);
+		StudyWithMeOAuth2User principal = StudyWithMeOAuth2User.from(member, profile, Map.of("sub", "google-redirect"));
+		when(memberRepository.findById(2L)).thenReturn(Optional.of(member));
+		when(tokenService.issue(member)).thenReturn(new TokenPair(
+			"access-token",
+			Instant.parse("2026-05-21T00:30:00Z"),
+			"refresh-token",
+			Instant.parse("2026-06-04T00:00:00Z")
+		));
+		MockHttpServletResponse response = new MockHttpServletResponse();
+
+		successHandler.onAuthenticationSuccess(
+			new MockHttpServletRequest(),
+			response,
+			new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+		);
+
+		assertThat(response.getStatus()).isEqualTo(302);
+		assertThat(response.getRedirectedUrl()).isEqualTo(
+			"http://localhost:5173/auth/callback#accessToken=access-token"
+				+ "&accessTokenExpiresAt=2026-05-21T00:30:00Z"
+				+ "&tokenType=Bearer"
+		);
+		assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=refresh-token");
+		assertThat(response.getContentAsString()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("OAuth 인증 성공 redirect 응답은 cache를 막고 refresh token을 body에 노출하지 않는다")
+	void redirectResponseDoesNotExposeRefreshTokenInBody() throws Exception {
 		Member member = Member.createOAuthMember(
 			"bee@example.com",
 			"beekeeper",
@@ -70,17 +113,14 @@ class OAuth2AuthenticationSuccessHandlerTest {
 			new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
 		);
 
-		assertThat(response.getStatus()).isEqualTo(200);
-		assertThat(response.getContentType()).startsWith("application/json");
+		assertThat(response.getStatus()).isEqualTo(302);
 		assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
 		assertThat(response.getHeader("Pragma")).isEqualTo("no-cache");
 		assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=refresh-token");
 		assertThat(response.getHeader("Set-Cookie")).contains("Path=/api/v1/auth");
 		assertThat(response.getHeader("Set-Cookie")).contains("HttpOnly");
 		assertThat(response.getHeader("Set-Cookie")).contains("SameSite=Lax");
-		assertThat(response.getContentAsString()).contains("\"success\":true");
-		assertThat(response.getContentAsString()).contains("\"accessToken\":\"access-token\"");
 		assertThat(response.getContentAsString()).doesNotContain("refreshToken");
-		assertThat(response.getContentAsString()).contains("\"tokenType\":\"Bearer\"");
+		assertThat(response.getContentAsString()).isEmpty();
 	}
 }
