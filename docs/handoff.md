@@ -126,7 +126,7 @@ Completed and merged into `develop`:
    - server publishes with `convertAndSendToUser`;
    - client `SEND` to the notification user queue is rejected.
 
-The current feature branch is `feature/notification-websocket-delivery`. After it is merged, start the next branch from `develop`.
+No active feature work is currently in progress after PR #26. Start the next branch from `develop`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -256,6 +256,7 @@ Known merged PRs:
 - PR #20: `feature/kafka-notification-consumer`
 - PR #22: `feature/chat-mvp-baseline`
 - PR #24: `feature/chat-websocket-delivery`
+- PR #26: `feature/notification-websocket-delivery`
 
 ## Important Local State
 
