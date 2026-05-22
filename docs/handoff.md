@@ -439,10 +439,17 @@ In-progress frontend branch details:
 
 - Branch: `feature/frontend-community-screens`
 - Adds study/post/community tabs on top of the OAuth/realtime console.
+- Follow-up commit turns the screen from a backend verification console toward a user-facing app:
+  - access token, backend URL, manual sync, roomId input, and activity log are hidden behind a small developer-tools toggle;
+  - app startup automatically attempts `POST /api/v1/auth/refresh` session recovery through the HttpOnly refresh cookie;
+  - successful session recovery loads profile, notifications, and chat rooms;
+  - study list now has a selected-study detail panel and study chat-room entry point;
+  - chat tab can list the authenticated member's rooms and load room messages before joining realtime delivery.
 - Frontend API helpers now cover:
   - study list/create/join/leave/close;
   - post list/detail/create/update/delete;
   - comment list/create and one-level reply create.
+  - chat room list, study chat-room creation, and message history loading.
 - Verification run during implementation:
   - `npm run lint`
   - `npm run build`
