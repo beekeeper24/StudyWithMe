@@ -122,7 +122,8 @@ class ChatControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.type").value("STUDY"))
-			.andExpect(jsonPath("$.data.studyId").value(study.id()));
+			.andExpect(jsonPath("$.data.studyId").value(study.id()))
+			.andExpect(jsonPath("$.data.title").value("알고리즘 스터디"));
 	}
 
 	@Test
@@ -138,7 +139,40 @@ class ChatControllerTest {
 				.header("Authorization", "Bearer " + accessToken(requester)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data[0].id").value(myRoom.id()));
+			.andExpect(jsonPath("$.data[0].id").value(myRoom.id()))
+			.andExpect(jsonPath("$.data[0].title").value("target"));
+	}
+
+	@Test
+	@DisplayName("채팅방 참여자는 채팅방 멤버 목록을 조회할 수 있다")
+	void findRoomMembers() throws Exception {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		mockMvc.perform(get("/api/v1/chat/rooms/{roomId}/members", room.id())
+				.header("Authorization", "Bearer " + accessToken(requester)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(2))
+			.andExpect(jsonPath("$.data[0].memberId").exists())
+			.andExpect(jsonPath("$.data[0].nickname").exists())
+			.andExpect(jsonPath("$.data[0].joinedAt").exists());
+	}
+
+	@Test
+	@DisplayName("채팅방 참여자가 아니면 채팅방 멤버 목록을 조회할 수 없다")
+	void rejectFindRoomMembersByNonRoomMember() throws Exception {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		Member outsider = saveMember("outsider");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		mockMvc.perform(get("/api/v1/chat/rooms/{roomId}/members", room.id())
+				.header("Authorization", "Bearer " + accessToken(outsider)))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("CHAT-002"));
 	}
 
 	@Test

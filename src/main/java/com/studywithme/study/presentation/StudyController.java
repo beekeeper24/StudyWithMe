@@ -39,15 +39,22 @@ public class StudyController {
 	}
 
 	@GetMapping
-	public ApiResponse<List<StudyResponse>> findAll() {
-		return ApiResponse.success(studyService.findAll().stream()
+	public ApiResponse<List<StudyResponse>> findAll(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		Long requesterMemberId = principal == null ? null : principal.memberId();
+		return ApiResponse.success(studyService.findAll(requesterMemberId).stream()
 			.map(StudyResponse::from)
 			.toList());
 	}
 
 	@GetMapping("/{studyId}")
-	public ApiResponse<StudyResponse> findById(@PathVariable Long studyId) {
-		return ApiResponse.success(StudyResponse.from(studyService.findById(studyId)));
+	public ApiResponse<StudyResponse> findById(
+		@PathVariable Long studyId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		Long requesterMemberId = principal == null ? null : principal.memberId();
+		return ApiResponse.success(StudyResponse.from(studyService.findById(studyId, requesterMemberId)));
 	}
 
 	@PostMapping("/{studyId}/join")

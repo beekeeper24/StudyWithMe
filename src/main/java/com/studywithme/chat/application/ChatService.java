@@ -8,12 +8,17 @@ import com.studywithme.chat.repository.ChatMessageRepository;
 import com.studywithme.chat.repository.ChatRoomMemberRepository;
 import com.studywithme.chat.repository.ChatRoomRepository;
 import com.studywithme.global.exception.BusinessException;
+import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.study.domain.Study;
 import com.studywithme.study.exception.StudyErrorCode;
 import com.studywithme.study.repository.StudyMemberRepository;
 import com.studywithme.study.repository.StudyRepository;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,12 +58,12 @@ public class ChatService {
 
 		String roomKey = privateRoomKey(requesterMemberId, targetMemberId);
 		return chatRoomRepository.findByRoomKey(roomKey)
-			.map(ChatRoomResult::from)
+			.map(room -> toRoomResult(room, requesterMemberId))
 			.orElseGet(() -> {
 				ChatRoom room = chatRoomRepository.save(ChatRoom.privateRoom(roomKey));
 				chatRoomMemberRepository.save(ChatRoomMember.join(room.getId(), requesterMemberId));
 				chatRoomMemberRepository.save(ChatRoomMember.join(room.getId(), targetMemberId));
-				return ChatRoomResult.from(room);
+				return toRoomResult(room, requesterMemberId);
 			});
 	}
 
@@ -75,19 +80,43 @@ public class ChatService {
 		return chatRoomRepository.findByRoomKey(roomKey)
 			.map(room -> {
 				syncStudyRoomMembers(room.getId(), studyId);
-				return ChatRoomResult.from(room);
+				return toRoomResult(room, requesterMemberId);
 			})
 			.orElseGet(() -> {
 				ChatRoom room = chatRoomRepository.save(ChatRoom.studyRoom(roomKey, studyId));
 				syncStudyRoomMembers(room.getId(), studyId);
-				return ChatRoomResult.from(room);
+				return toRoomResult(room, requesterMemberId);
 			});
 	}
 
 	public List<ChatRoomResult> findMyRooms(Long memberId) {
 		return chatRoomRepository.findAllByMemberId(memberId)
 			.stream()
-			.map(ChatRoomResult::from)
+			.map(room -> toRoomResult(room, memberId))
+			.toList();
+	}
+
+	public List<ChatRoomMemberResult> findRoomMembers(Long roomId, Long requesterMemberId) {
+		ChatRoom room = findRoom(roomId);
+		validateRoomMember(room.getId(), requesterMemberId);
+
+		List<ChatRoomMember> roomMembers = chatRoomMemberRepository.findAllByRoomId(room.getId());
+		Map<Long, Member> members = memberRepository.findAllById(roomMembers.stream()
+				.map(ChatRoomMember::getMemberId)
+				.toList())
+			.stream()
+			.collect(Collectors.toMap(Member::getId, Function.identity()));
+
+		return roomMembers.stream()
+			.map(roomMember -> {
+				Member member = members.get(roomMember.getMemberId());
+				return new ChatRoomMemberResult(
+					roomMember.getMemberId(),
+					member == null ? null : member.getNickname(),
+					member == null ? null : member.getProfileImageUrl(),
+					roomMember.getJoinedAt()
+				);
+			})
 			.toList();
 	}
 
@@ -143,6 +172,26 @@ public class ChatService {
 					chatRoomMemberRepository.save(ChatRoomMember.join(roomId, studyMember.getMemberId()));
 				}
 			});
+	}
+
+	private ChatRoomResult toRoomResult(ChatRoom room, Long requesterMemberId) {
+		return ChatRoomResult.from(room, roomTitle(room, requesterMemberId));
+	}
+
+	private String roomTitle(ChatRoom room, Long requesterMemberId) {
+		if (room.getStudyId() != null) {
+			return studyRepository.findById(room.getStudyId())
+				.map(Study::getTitle)
+				.orElse("스터디 채팅");
+		}
+		return chatRoomMemberRepository.findAllByRoomId(room.getId())
+			.stream()
+			.map(ChatRoomMember::getMemberId)
+			.filter(memberId -> !memberId.equals(requesterMemberId))
+			.findFirst()
+			.flatMap(memberRepository::findById)
+			.map(Member::getNickname)
+			.orElse("1:1 채팅");
 	}
 
 	private String privateRoomKey(Long firstMemberId, Long secondMemberId) {
