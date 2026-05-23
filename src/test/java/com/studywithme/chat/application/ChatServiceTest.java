@@ -123,6 +123,46 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("스터디 탈퇴자는 기존 스터디 채팅방이 내 채팅방 목록에서 제외된다")
+	void excludeStudyRoomAfterLeavingStudy() {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+		studyService.join(study.id(), participant.getId());
+		ChatRoomResult room = chatService.createStudyRoom(study.id(), participant.getId());
+
+		studyService.leave(study.id(), participant.getId());
+
+		assertThat(chatService.findMyRooms(participant.getId())).extracting(ChatRoomResult::id)
+			.doesNotContain(room.id());
+		assertThat(chatService.findMyRooms(owner.getId())).extracting(ChatRoomResult::id)
+			.contains(room.id());
+	}
+
+	@Test
+	@DisplayName("스터디 탈퇴자는 기존 스터디 채팅방 메시지를 조회할 수 없다")
+	void rejectStudyRoomMessageReadAfterLeavingStudy() {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+		studyService.join(study.id(), participant.getId());
+		ChatRoomResult room = chatService.createStudyRoom(study.id(), participant.getId());
+
+		studyService.leave(study.id(), participant.getId());
+
+		assertThatThrownBy(() -> chatService.findMessages(room.id(), participant.getId()))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
+	}
+
+	@Test
 	@DisplayName("채팅방 참여자만 메시지를 작성할 수 있다")
 	void rejectMessageFromNonRoomMember() {
 		Member requester = saveMember("requester");
@@ -181,6 +221,49 @@ class ChatServiceTest {
 			.containsExactly(myRoom.id());
 		assertThat(rooms).extracting(ChatRoomResult::id)
 			.doesNotContain(outsiderRoom.id());
+	}
+
+	@Test
+	@DisplayName("채팅방을 삭제하면 내 채팅방 목록에서만 숨긴다")
+	void hideRoomFromMyRooms() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		chatService.hideRoom(room.id(), requester.getId());
+
+		assertThat(chatService.findMyRooms(requester.getId())).isEmpty();
+		assertThat(chatService.findMyRooms(target.getId())).extracting(ChatRoomResult::id)
+			.containsExactly(room.id());
+	}
+
+	@Test
+	@DisplayName("삭제한 1:1 채팅방은 다시 만들면 내 목록에 복구된다")
+	void restoreHiddenPrivateRoomWhenCreatingAgain() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		chatService.hideRoom(room.id(), requester.getId());
+
+		ChatRoomResult restoredRoom = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		assertThat(restoredRoom.id()).isEqualTo(room.id());
+		assertThat(chatService.findMyRooms(requester.getId())).extracting(ChatRoomResult::id)
+			.containsExactly(room.id());
+	}
+
+	@Test
+	@DisplayName("채팅방 참여자가 아니면 채팅방을 삭제할 수 없다")
+	void rejectHideRoomByNonRoomMember() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		Member outsider = saveMember("outsider");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		assertThatThrownBy(() -> chatService.hideRoom(room.id(), outsider.getId()))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
 	}
 
 	@Test

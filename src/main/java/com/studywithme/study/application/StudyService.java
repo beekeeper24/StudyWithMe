@@ -5,6 +5,7 @@ import com.studywithme.member.domain.Member;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.study.domain.Study;
 import com.studywithme.study.domain.StudyMember;
+import com.studywithme.study.domain.StudyMemberStatus;
 import com.studywithme.study.domain.StudyStatus;
 import com.studywithme.study.exception.StudyErrorCode;
 import com.studywithme.study.repository.StudyMemberRepository;
@@ -55,7 +56,10 @@ public class StudyService {
 
 	@Transactional(readOnly = true)
 	public List<StudyResult> findAll(Long requesterMemberId) {
-		List<Study> studies = studyRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, STUDY_LIST_LIMIT));
+		List<Study> studies = studyRepository.findAllByStatusOrderByCreatedAtDesc(
+			StudyStatus.RECRUITING,
+			PageRequest.of(0, STUDY_LIST_LIMIT)
+		);
 		Map<Long, Member> owners = findOwners(studies);
 		Set<Long> joinedStudyIds = findJoinedStudyIds(requesterMemberId);
 
@@ -80,8 +84,52 @@ public class StudyService {
 		Study study = getStudy(studyId);
 		Member owner = memberRepository.findById(study.getOwnerMemberId()).orElse(null);
 		boolean joinedByRequester = requesterMemberId != null
-			&& studyMemberRepository.existsByStudyIdAndMemberId(studyId, requesterMemberId);
+			&& studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
+				studyId,
+				requesterMemberId,
+				StudyMemberStatus.JOINED
+			);
 		return toResult(study, owner, requesterMemberId, joinedByRequester);
+	}
+
+	@Transactional(readOnly = true)
+	public MyStudyHistoryResult findMyStudies(Long requesterMemberId) {
+		List<StudyMember> memberships = studyMemberRepository.findAllByMemberId(requesterMemberId);
+		List<Long> studyIds = memberships.stream()
+			.map(StudyMember::getStudyId)
+			.distinct()
+			.toList();
+		Map<Long, Study> studies = studyRepository.findAllById(studyIds)
+			.stream()
+			.collect(Collectors.toMap(Study::getId, Function.identity()));
+		Map<Long, Member> owners = findOwners(studies.values().stream().toList());
+
+		List<StudyResult> activeStudies = memberships.stream()
+			.filter(StudyMember::isJoined)
+			.map(StudyMember::getStudyId)
+			.map(studies::get)
+			.filter(study -> study != null && study.getStatus() == StudyStatus.RECRUITING)
+			.map(study -> toResult(study, owners.get(study.getOwnerMemberId()), requesterMemberId, true))
+			.toList();
+		List<StudyResult> pastStudies = memberships.stream()
+			.filter(membership -> !membership.isJoined()
+				|| isClosedStudy(studies.get(membership.getStudyId())))
+			.map(StudyMember::getStudyId)
+			.map(studies::get)
+			.filter(study -> study != null)
+			.map(study -> toResult(
+				study,
+				owners.get(study.getOwnerMemberId()),
+				requesterMemberId,
+				studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
+					study.getId(),
+					requesterMemberId,
+					StudyMemberStatus.JOINED
+				)
+			))
+			.toList();
+
+		return new MyStudyHistoryResult(activeStudies, pastStudies);
 	}
 
 	@Transactional
@@ -90,8 +138,14 @@ public class StudyService {
 		if (study.getStatus() == StudyStatus.CLOSED) {
 			throw new BusinessException(StudyErrorCode.STUDY_ALREADY_CLOSED);
 		}
-		if (studyMemberRepository.existsByStudyIdAndMemberId(studyId, requesterMemberId)) {
+		StudyMember existingMember = studyMemberRepository.findByStudyIdAndMemberId(studyId, requesterMemberId)
+			.orElse(null);
+		if (existingMember != null && existingMember.isJoined()) {
 			throw new BusinessException(StudyErrorCode.ALREADY_JOINED);
+		}
+		if (existingMember != null) {
+			existingMember.rejoin();
+			return toResult(study, requesterMemberId);
 		}
 
 		studyMemberRepository.save(StudyMember.member(studyId, requesterMemberId));
@@ -105,9 +159,13 @@ public class StudyService {
 			throw new BusinessException(StudyErrorCode.OWNER_CANNOT_LEAVE);
 		}
 
-		StudyMember studyMember = studyMemberRepository.findByStudyIdAndMemberId(studyId, requesterMemberId)
+		StudyMember studyMember = studyMemberRepository.findByStudyIdAndMemberIdAndStatus(
+				studyId,
+				requesterMemberId,
+				StudyMemberStatus.JOINED
+			)
 			.orElseThrow(() -> new BusinessException(StudyErrorCode.NOT_STUDY_MEMBER));
-		studyMemberRepository.delete(studyMember);
+		studyMember.leave();
 		return toResult(study, requesterMemberId, false);
 	}
 
@@ -144,14 +202,23 @@ public class StudyService {
 		}
 		return studyMemberRepository.findAllByMemberId(requesterMemberId)
 			.stream()
+			.filter(StudyMember::isJoined)
 			.map(StudyMember::getStudyId)
 			.collect(Collectors.toUnmodifiableSet());
 	}
 
 	private StudyResult toResult(Study study, Long requesterMemberId) {
 		boolean joinedByRequester = requesterMemberId != null
-			&& studyMemberRepository.existsByStudyIdAndMemberId(study.getId(), requesterMemberId);
+			&& studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
+				study.getId(),
+				requesterMemberId,
+				StudyMemberStatus.JOINED
+			);
 		return toResult(study, requesterMemberId, joinedByRequester);
+	}
+
+	private boolean isClosedStudy(Study study) {
+		return study != null && study.getStatus() == StudyStatus.CLOSED;
 	}
 
 	private StudyResult toResult(Study study, Long requesterMemberId, boolean joinedByRequester) {

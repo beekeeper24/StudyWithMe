@@ -12,6 +12,7 @@ import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.study.domain.Study;
+import com.studywithme.study.domain.StudyMemberStatus;
 import com.studywithme.study.exception.StudyErrorCode;
 import com.studywithme.study.repository.StudyMemberRepository;
 import com.studywithme.study.repository.StudyRepository;
@@ -58,7 +59,10 @@ public class ChatService {
 
 		String roomKey = privateRoomKey(requesterMemberId, targetMemberId);
 		return chatRoomRepository.findByRoomKey(roomKey)
-			.map(room -> toRoomResult(room, requesterMemberId))
+			.map(room -> {
+				restoreRoomMember(room.getId(), requesterMemberId);
+				return toRoomResult(room, requesterMemberId);
+			})
 			.orElseGet(() -> {
 				ChatRoom room = chatRoomRepository.save(ChatRoom.privateRoom(roomKey));
 				chatRoomMemberRepository.save(ChatRoomMember.join(room.getId(), requesterMemberId));
@@ -72,7 +76,11 @@ public class ChatService {
 		if (!studyRepository.existsById(studyId)) {
 			throw new BusinessException(StudyErrorCode.STUDY_NOT_FOUND);
 		}
-		if (!studyMemberRepository.existsByStudyIdAndMemberId(studyId, requesterMemberId)) {
+		if (!studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
+			studyId,
+			requesterMemberId,
+			StudyMemberStatus.JOINED
+		)) {
 			throw new BusinessException(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
 		}
 
@@ -80,6 +88,7 @@ public class ChatService {
 		return chatRoomRepository.findByRoomKey(roomKey)
 			.map(room -> {
 				syncStudyRoomMembers(room.getId(), studyId);
+				restoreRoomMember(room.getId(), requesterMemberId);
 				return toRoomResult(room, requesterMemberId);
 			})
 			.orElseGet(() -> {
@@ -92,13 +101,21 @@ public class ChatService {
 	public List<ChatRoomResult> findMyRooms(Long memberId) {
 		return chatRoomRepository.findAllByMemberId(memberId)
 			.stream()
+			.filter(room -> canUseRoom(room, memberId))
 			.map(room -> toRoomResult(room, memberId))
 			.toList();
 	}
 
+	@Transactional
+	public void hideRoom(Long roomId, Long requesterMemberId) {
+		ChatRoom room = findRoom(roomId);
+		ChatRoomMember roomMember = findRoomMember(room.getId(), requesterMemberId);
+		roomMember.hide();
+	}
+
 	public List<ChatRoomMemberResult> findRoomMembers(Long roomId, Long requesterMemberId) {
 		ChatRoom room = findRoom(roomId);
-		validateRoomMember(room.getId(), requesterMemberId);
+		validateRoomMember(room, requesterMemberId);
 
 		List<ChatRoomMember> roomMembers = chatRoomMemberRepository.findAllByRoomId(room.getId());
 		Map<Long, Member> members = memberRepository.findAllById(roomMembers.stream()
@@ -108,6 +125,7 @@ public class ChatService {
 			.collect(Collectors.toMap(Member::getId, Function.identity()));
 
 		return roomMembers.stream()
+			.filter(roomMember -> canUseRoom(room, roomMember.getMemberId()))
 			.map(roomMember -> {
 				Member member = members.get(roomMember.getMemberId());
 				return new ChatRoomMemberResult(
@@ -123,7 +141,7 @@ public class ChatService {
 	@Transactional
 	public ChatMessageResult sendMessage(Long roomId, Long senderMemberId, ChatMessageCreateCommand command) {
 		ChatRoom room = findRoom(roomId);
-		validateRoomMember(room.getId(), senderMemberId);
+		validateRoomMember(room, senderMemberId);
 
 		ChatMessage message = chatMessageRepository.save(ChatMessage.create(
 			room.getId(),
@@ -135,7 +153,7 @@ public class ChatService {
 
 	public List<ChatMessageResult> findMessages(Long roomId, Long requesterMemberId) {
 		ChatRoom room = findRoom(roomId);
-		validateRoomMember(room.getId(), requesterMemberId);
+		validateRoomMember(room, requesterMemberId);
 
 		return chatMessageRepository.findAllByRoomIdOrderByCreatedAtAscIdAsc(room.getId())
 			.stream()
@@ -145,7 +163,7 @@ public class ChatService {
 
 	public void validateRoomMembership(Long roomId, Long memberId) {
 		ChatRoom room = findRoom(roomId);
-		validateRoomMember(room.getId(), memberId);
+		validateRoomMember(room, memberId);
 	}
 
 	private void validateActiveTargetMember(Long targetMemberId) {
@@ -159,14 +177,35 @@ public class ChatService {
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
 	}
 
-	private void validateRoomMember(Long roomId, Long memberId) {
-		if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
+	private void validateRoomMember(ChatRoom room, Long memberId) {
+		if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(room.getId(), memberId)
+			|| !canUseRoom(room, memberId)) {
 			throw new BusinessException(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
 		}
 	}
 
+	private boolean canUseRoom(ChatRoom room, Long memberId) {
+		if (room.getStudyId() == null) {
+			return true;
+		}
+		return studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
+			room.getStudyId(),
+			memberId,
+			StudyMemberStatus.JOINED
+		);
+	}
+
+	private ChatRoomMember findRoomMember(Long roomId, Long memberId) {
+		return chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
+			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_CHAT_ROOM_MEMBER));
+	}
+
+	private void restoreRoomMember(Long roomId, Long memberId) {
+		findRoomMember(roomId, memberId).restore();
+	}
+
 	private void syncStudyRoomMembers(Long roomId, Long studyId) {
-		studyMemberRepository.findAllByStudyId(studyId)
+		studyMemberRepository.findAllByStudyIdAndStatus(studyId, StudyMemberStatus.JOINED)
 			.forEach(studyMember -> {
 				if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(roomId, studyMember.getMemberId())) {
 					chatRoomMemberRepository.save(ChatRoomMember.join(roomId, studyMember.getMemberId()));
