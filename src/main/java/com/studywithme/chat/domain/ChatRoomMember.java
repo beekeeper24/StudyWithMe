@@ -33,6 +33,9 @@ public class ChatRoomMember {
 	@Column(name = "joined_at", nullable = false, updatable = false)
 	private LocalDateTime joinedAt;
 
+	@Column(name = "hidden_at")
+	private LocalDateTime hiddenAt;
+
 	protected ChatRoomMember() {
 	}
 
@@ -43,6 +46,14 @@ public class ChatRoomMember {
 
 	public static ChatRoomMember join(Long roomId, Long memberId) {
 		return new ChatRoomMember(roomId, memberId);
+	}
+
+	public void hide() {
+		this.hiddenAt = LocalDateTime.now();
+	}
+
+	public void restore() {
+		this.hiddenAt = null;
 	}
 
 	@PrePersist
@@ -64,5 +75,9 @@ public class ChatRoomMember {
 
 	public LocalDateTime getJoinedAt() {
 		return joinedAt;
+	}
+
+	public LocalDateTime getHiddenAt() {
+		return hiddenAt;
 	}
 }

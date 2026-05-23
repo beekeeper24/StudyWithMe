@@ -14,6 +14,7 @@ import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.study.application.StudyCreateCommand;
 import com.studywithme.study.application.StudyResult;
 import com.studywithme.study.application.StudyService;
+import com.studywithme.study.domain.StudyMemberStatus;
 import com.studywithme.study.repository.StudyMemberRepository;
 import com.studywithme.study.repository.StudyRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -138,6 +139,68 @@ class StudyControllerTest {
 	}
 
 	@Test
+	@DisplayName("공개 스터디 목록은 모집 중인 스터디만 조회한다")
+	void listStudiesPubliclyOnlyRecruiting() throws Exception {
+		Member owner = saveMember("owner");
+		StudyResult recruiting = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("모집 중인 스터디", "진행 중")
+		);
+		StudyResult closed = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("마감된 스터디", "종료")
+		);
+		studyService.close(closed.id(), owner.getId());
+
+		mockMvc.perform(get("/api/v1/studies"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(1))
+			.andExpect(jsonPath("$.data[0].id").value(recruiting.id()));
+	}
+
+	@Test
+	@DisplayName("인증한 회원은 마이페이지용 현재/지난 스터디 이력을 조회할 수 있다")
+	void findMyStudies() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult active = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("참여 중인 스터디", "진행 중")
+		);
+		studyService.join(active.id(), participant.getId());
+		StudyResult closed = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("마감된 스터디", "종료")
+		);
+		studyService.join(closed.id(), participant.getId());
+		studyService.close(closed.id(), owner.getId());
+		StudyResult left = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("나간 스터디", "이탈")
+		);
+		studyService.join(left.id(), participant.getId());
+		studyService.leave(left.id(), participant.getId());
+
+		mockMvc.perform(get("/api/v1/studies/me")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.activeStudies.length()").value(1))
+			.andExpect(jsonPath("$.data.activeStudies[0].id").value(active.id()))
+			.andExpect(jsonPath("$.data.pastStudies.length()").value(2));
+	}
+
+	@Test
+	@DisplayName("인증하지 않고 내 스터디 이력을 조회하면 AUTH-003 응답을 반환한다")
+	void rejectUnauthenticatedFindMyStudies() throws Exception {
+		mockMvc.perform(get("/api/v1/studies/me"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
+	}
+
+	@Test
 	@DisplayName("인증한 회원이 스터디 목록을 조회하면 자신의 가입 여부를 함께 반환한다")
 	void listStudiesWithRequesterMembership() throws Exception {
 		Member owner = saveMember("owner");
@@ -224,8 +287,10 @@ class StudyControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true));
 
-		assertThat(studyMemberRepository.existsByStudyIdAndMemberId(study.id(), participant.getId()))
-			.isFalse();
+		assertThat(studyMemberRepository.findByStudyIdAndMemberId(study.id(), participant.getId()))
+			.get()
+			.extracting("status")
+			.isEqualTo(StudyMemberStatus.LEFT);
 	}
 
 	@Test

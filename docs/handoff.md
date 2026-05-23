@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-05-23
+Last updated: 2026-05-24
 
 ## Read This First
 
@@ -157,7 +157,28 @@ Completed and merged into `develop`:
    - authenticated chat room members can query `GET /api/v1/chat/rooms/{roomId}/members`;
    - chat member list access is still guarded by room membership validation.
 
-No active feature work is currently in progress after backend PR #36 and frontend PR #2. Start the next branch from `develop`.
+Active feature work in progress:
+
+- Backend branch: `feature/my-page-study-chat-history`
+- Frontend branch: `feature/my-page-study-chat-history`
+- Goal:
+  - public study list shows recruiting studies only;
+  - authenticated `GET /api/v1/studies/me` returns active and past study history;
+  - study leave preserves `study_members` history with `LEFT` and `left_at`;
+  - chat room delete hides the room per requester with `chat_room_members.hidden_at`;
+  - study leavers are excluded from existing study chat room lists and message access even if old `chat_room_members` rows remain;
+  - frontend profile menu opens a My Page with active/past study history;
+  - frontend chat room list has a room delete action.
+- Verification already run on the active branches:
+  - backend `./gradlew test --no-daemon --console=plain`;
+  - frontend `npm run build`;
+  - frontend `npm run lint`;
+  - Playwright browser render check for login, authenticated My Page, and chat.
+- Local runtime after this work:
+  - backend is running on `8081` with the `oauth` profile;
+  - frontend is running on `5173`;
+  - PostgreSQL schema has V9 applied locally.
+- Learning note: `docs/learnings/0025-study-history-chat-room-hide.md`.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -311,11 +332,13 @@ Known merged PRs:
 - PR #33: `docs/tdd-test-design-rule`
 - PR #35: `docs/frontend-playwright-font-learning`
 - PR #36: `docs/frontend-community-post-merge-handoff`
+- PR #37: `feature/frontend-support-api-contract`
 
 Frontend merged PRs:
 
 - PR #1: `feature/oauth-login-baseline`
 - PR #2: `feature/frontend-community-screens`
+- PR #3: `feature/frontend-api-contract-screens`
 
 ## Important Local State
 

@@ -36,8 +36,15 @@ public class StudyMember {
 	@Column(nullable = false, length = 20)
 	private StudyMemberRole role;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private StudyMemberStatus status;
+
 	@Column(name = "joined_at", nullable = false, updatable = false)
 	private LocalDateTime joinedAt;
+
+	@Column(name = "left_at")
+	private LocalDateTime leftAt;
 
 	protected StudyMember() {
 	}
@@ -46,6 +53,7 @@ public class StudyMember {
 		this.studyId = studyId;
 		this.memberId = memberId;
 		this.role = role;
+		this.status = StudyMemberStatus.JOINED;
 	}
 
 	public static StudyMember owner(Long studyId, Long memberId) {
@@ -59,6 +67,20 @@ public class StudyMember {
 	@PrePersist
 	void prePersist() {
 		this.joinedAt = LocalDateTime.now();
+	}
+
+	public void leave() {
+		this.status = StudyMemberStatus.LEFT;
+		this.leftAt = LocalDateTime.now();
+	}
+
+	public void rejoin() {
+		this.status = StudyMemberStatus.JOINED;
+		this.leftAt = null;
+	}
+
+	public boolean isJoined() {
+		return status == StudyMemberStatus.JOINED;
 	}
 
 	public Long getId() {
@@ -77,7 +99,15 @@ public class StudyMember {
 		return role;
 	}
 
+	public StudyMemberStatus getStatus() {
+		return status;
+	}
+
 	public LocalDateTime getJoinedAt() {
 		return joinedAt;
+	}
+
+	public LocalDateTime getLeftAt() {
+		return leftAt;
 	}
 }

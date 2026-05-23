@@ -9,6 +9,7 @@ import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.study.domain.StudyMember;
 import com.studywithme.study.domain.StudyMemberRole;
+import com.studywithme.study.domain.StudyMemberStatus;
 import com.studywithme.study.domain.StudyStatus;
 import com.studywithme.study.exception.StudyErrorCode;
 import com.studywithme.study.repository.StudyMemberRepository;
@@ -103,7 +104,7 @@ class StudyServiceTest {
 	}
 
 	@Test
-	@DisplayName("참여자는 스터디에서 나가면 참여 정보가 삭제된다")
+	@DisplayName("참여자는 스터디에서 나가면 참여 이력이 LEFT 상태로 남는다")
 	void participantCanLeaveStudy() {
 		Member owner = saveMember("owner");
 		Member participant = saveMember("participant");
@@ -115,8 +116,32 @@ class StudyServiceTest {
 
 		studyService.leave(study.id(), participant.getId());
 
-		assertThat(studyMemberRepository.existsByStudyIdAndMemberId(study.id(), participant.getId()))
-			.isFalse();
+		StudyMember studyMember = studyMemberRepository
+			.findByStudyIdAndMemberId(study.id(), participant.getId())
+			.orElseThrow();
+		assertThat(studyMember.getStatus()).isEqualTo(StudyMemberStatus.LEFT);
+		assertThat(studyMember.getLeftAt()).isNotNull();
+	}
+
+	@Test
+	@DisplayName("나갔던 모집 중 스터디에는 다시 참여할 수 있다")
+	void rejoinLeftRecruitingStudy() {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+		studyService.join(study.id(), participant.getId());
+		studyService.leave(study.id(), participant.getId());
+
+		studyService.join(study.id(), participant.getId());
+
+		StudyMember studyMember = studyMemberRepository
+			.findByStudyIdAndMemberId(study.id(), participant.getId())
+			.orElseThrow();
+		assertThat(studyMember.getStatus()).isEqualTo(StudyMemberStatus.JOINED);
+		assertThat(studyMember.getLeftAt()).isNull();
 	}
 
 	@Test

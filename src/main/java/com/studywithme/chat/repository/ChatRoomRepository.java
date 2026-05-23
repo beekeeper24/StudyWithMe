@@ -16,6 +16,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 		from ChatRoom room
 		join ChatRoomMember roomMember on roomMember.roomId = room.id
 		where roomMember.memberId = :memberId
+			and roomMember.hiddenAt is null
 		order by room.createdAt desc, room.id desc
 		""")
 	List<ChatRoom> findAllByMemberId(@Param("memberId") Long memberId);

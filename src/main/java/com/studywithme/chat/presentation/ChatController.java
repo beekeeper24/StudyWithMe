@@ -8,6 +8,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -67,6 +68,16 @@ public class ChatController {
 		return ApiResponse.success(chatService.findRoomMembers(roomId, authenticatedPrincipal.memberId()).stream()
 			.map(ChatRoomMemberResponse::from)
 			.toList());
+	}
+
+	@DeleteMapping("/chat/rooms/{roomId}")
+	public ApiResponse<Void> hideRoom(
+		@PathVariable Long roomId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		chatService.hideRoom(roomId, authenticatedPrincipal.memberId());
+		return ApiResponse.success(null);
 	}
 
 	@PostMapping("/chat/rooms/{roomId}/messages")

@@ -48,6 +48,16 @@ public class StudyController {
 			.toList());
 	}
 
+	@GetMapping("/me")
+	public ApiResponse<MyStudyHistoryResponse> findMyStudies(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(MyStudyHistoryResponse.from(
+			studyService.findMyStudies(authenticatedPrincipal.memberId())
+		));
+	}
+
 	@GetMapping("/{studyId}")
 	public ApiResponse<StudyResponse> findById(
 		@PathVariable Long studyId,

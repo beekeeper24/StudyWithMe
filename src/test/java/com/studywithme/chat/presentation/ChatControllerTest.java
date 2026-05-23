@@ -1,6 +1,7 @@
 package com.studywithme.chat.presentation;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -158,6 +159,25 @@ class ChatControllerTest {
 			.andExpect(jsonPath("$.data[0].memberId").exists())
 			.andExpect(jsonPath("$.data[0].nickname").exists())
 			.andExpect(jsonPath("$.data[0].joinedAt").exists());
+	}
+
+	@Test
+	@DisplayName("인증한 채팅방 참여자는 채팅방을 내 목록에서 삭제할 수 있다")
+	void hideRoom() throws Exception {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		mockMvc.perform(delete("/api/v1/chat/rooms/{roomId}", room.id())
+				.header("Authorization", "Bearer " + accessToken(requester)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true));
+
+		mockMvc.perform(get("/api/v1/chat/rooms")
+				.header("Authorization", "Bearer " + accessToken(requester)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(0));
 	}
 
 	@Test
