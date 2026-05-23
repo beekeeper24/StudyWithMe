@@ -58,6 +58,17 @@ public class ChatController {
 			.toList());
 	}
 
+	@GetMapping("/chat/rooms/{roomId}/members")
+	public ApiResponse<List<ChatRoomMemberResponse>> findRoomMembers(
+		@PathVariable Long roomId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(chatService.findRoomMembers(roomId, authenticatedPrincipal.memberId()).stream()
+			.map(ChatRoomMemberResponse::from)
+			.toList());
+	}
+
 	@PostMapping("/chat/rooms/{roomId}/messages")
 	public ApiResponse<ChatMessageResponse> sendMessage(
 		@PathVariable Long roomId,

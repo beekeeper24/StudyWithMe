@@ -1,12 +1,15 @@
 package com.studywithme.chat.presentation;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.studywithme.chat.application.ChatRoomResult;
 import java.time.LocalDateTime;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ChatRoomResponse(
 	Long id,
 	String type,
 	Long studyId,
+	String title,
 	LocalDateTime createdAt
 ) {
 
@@ -15,6 +18,7 @@ public record ChatRoomResponse(
 			result.id(),
 			result.type().name(),
 			result.studyId(),
+			result.title(),
 			result.createdAt()
 		);
 	}

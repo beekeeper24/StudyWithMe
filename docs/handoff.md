@@ -151,6 +151,11 @@ Completed and merged into `develop`:
    - startup attempts refresh-cookie session recovery and then loads profile, notifications, and chat rooms;
    - study detail can open a study chat room;
    - chat tab lists the authenticated member's chat rooms and loads message history before realtime participation.
+24. Frontend support API contract:
+   - study list/detail responses include owner nickname/profile image and requester-specific membership flags;
+   - chat room responses include a display title;
+   - authenticated chat room members can query `GET /api/v1/chat/rooms/{roomId}/members`;
+   - chat member list access is still guarded by room membership validation.
 
 No active feature work is currently in progress after backend PR #36 and frontend PR #2. Start the next branch from `develop`.
 
@@ -224,10 +229,13 @@ Chat REST MVP details:
   - authenticated `POST /api/v1/chat/private-rooms`;
   - authenticated `POST /api/v1/studies/{studyId}/chat-room`;
   - authenticated `GET /api/v1/chat/rooms`;
+  - authenticated `GET /api/v1/chat/rooms/{roomId}/members`;
   - authenticated `POST /api/v1/chat/rooms/{roomId}/messages`;
   - authenticated `GET /api/v1/chat/rooms/{roomId}/messages`.
 - Private rooms use deterministic room keys so the same two members reuse one room.
 - Study rooms use deterministic room keys by study id and sync current study members into `chat_room_members`.
+- Chat room list responses include `title`; private room titles use the other member nickname, study room titles use the study title.
+- Chat room member responses expose member id, nickname, profile image URL, and joined time only to room members.
 - Unread counts, read receipts, chat notifications, moderation, and retention policy are not implemented yet.
 
 Chat WebSocket delivery details:

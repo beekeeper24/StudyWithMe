@@ -13,5 +13,7 @@ public interface StudyMemberRepository extends JpaRepository<StudyMember, Long> 
 
 	List<StudyMember> findAllByStudyId(Long studyId);
 
+	List<StudyMember> findAllByMemberId(Long memberId);
+
 	void deleteByStudyIdAndMemberId(Long studyId, Long memberId);
 }

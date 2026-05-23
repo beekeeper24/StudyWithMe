@@ -130,7 +130,30 @@ class StudyControllerTest {
 
 		mockMvc.perform(get("/api/v1/studies"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.success").value(true));
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data[0].ownerNickname").value("owner"))
+			.andExpect(jsonPath("$.data[0].ownerProfileImageUrl").doesNotExist())
+			.andExpect(jsonPath("$.data[0].joinedByRequester").value(false))
+			.andExpect(jsonPath("$.data[0].ownedByRequester").value(false));
+	}
+
+	@Test
+	@DisplayName("인증한 회원이 스터디 목록을 조회하면 자신의 가입 여부를 함께 반환한다")
+	void listStudiesWithRequesterMembership() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult joinedStudy = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("참여한 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+		studyService.join(joinedStudy.id(), participant.getId());
+
+		mockMvc.perform(get("/api/v1/studies")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data[0].joinedByRequester").value(true))
+			.andExpect(jsonPath("$.data[0].ownedByRequester").value(false));
 	}
 
 	@Test
@@ -145,7 +168,27 @@ class StudyControllerTest {
 		mockMvc.perform(get("/api/v1/studies/{studyId}", study.id()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.id").value(study.id()));
+			.andExpect(jsonPath("$.data.id").value(study.id()))
+			.andExpect(jsonPath("$.data.ownerNickname").value("owner"))
+			.andExpect(jsonPath("$.data.joinedByRequester").value(false))
+			.andExpect(jsonPath("$.data.ownedByRequester").value(false));
+	}
+
+	@Test
+	@DisplayName("인증한 모집장이 스터디 상세를 조회하면 모집장 여부를 함께 반환한다")
+	void getStudyWithRequesterOwnership() throws Exception {
+		Member owner = saveMember("owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		mockMvc.perform(get("/api/v1/studies/{studyId}", study.id())
+				.header("Authorization", "Bearer " + accessToken(owner)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.joinedByRequester").value(true))
+			.andExpect(jsonPath("$.data.ownedByRequester").value(true));
 	}
 
 	@Test

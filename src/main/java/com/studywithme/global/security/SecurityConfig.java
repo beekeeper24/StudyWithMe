@@ -80,7 +80,12 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.PUT, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/notifications").authenticated()
-				.requestMatchers(HttpMethod.GET, "/api/v1/chat/rooms", "/api/v1/chat/rooms/*/messages").authenticated()
+				.requestMatchers(
+					HttpMethod.GET,
+					"/api/v1/chat/rooms",
+					"/api/v1/chat/rooms/*/messages",
+					"/api/v1/chat/rooms/*/members"
+				).authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/*/read").authenticated()
 				.requestMatchers(
 					"/actuator/health",
