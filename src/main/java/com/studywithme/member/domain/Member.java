@@ -145,6 +145,14 @@ public class Member {
 		return isNicknameRequired() || isTermsAgreementRequired();
 	}
 
+	public void withdraw(String anonymizedEmail, String anonymizedOauthSubject) {
+		this.email = anonymizedEmail;
+		this.nickname = null;
+		this.oauthSubject = anonymizedOauthSubject;
+		this.profileImageUrl = null;
+		this.status = MemberStatus.WITHDRAWN;
+	}
+
 	public void withdraw() {
 		this.status = MemberStatus.WITHDRAWN;
 	}

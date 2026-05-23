@@ -1,6 +1,7 @@
 package com.studywithme.auth.presentation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -9,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.studywithme.auth.token.RefreshTokenHash;
 import com.studywithme.auth.token.RefreshTokenRepository;
+import com.studywithme.auth.application.OAuthLoginService;
+import com.studywithme.auth.oauth.OAuth2UserProfile;
 import com.studywithme.auth.token.JwtTokenProvider;
 import com.studywithme.auth.token.TokenPair;
 import com.studywithme.auth.token.TokenService;
@@ -51,6 +54,9 @@ class AuthControllerTest {
 
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
+
+	@Autowired
+	private OAuthLoginService oAuthLoginService;
 
 	@AfterEach
 	void tearDown() {
@@ -400,5 +406,77 @@ class AuthControllerTest {
 		assertThat(refreshTokenRepository.findByTokenHash(RefreshTokenHash.sha256(tokenPair.refreshToken()))
 			.orElseThrow()
 			.isRevoked()).isTrue();
+	}
+
+	@Test
+	@DisplayName("회원탈퇴 시 계정을 익명화하고 refresh token을 폐기해 같은 OAuth 계정 재가입을 허용한다")
+	void withdrawMemberAndAllowOAuthSignupAgain() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"withdraw@example.com",
+			"withdraw-user",
+			OAuthProvider.GOOGLE,
+			"google-withdraw",
+			null
+		));
+		TokenPair tokenPair = tokenService.issue(member);
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		String setCookie = mockMvc.perform(delete("/api/v1/auth/me")
+				.header("Authorization", "Bearer " + accessToken)
+				.cookie(new MockCookie("refreshToken", tokenPair.refreshToken())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andReturn()
+			.getResponse()
+			.getHeader("Set-Cookie");
+
+		Member withdrawnMember = memberRepository.findById(member.getId()).orElseThrow();
+		assertThat(setCookie).contains("refreshToken=");
+		assertThat(setCookie).contains("Max-Age=0");
+		assertThat(withdrawnMember.getStatus().name()).isEqualTo("WITHDRAWN");
+		assertThat(withdrawnMember.getNickname()).isNull();
+		assertThat(withdrawnMember.getEmail()).startsWith("withdrawn-");
+		assertThat(withdrawnMember.getOauthSubject()).startsWith("withdrawn:");
+		assertThat(refreshTokenRepository.findByTokenHash(RefreshTokenHash.sha256(tokenPair.refreshToken()))
+			.orElseThrow()
+			.isRevoked()).isTrue();
+
+		Member signedUpAgain = oAuthLoginService.loginOrSignUp(new OAuth2UserProfile(
+			OAuthProvider.GOOGLE,
+			"google-withdraw",
+			"withdraw@example.com",
+			"provider-name",
+			null
+		));
+
+		assertThat(signedUpAgain.getId()).isNotEqualTo(member.getId());
+		assertThat(signedUpAgain.isSignupRequired()).isTrue();
+		assertThat(memberRepository.findByOauthProviderAndOauthSubject(
+			OAuthProvider.GOOGLE,
+			"google-withdraw"
+		).orElseThrow().getId()).isEqualTo(signedUpAgain.getId());
+	}
+
+	@Test
+	@DisplayName("탈퇴한 회원의 기존 access token은 사용할 수 없다")
+	void rejectWithdrawnMemberAccessToken() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"withdrawn-access@example.com",
+			"withdrawn-access-user",
+			OAuthProvider.GOOGLE,
+			"google-withdrawn-access",
+			null
+		));
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(delete("/api/v1/auth/me")
+				.header("Authorization", "Bearer " + accessToken))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(get("/api/v1/auth/me")
+				.header("Authorization", "Bearer " + accessToken))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
 	}
 }

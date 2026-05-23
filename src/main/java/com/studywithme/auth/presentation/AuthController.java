@@ -6,12 +6,14 @@ import com.studywithme.auth.token.TokenService;
 import com.studywithme.global.common.ApiResponse;
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.global.security.AuthenticatedMemberPrincipal;
+import com.studywithme.member.application.MemberAccountService;
 import com.studywithme.member.application.MemberProfileService;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.repository.MemberRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,17 +26,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
 	private final MemberRepository memberRepository;
+	private final MemberAccountService memberAccountService;
 	private final MemberProfileService memberProfileService;
 	private final TokenService tokenService;
 	private final RefreshTokenCookieWriter refreshTokenCookieWriter;
 
 	public AuthController(
 		MemberRepository memberRepository,
+		MemberAccountService memberAccountService,
 		MemberProfileService memberProfileService,
 		TokenService tokenService,
 		RefreshTokenCookieWriter refreshTokenCookieWriter
 	) {
 		this.memberRepository = memberRepository;
+		this.memberAccountService = memberAccountService;
 		this.memberProfileService = memberProfileService;
 		this.tokenService = tokenService;
 		this.refreshTokenCookieWriter = refreshTokenCookieWriter;
@@ -94,6 +99,17 @@ public class AuthController {
 	) {
 		refreshTokenCookieWriter.read(request)
 			.ifPresent(tokenService::revoke);
+		refreshTokenCookieWriter.clear(response);
+		return ApiResponse.success(null);
+	}
+
+	@DeleteMapping("/me")
+	public ApiResponse<Void> withdraw(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal,
+		HttpServletResponse response
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		memberAccountService.withdraw(authenticatedPrincipal.memberId());
 		refreshTokenCookieWriter.clear(response);
 		return ApiResponse.success(null);
 	}

@@ -1,8 +1,11 @@
 package com.studywithme.global.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.studywithme.auth.exception.AuthErrorCode;
+import com.studywithme.global.exception.ErrorCode;
 import com.studywithme.global.exception.ErrorResponse;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.exception.MemberErrorCode;
 import com.studywithme.member.repository.MemberRepository;
 import jakarta.servlet.FilterChain;
@@ -22,6 +25,7 @@ public class SignupRequiredFilter extends OncePerRequestFilter {
 		"/api/v1/auth/me",
 		"/api/v1/auth/me/signup",
 		"/api/v1/auth/me/nickname",
+		"/api/v1/auth/me/withdraw",
 		"/api/v1/auth/refresh",
 		"/api/v1/auth/logout"
 	);
@@ -40,7 +44,7 @@ public class SignupRequiredFilter extends OncePerRequestFilter {
 		HttpServletResponse response,
 		FilterChain filterChain
 	) throws ServletException, IOException {
-		if (shouldSkip(request)) {
+		if (shouldSkipPath(request)) {
 			filterChain.doFilter(request, response);
 			return;
 		}
@@ -58,6 +62,14 @@ public class SignupRequiredFilter extends OncePerRequestFilter {
 			writeErrorResponse(request, response, MemberErrorCode.MEMBER_NOT_FOUND);
 			return;
 		}
+		if (member.getStatus() != MemberStatus.ACTIVE) {
+			writeErrorResponse(request, response, AuthErrorCode.INVALID_ACCESS_TOKEN);
+			return;
+		}
+		if (isOnboardingPath(request)) {
+			filterChain.doFilter(request, response);
+			return;
+		}
 		if (member.isSignupRequired()) {
 			writeErrorResponse(request, response, MemberErrorCode.NICKNAME_REQUIRED);
 			return;
@@ -66,19 +78,22 @@ public class SignupRequiredFilter extends OncePerRequestFilter {
 		filterChain.doFilter(request, response);
 	}
 
-	private boolean shouldSkip(HttpServletRequest request) {
+	private boolean shouldSkipPath(HttpServletRequest request) {
 		if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
 			return true;
 		}
 		String path = request.getRequestURI();
-		return !path.startsWith("/api/v1/")
-			|| ALLOWED_ONBOARDING_PATHS.contains(path);
+		return !path.startsWith("/api/v1/");
+	}
+
+	private boolean isOnboardingPath(HttpServletRequest request) {
+		return ALLOWED_ONBOARDING_PATHS.contains(request.getRequestURI());
 	}
 
 	private void writeErrorResponse(
 		HttpServletRequest request,
 		HttpServletResponse response,
-		MemberErrorCode errorCode
+		ErrorCode errorCode
 	) throws IOException {
 		response.setStatus(errorCode.getStatus().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);

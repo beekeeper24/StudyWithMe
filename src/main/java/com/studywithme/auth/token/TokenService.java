@@ -3,6 +3,7 @@ package com.studywithme.auth.token;
 import com.studywithme.auth.exception.AuthErrorCode;
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -104,6 +105,9 @@ public class TokenService {
 		refreshToken.rotate(now);
 		Member member = memberRepository.findById(refreshToken.getMember().getId())
 			.orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN));
+		if (member.getStatus() != MemberStatus.ACTIVE) {
+			throw new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+		}
 		return issue(member);
 	}
 
@@ -111,5 +115,12 @@ public class TokenService {
 	public void revoke(String rawRefreshToken) {
 		refreshTokenRepository.findByTokenHash(RefreshTokenHash.sha256(rawRefreshToken))
 			.ifPresent(refreshToken -> refreshToken.revoke(clock.instant()));
+	}
+
+	@Transactional
+	public void revokeAllByMemberId(Long memberId) {
+		Instant now = clock.instant();
+		refreshTokenRepository.findAllByMemberId(memberId)
+			.forEach(refreshToken -> refreshToken.revoke(now));
 	}
 }
