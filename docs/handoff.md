@@ -173,6 +173,13 @@ Completed and merged into `develop`:
    - duplicate nicknames are rejected;
    - signup-required members can only call onboarding auth APIs until nickname and terms agreement are saved;
    - frontend gates the app shell behind a sign-up screen and supports nickname edits from My Page.
+27. Member withdrawal:
+   - authenticated `DELETE /api/v1/auth/me` withdraws the current member;
+   - withdrawal soft-deletes the member with `WITHDRAWN` status;
+   - member email, nickname, profile image, and OAuth subject are anonymized so the same OAuth account can sign up again;
+   - all refresh tokens for the member are revoked and the refresh cookie is cleared;
+   - existing access tokens for withdrawn members are rejected by the authentication/account gate;
+   - frontend My Page exposes a `회원 탈퇴` button for local testing and normal user flow.
 
 Active feature work in progress:
 
@@ -181,6 +188,7 @@ Active feature work in progress:
   - `docs/learnings/0025-study-history-chat-room-hide.md`
   - `docs/learnings/0026-member-nickname-onboarding.md`
   - `docs/learnings/0027-signup-terms-onboarding.md`
+  - `docs/learnings/0028-member-withdrawal-rejoin.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
@@ -280,6 +288,20 @@ Member nickname onboarding details:
   - `POST /api/v1/auth/logout`.
 - The frontend must fetch `GET /api/v1/auth/me` before loading app data after OAuth callback or refresh recovery. Loading notifications, chat rooms, or studies in the same first `Promise.all` will fail with `MEMBER-004` for new members.
 - First sign-up must call `PUT /api/v1/auth/me/signup` with nickname, `termsAgreed: true`, and `privacyPolicyAgreed: true`. Calling nickname update alone does not complete sign-up because terms agreement remains missing.
+
+Member withdrawal details:
+
+- API: authenticated `DELETE /api/v1/auth/me`.
+- The endpoint clears the refresh token cookie even when the request only has an access token.
+- `MemberAccountService.withdraw(...)` anonymizes the current row instead of hard deleting it:
+  - email becomes `withdrawn-{memberId}@studywithme.local`;
+  - nickname becomes `null`;
+  - OAuth subject becomes `withdrawn:{memberId}`;
+  - profile image becomes `null`;
+  - status becomes `WITHDRAWN`.
+- This preserves foreign-key references from posts, comments, studies, notifications, and chats while freeing the original OAuth provider subject for a new sign-up.
+- `SignupRequiredFilter` rejects withdrawn members with `AUTH-003` before controller handling, including `GET /api/v1/auth/me`.
+- `TokenService.refresh(...)` rejects refresh tokens whose member is not `ACTIVE`.
 
 Chat WebSocket delivery details:
 
