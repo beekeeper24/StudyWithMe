@@ -18,7 +18,7 @@ class OAuthLoginServiceTest {
 	private MemberRepository memberRepository;
 
 	@Test
-	@DisplayName("처음 로그인한 OAuth 회원은 새 회원으로 저장한다")
+	@DisplayName("처음 로그인한 OAuth 회원은 별명 설정이 필요한 새 회원으로 저장한다")
 	void signUpOAuthMember() {
 		OAuthLoginService oauthLoginService = new OAuthLoginService(memberRepository);
 		OAuth2UserProfile profile = new OAuth2UserProfile(
@@ -34,6 +34,8 @@ class OAuthLoginServiceTest {
 		assertThat(member.getId()).isNotNull();
 		assertThat(member.getOauthProvider()).isEqualTo(OAuthProvider.GOOGLE);
 		assertThat(member.getOauthSubject()).isEqualTo("google-123");
+		assertThat(member.getNickname()).isNull();
+		assertThat(member.isNicknameRequired()).isTrue();
 		assertThat(memberRepository.count()).isEqualTo(1);
 	}
 
@@ -66,27 +68,30 @@ class OAuthLoginServiceTest {
 	}
 
 	@Test
-	@DisplayName("신규 OAuth 회원의 닉네임이 이미 사용 중이면 중복되지 않는 닉네임을 만든다")
-	void resolveDuplicatedNickname() {
+	@DisplayName("이미 가입한 OAuth 회원은 설정한 별명을 유지한다")
+	void keepConfiguredNicknameForExistingOAuthMember() {
 		OAuthLoginService oauthLoginService = new OAuthLoginService(memberRepository);
-		oauthLoginService.loginOrSignUp(new OAuth2UserProfile(
+		Member firstMember = oauthLoginService.loginOrSignUp(new OAuth2UserProfile(
 			OAuthProvider.GOOGLE,
 			"google-123",
 			"google@example.com",
 			"beekeeper",
 			null
 		));
+		firstMember.updateNickname("beekeeper");
 
-		Member kakaoMember = oauthLoginService.loginOrSignUp(new OAuth2UserProfile(
-			OAuthProvider.KAKAO,
-			"kakao-123",
-			"kakao@example.com",
-			"beekeeper",
-			null
+		Member existingMember = oauthLoginService.loginOrSignUp(new OAuth2UserProfile(
+			OAuthProvider.GOOGLE,
+			"google-123",
+			"updated@example.com",
+			"oauth-name",
+			"https://example.com/updated.png"
 		));
 
-		assertThat(kakaoMember.getNickname()).startsWith("beekeeper-");
-		assertThat(kakaoMember.getNickname()).isNotEqualTo("beekeeper");
-		assertThat(memberRepository.count()).isEqualTo(2);
+		assertThat(existingMember.getId()).isEqualTo(firstMember.getId());
+		assertThat(existingMember.getNickname()).isEqualTo("beekeeper");
+		assertThat(existingMember.isNicknameRequired()).isFalse();
+		assertThat(existingMember.getEmail()).isEqualTo("updated@example.com");
+		assertThat(existingMember.getProfileImageUrl()).isEqualTo("https://example.com/updated.png");
 	}
 }

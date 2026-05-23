@@ -3,6 +3,7 @@ package com.studywithme.auth.presentation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockCookie;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -84,9 +86,130 @@ class AuthControllerTest {
 			.andExpect(jsonPath("$.data.id").value(member.getId()))
 			.andExpect(jsonPath("$.data.email").value("bee@example.com"))
 			.andExpect(jsonPath("$.data.nickname").value("beekeeper"))
+			.andExpect(jsonPath("$.data.nicknameRequired").value(false))
 			.andExpect(jsonPath("$.data.profileImageUrl").value("https://example.com/profile.png"))
 			.andExpect(jsonPath("$.data.status").value("ACTIVE"))
 			.andExpect(jsonPath("$.data.roles[0]").value("USER"));
+	}
+
+	@Test
+	@DisplayName("별명이 없는 OAuth 신규 회원은 내 정보에서 별명 설정 필요 상태로 조회된다")
+	void getMeWithNicknameRequired() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"newbie@example.com",
+			null,
+			OAuthProvider.GOOGLE,
+			"google-newbie",
+			null
+		));
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(get("/api/v1/auth/me")
+				.header("Authorization", "Bearer " + accessToken))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.nickname").isEmpty())
+			.andExpect(jsonPath("$.data.nicknameRequired").value(true));
+	}
+
+	@Test
+	@DisplayName("별명을 설정하지 않은 회원은 온보딩 허용 API 외 인증 API를 사용할 수 없다")
+	void rejectAuthenticatedApiBeforeNicknameSetup() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"newbie@example.com",
+			null,
+			OAuthProvider.GOOGLE,
+			"google-newbie",
+			null
+		));
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(post("/api/v1/studies")
+				.header("Authorization", "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"title":"알고리즘 스터디","description":"매주 문제를 풉니다."}
+					"""))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("MEMBER-004"));
+	}
+
+	@Test
+	@DisplayName("인증한 회원은 별명을 설정할 수 있다")
+	void updateNickname() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"newbie@example.com",
+			null,
+			OAuthProvider.GOOGLE,
+			"google-newbie",
+			null
+		));
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(put("/api/v1/auth/me/nickname")
+				.header("Authorization", "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"nickname":"스터디왕"}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.nickname").value("스터디왕"))
+			.andExpect(jsonPath("$.data.nicknameRequired").value(false));
+	}
+
+	@Test
+	@DisplayName("이미 사용 중인 별명으로 설정할 수 없다")
+	void rejectDuplicatedNickname() throws Exception {
+		memberRepository.saveAndFlush(Member.createOAuthMember(
+			"owner@example.com",
+			"스터디왕",
+			OAuthProvider.GOOGLE,
+			"google-owner",
+			null
+		));
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"newbie@example.com",
+			null,
+			OAuthProvider.KAKAO,
+			"kakao-newbie",
+			null
+		));
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(put("/api/v1/auth/me/nickname")
+				.header("Authorization", "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"nickname":"스터디왕"}
+					"""))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("MEMBER-002"));
+	}
+
+	@Test
+	@DisplayName("별명은 공백 없이 한글, 영문, 숫자, 밑줄만 사용할 수 있다")
+	void rejectInvalidNicknamePattern() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"newbie@example.com",
+			null,
+			OAuthProvider.KAKAO,
+			"kakao-newbie",
+			null
+		));
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(put("/api/v1/auth/me/nickname")
+				.header("Authorization", "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"nickname":"스터디 왕"}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("MEMBER-001"));
 	}
 
 	@Test
