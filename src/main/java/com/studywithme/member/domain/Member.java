@@ -53,6 +53,15 @@ public class Member {
 	@Column(name = "profile_image_url", length = 500)
 	private String profileImageUrl;
 
+	@Column(name = "terms_agreed_at")
+	private LocalDateTime termsAgreedAt;
+
+	@Column(name = "terms_version", length = 20)
+	private String termsVersion;
+
+	@Column(name = "privacy_policy_version", length = 20)
+	private String privacyPolicyVersion;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private MemberStatus status;
@@ -84,6 +93,11 @@ public class Member {
 		this.oauthProvider = oauthProvider;
 		this.oauthSubject = oauthSubject;
 		this.profileImageUrl = profileImageUrl;
+		if (nickname != null && !nickname.isBlank()) {
+			this.termsAgreedAt = LocalDateTime.now();
+			this.termsVersion = "LEGACY";
+			this.privacyPolicyVersion = "LEGACY";
+		}
 		this.status = MemberStatus.ACTIVE;
 		this.roles.add(MemberRole.USER);
 	}
@@ -107,8 +121,28 @@ public class Member {
 		this.nickname = nickname;
 	}
 
+	public void completeSignup(
+		String nickname,
+		String termsVersion,
+		String privacyPolicyVersion,
+		LocalDateTime agreedAt
+	) {
+		this.nickname = nickname;
+		this.termsVersion = termsVersion;
+		this.privacyPolicyVersion = privacyPolicyVersion;
+		this.termsAgreedAt = agreedAt;
+	}
+
 	public boolean isNicknameRequired() {
 		return nickname == null || nickname.isBlank();
+	}
+
+	public boolean isTermsAgreementRequired() {
+		return termsAgreedAt == null;
+	}
+
+	public boolean isSignupRequired() {
+		return isNicknameRequired() || isTermsAgreementRequired();
 	}
 
 	public void withdraw() {
@@ -149,6 +183,18 @@ public class Member {
 
 	public String getProfileImageUrl() {
 		return profileImageUrl;
+	}
+
+	public LocalDateTime getTermsAgreedAt() {
+		return termsAgreedAt;
+	}
+
+	public String getTermsVersion() {
+		return termsVersion;
+	}
+
+	public String getPrivacyPolicyVersion() {
+		return privacyPolicyVersion;
 	}
 
 	public MemberStatus getStatus() {

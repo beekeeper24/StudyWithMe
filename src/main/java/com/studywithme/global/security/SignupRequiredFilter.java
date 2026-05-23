@@ -16,10 +16,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-public class NicknameRequiredFilter extends OncePerRequestFilter {
+public class SignupRequiredFilter extends OncePerRequestFilter {
 
 	private static final Set<String> ALLOWED_ONBOARDING_PATHS = Set.of(
 		"/api/v1/auth/me",
+		"/api/v1/auth/me/signup",
 		"/api/v1/auth/me/nickname",
 		"/api/v1/auth/refresh",
 		"/api/v1/auth/logout"
@@ -28,7 +29,7 @@ public class NicknameRequiredFilter extends OncePerRequestFilter {
 	private final MemberRepository memberRepository;
 	private final ObjectMapper objectMapper;
 
-	public NicknameRequiredFilter(MemberRepository memberRepository, ObjectMapper objectMapper) {
+	public SignupRequiredFilter(MemberRepository memberRepository, ObjectMapper objectMapper) {
 		this.memberRepository = memberRepository;
 		this.objectMapper = objectMapper;
 	}
@@ -57,7 +58,7 @@ public class NicknameRequiredFilter extends OncePerRequestFilter {
 			writeErrorResponse(request, response, MemberErrorCode.MEMBER_NOT_FOUND);
 			return;
 		}
-		if (member.isNicknameRequired()) {
+		if (member.isSignupRequired()) {
 			writeErrorResponse(request, response, MemberErrorCode.NICKNAME_REQUIRED);
 			return;
 		}

@@ -87,6 +87,8 @@ class AuthControllerTest {
 			.andExpect(jsonPath("$.data.email").value("bee@example.com"))
 			.andExpect(jsonPath("$.data.nickname").value("beekeeper"))
 			.andExpect(jsonPath("$.data.nicknameRequired").value(false))
+			.andExpect(jsonPath("$.data.termsAgreementRequired").value(false))
+			.andExpect(jsonPath("$.data.signupRequired").value(false))
 			.andExpect(jsonPath("$.data.profileImageUrl").value("https://example.com/profile.png"))
 			.andExpect(jsonPath("$.data.status").value("ACTIVE"))
 			.andExpect(jsonPath("$.data.roles[0]").value("USER"));
@@ -109,12 +111,14 @@ class AuthControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.nickname").isEmpty())
-			.andExpect(jsonPath("$.data.nicknameRequired").value(true));
+			.andExpect(jsonPath("$.data.nicknameRequired").value(true))
+			.andExpect(jsonPath("$.data.termsAgreementRequired").value(true))
+			.andExpect(jsonPath("$.data.signupRequired").value(true));
 	}
 
 	@Test
-	@DisplayName("별명을 설정하지 않은 회원은 온보딩 허용 API 외 인증 API를 사용할 수 없다")
-	void rejectAuthenticatedApiBeforeNicknameSetup() throws Exception {
+	@DisplayName("회원가입을 완료하지 않은 회원은 온보딩 허용 API 외 인증 API를 사용할 수 없다")
+	void rejectAuthenticatedApiBeforeSignupCompletion() throws Exception {
 		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
 			"newbie@example.com",
 			null,
@@ -133,6 +137,82 @@ class AuthControllerTest {
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.success").value(false))
 			.andExpect(jsonPath("$.error.code").value("MEMBER-004"));
+	}
+
+	@Test
+	@DisplayName("별명만 설정하고 약관에 동의하지 않은 회원도 앱 API를 사용할 수 없다")
+	void rejectAuthenticatedApiBeforeTermsAgreement() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"newbie@example.com",
+			null,
+			OAuthProvider.GOOGLE,
+			"google-newbie",
+			null
+		));
+		member.updateNickname("스터디왕");
+		memberRepository.flush();
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(post("/api/v1/studies")
+				.header("Authorization", "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"title":"알고리즘 스터디","description":"매주 문제를 풉니다."}
+					"""))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("MEMBER-004"));
+	}
+
+	@Test
+	@DisplayName("신규 OAuth 회원은 별명과 필수 약관 동의를 함께 저장해 회원가입을 완료한다")
+	void completeSignup() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"newbie@example.com",
+			null,
+			OAuthProvider.GOOGLE,
+			"google-newbie",
+			null
+		));
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(put("/api/v1/auth/me/signup")
+				.header("Authorization", "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"nickname":"스터디왕","termsAgreed":true,"privacyPolicyAgreed":true}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.nickname").value("스터디왕"))
+			.andExpect(jsonPath("$.data.nicknameRequired").value(false))
+			.andExpect(jsonPath("$.data.termsAgreementRequired").value(false))
+			.andExpect(jsonPath("$.data.signupRequired").value(false))
+			.andExpect(jsonPath("$.data.termsVersion").value("2026-05-24"))
+			.andExpect(jsonPath("$.data.privacyPolicyVersion").value("2026-05-24"));
+	}
+
+	@Test
+	@DisplayName("필수 약관에 동의하지 않으면 회원가입을 완료할 수 없다")
+	void rejectSignupWithoutTermsAgreement() throws Exception {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"newbie@example.com",
+			null,
+			OAuthProvider.GOOGLE,
+			"google-newbie",
+			null
+		));
+		String accessToken = jwtTokenProvider.createAccessToken(member).token();
+
+		mockMvc.perform(put("/api/v1/auth/me/signup")
+				.header("Authorization", "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"nickname":"스터디왕","termsAgreed":true,"privacyPolicyAgreed":false}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("MEMBER-005"));
 	}
 
 	@Test
