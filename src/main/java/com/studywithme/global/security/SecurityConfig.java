@@ -5,6 +5,7 @@ import com.studywithme.auth.oauth.CustomOAuth2UserService;
 import com.studywithme.auth.oauth.OAuth2AuthenticationSuccessHandler;
 import com.studywithme.auth.token.JwtTokenProvider;
 import com.studywithme.global.config.AppCorsProperties;
+import com.studywithme.member.repository.MemberRepository;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -30,19 +31,22 @@ public class SecurityConfig {
 	private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 	private final CustomOAuth2UserService customOAuth2UserService;
 	private final OAuth2AuthenticationSuccessHandler oauth2AuthenticationSuccessHandler;
+	private final MemberRepository memberRepository;
 
 	public SecurityConfig(
 		JwtTokenProvider jwtTokenProvider,
 		ObjectMapper objectMapper,
 		JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
 		CustomOAuth2UserService customOAuth2UserService,
-		OAuth2AuthenticationSuccessHandler oauth2AuthenticationSuccessHandler
+		OAuth2AuthenticationSuccessHandler oauth2AuthenticationSuccessHandler,
+		MemberRepository memberRepository
 	) {
 		this.jwtTokenProvider = jwtTokenProvider;
 		this.objectMapper = objectMapper;
 		this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
 		this.customOAuth2UserService = customOAuth2UserService;
 		this.oauth2AuthenticationSuccessHandler = oauth2AuthenticationSuccessHandler;
+		this.memberRepository = memberRepository;
 	}
 
 	@Bean
@@ -59,6 +63,7 @@ public class SecurityConfig {
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
 				.requestMatchers("/api/v1/auth/me").authenticated()
+				.requestMatchers(HttpMethod.PUT, "/api/v1/auth/me/nickname").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/studies/me").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/studies", "/api/v1/studies/*").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*").permitAll()
@@ -103,7 +108,8 @@ public class SecurityConfig {
 			.httpBasic(AbstractHttpConfigurer::disable)
 			.formLogin(AbstractHttpConfigurer::disable)
 			.logout(AbstractHttpConfigurer::disable)
-			.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+			.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+			.addFilterAfter(nicknameRequiredFilter(), JwtAuthenticationFilter.class);
 
 		if (clientRegistrationRepository.getIfAvailable() != null) {
 			http.oauth2Login(oauth2 -> oauth2
@@ -118,6 +124,11 @@ public class SecurityConfig {
 	@Bean
 	public JwtAuthenticationFilter jwtAuthenticationFilter() {
 		return new JwtAuthenticationFilter(jwtTokenProvider, objectMapper);
+	}
+
+	@Bean
+	public NicknameRequiredFilter nicknameRequiredFilter() {
+		return new NicknameRequiredFilter(memberRepository, objectMapper);
 	}
 
 	@Bean

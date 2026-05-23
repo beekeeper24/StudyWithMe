@@ -40,7 +40,7 @@ public class Member {
 	@Column(nullable = false)
 	private String email;
 
-	@Column(nullable = false, length = 50)
+	@Column(length = 50)
 	private String nickname;
 
 	@Enumerated(EnumType.STRING)
@@ -101,6 +101,14 @@ public class Member {
 	public void updateOAuthProfile(String email, String profileImageUrl) {
 		this.email = email;
 		this.profileImageUrl = profileImageUrl;
+	}
+
+	public void updateNickname(String nickname) {
+		this.nickname = nickname;
+	}
+
+	public boolean isNicknameRequired() {
+		return nickname == null || nickname.isBlank();
 	}
 
 	public void withdraw() {

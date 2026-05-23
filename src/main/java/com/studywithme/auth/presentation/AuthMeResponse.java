@@ -9,6 +9,7 @@ public record AuthMeResponse(
 	String email,
 	String nickname,
 	String profileImageUrl,
+	boolean nicknameRequired,
 	String status,
 	List<String> roles
 ) {
@@ -19,6 +20,7 @@ public record AuthMeResponse(
 			member.getEmail(),
 			member.getNickname(),
 			member.getProfileImageUrl(),
+			member.isNicknameRequired(),
 			member.getStatus().name(),
 			member.getRoles().stream()
 				.map(MemberRole::name)

@@ -156,29 +156,33 @@ Completed and merged into `develop`:
    - chat room responses include a display title;
    - authenticated chat room members can query `GET /api/v1/chat/rooms/{roomId}/members`;
    - chat member list access is still guarded by room membership validation.
+25. My Page study history and chat room hiding:
+   - public study list shows recruiting studies only;
+   - authenticated `GET /api/v1/studies/me` returns active and past study history;
+   - study leave preserves `study_members` history with `LEFT` and `left_at`;
+   - chat room delete hides the room per requester with `chat_room_members.hidden_at`;
+   - study leavers are excluded from existing study chat room lists and message access even if old `chat_room_members` rows remain;
+   - frontend profile menu opens a My Page with active/past study history;
+   - frontend chat room list has a room delete action.
+26. Member nickname onboarding:
+   - new OAuth members are created with `nickname = null` instead of using provider nickname automatically;
+   - `GET /api/v1/auth/me` returns `nicknameRequired`;
+   - authenticated `PUT /api/v1/auth/me/nickname` sets or changes the member nickname;
+   - nickname rules are 2-20 chars, Korean/English letters, numbers, and underscore only;
+   - duplicate nicknames are rejected;
+   - nickname-required members can only call onboarding auth APIs until a nickname is set;
+   - frontend gates the app shell behind a nickname setup screen and supports nickname edits from My Page.
 
 Active feature work in progress:
 
-- Backend branch: `feature/my-page-study-chat-history`
-- Frontend branch: `feature/my-page-study-chat-history`
-- Goal:
-  - public study list shows recruiting studies only;
-  - authenticated `GET /api/v1/studies/me` returns active and past study history;
-  - study leave preserves `study_members` history with `LEFT` and `left_at`;
-  - chat room delete hides the room per requester with `chat_room_members.hidden_at`;
-  - study leavers are excluded from existing study chat room lists and message access even if old `chat_room_members` rows remain;
-  - frontend profile menu opens a My Page with active/past study history;
-  - frontend chat room list has a room delete action.
-- Verification already run on the active branches:
-  - backend `./gradlew test --no-daemon --console=plain`;
-  - frontend `npm run build`;
-  - frontend `npm run lint`;
-  - Playwright browser render check for login, authenticated My Page, and chat.
-- Local runtime after this work:
+- None expected on `develop` after the latest verified merge.
+- Latest completed learning notes:
+  - `docs/learnings/0025-study-history-chat-room-hide.md`
+  - `docs/learnings/0026-member-nickname-onboarding.md`
+- Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
-  - PostgreSQL schema has V9 applied locally.
-- Learning note: `docs/learnings/0025-study-history-chat-room-hide.md`.
+  - PostgreSQL schema has V10 applied locally.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -258,6 +262,18 @@ Chat REST MVP details:
 - Chat room list responses include `title`; private room titles use the other member nickname, study room titles use the study title.
 - Chat room member responses expose member id, nickname, profile image URL, and joined time only to room members.
 - Unread counts, read receipts, chat notifications, moderation, and retention policy are not implemented yet.
+
+Member nickname onboarding details:
+
+- Flyway V10 makes `members.nickname` nullable so OAuth sign-up can create a pending-onboarding member.
+- OAuth sign-up intentionally ignores provider nickname for the app nickname.
+- `AuthMeResponse.nicknameRequired` is the frontend gate signal.
+- `NicknameRequiredFilter` runs after JWT authentication and blocks `/api/v1/**` for nickname-required members except:
+  - `GET /api/v1/auth/me`;
+  - `PUT /api/v1/auth/me/nickname`;
+  - `POST /api/v1/auth/refresh`;
+  - `POST /api/v1/auth/logout`.
+- The frontend must fetch `GET /api/v1/auth/me` before loading app data after OAuth callback or refresh recovery. Loading notifications, chat rooms, or studies in the same first `Promise.all` will fail with `MEMBER-004` for new members.
 
 Chat WebSocket delivery details:
 
