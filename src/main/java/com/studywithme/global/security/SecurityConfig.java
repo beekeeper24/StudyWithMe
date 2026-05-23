@@ -64,6 +64,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
 				.requestMatchers("/api/v1/auth/me").authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/auth/me/nickname").authenticated()
+				.requestMatchers(HttpMethod.PUT, "/api/v1/auth/me/signup").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/studies/me").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/studies", "/api/v1/studies/*").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*").permitAll()
@@ -109,7 +110,7 @@ public class SecurityConfig {
 			.formLogin(AbstractHttpConfigurer::disable)
 			.logout(AbstractHttpConfigurer::disable)
 			.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-			.addFilterAfter(nicknameRequiredFilter(), JwtAuthenticationFilter.class);
+			.addFilterAfter(signupRequiredFilter(), JwtAuthenticationFilter.class);
 
 		if (clientRegistrationRepository.getIfAvailable() != null) {
 			http.oauth2Login(oauth2 -> oauth2
@@ -127,8 +128,8 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public NicknameRequiredFilter nicknameRequiredFilter() {
-		return new NicknameRequiredFilter(memberRepository, objectMapper);
+	public SignupRequiredFilter signupRequiredFilter() {
+		return new SignupRequiredFilter(memberRepository, objectMapper);
 	}
 
 	@Bean

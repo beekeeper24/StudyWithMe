@@ -60,6 +60,21 @@ public class AuthController {
 		return ApiResponse.success(AuthMeResponse.from(member));
 	}
 
+	@PutMapping("/me/signup")
+	public ApiResponse<AuthMeResponse> completeSignup(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal,
+		@RequestBody SignupCompletionRequest request
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		Member member = memberProfileService.completeSignup(
+			authenticatedPrincipal.memberId(),
+			request.nickname(),
+			request.termsAgreed(),
+			request.privacyPolicyAgreed()
+		);
+		return ApiResponse.success(AuthMeResponse.from(member));
+	}
+
 	@PostMapping("/refresh")
 	public ApiResponse<AccessTokenResponse> refresh(
 		HttpServletRequest request,

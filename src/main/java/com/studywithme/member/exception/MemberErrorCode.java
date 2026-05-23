@@ -21,8 +21,13 @@ public enum MemberErrorCode implements ErrorCode {
 	),
 	NICKNAME_REQUIRED(
 		"MEMBER-004",
-		"별명 설정이 필요합니다.",
+		"회원가입 완료가 필요합니다.",
 		HttpStatus.CONFLICT
+	),
+	TERMS_AGREEMENT_REQUIRED(
+		"MEMBER-005",
+		"필수 약관 동의가 필요합니다.",
+		HttpStatus.BAD_REQUEST
 	);
 
 	private final String code;

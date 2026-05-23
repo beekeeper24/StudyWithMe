@@ -10,6 +10,10 @@ public record AuthMeResponse(
 	String nickname,
 	String profileImageUrl,
 	boolean nicknameRequired,
+	boolean termsAgreementRequired,
+	boolean signupRequired,
+	String termsVersion,
+	String privacyPolicyVersion,
 	String status,
 	List<String> roles
 ) {
@@ -21,6 +25,10 @@ public record AuthMeResponse(
 			member.getNickname(),
 			member.getProfileImageUrl(),
 			member.isNicknameRequired(),
+			member.isTermsAgreementRequired(),
+			member.isSignupRequired(),
+			member.getTermsVersion(),
+			member.getPrivacyPolicyVersion(),
 			member.getStatus().name(),
 			member.getRoles().stream()
 				.map(MemberRole::name)

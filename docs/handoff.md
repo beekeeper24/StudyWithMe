@@ -166,12 +166,13 @@ Completed and merged into `develop`:
    - frontend chat room list has a room delete action.
 26. Member nickname onboarding:
    - new OAuth members are created with `nickname = null` instead of using provider nickname automatically;
-   - `GET /api/v1/auth/me` returns `nicknameRequired`;
-   - authenticated `PUT /api/v1/auth/me/nickname` sets or changes the member nickname;
+   - `GET /api/v1/auth/me` returns `nicknameRequired`, `termsAgreementRequired`, and `signupRequired`;
+   - authenticated `PUT /api/v1/auth/me/signup` completes first sign-up by saving nickname and required terms agreement together;
+   - authenticated `PUT /api/v1/auth/me/nickname` changes the member nickname after sign-up;
    - nickname rules are 2-20 chars, Korean/English letters, numbers, and underscore only;
    - duplicate nicknames are rejected;
-   - nickname-required members can only call onboarding auth APIs until a nickname is set;
-   - frontend gates the app shell behind a nickname setup screen and supports nickname edits from My Page.
+   - signup-required members can only call onboarding auth APIs until nickname and terms agreement are saved;
+   - frontend gates the app shell behind a sign-up screen and supports nickname edits from My Page.
 
 Active feature work in progress:
 
@@ -179,10 +180,11 @@ Active feature work in progress:
 - Latest completed learning notes:
   - `docs/learnings/0025-study-history-chat-room-hide.md`
   - `docs/learnings/0026-member-nickname-onboarding.md`
+  - `docs/learnings/0027-signup-terms-onboarding.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
-  - PostgreSQL schema has V10 applied locally.
+  - PostgreSQL schema has V11 applied locally.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
@@ -266,14 +268,18 @@ Chat REST MVP details:
 Member nickname onboarding details:
 
 - Flyway V10 makes `members.nickname` nullable so OAuth sign-up can create a pending-onboarding member.
+- Flyway V11 adds `members.terms_agreed_at`, `terms_version`, and `privacy_policy_version`.
+- V11 backfills existing nickname-bearing members as `LEGACY` terms agreement so previously-created local members are not blocked by the new sign-up gate.
 - OAuth sign-up intentionally ignores provider nickname for the app nickname.
-- `AuthMeResponse.nicknameRequired` is the frontend gate signal.
-- `NicknameRequiredFilter` runs after JWT authentication and blocks `/api/v1/**` for nickname-required members except:
+- `AuthMeResponse.signupRequired` is the frontend gate signal. Keep `nicknameRequired` and `termsAgreementRequired` for more specific UI states.
+- `SignupRequiredFilter` runs after JWT authentication and blocks `/api/v1/**` for signup-required members except:
   - `GET /api/v1/auth/me`;
+  - `PUT /api/v1/auth/me/signup`;
   - `PUT /api/v1/auth/me/nickname`;
   - `POST /api/v1/auth/refresh`;
   - `POST /api/v1/auth/logout`.
 - The frontend must fetch `GET /api/v1/auth/me` before loading app data after OAuth callback or refresh recovery. Loading notifications, chat rooms, or studies in the same first `Promise.all` will fail with `MEMBER-004` for new members.
+- First sign-up must call `PUT /api/v1/auth/me/signup` with nickname, `termsAgreed: true`, and `privacyPolicyAgreed: true`. Calling nickname update alone does not complete sign-up because terms agreement remains missing.
 
 Chat WebSocket delivery details:
 
