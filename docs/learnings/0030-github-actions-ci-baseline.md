@@ -44,13 +44,15 @@ npx npm@11.12.1 install --package-lock-only
 npx npm@11.12.1 ci
 ```
 
-## Remaining Manual Step
+## Branch Protection
 
-CI now runs, but branch protection is not confirmed from local code. To make checks mandatory, configure GitHub branch protection/rulesets for `develop`:
+Branch protection is configured for `develop` in both repositories:
 
-- require PR before merge;
-- require `Gradle Test` on the backend repo;
-- require `Lint and Build` on the frontend repo.
+- Backend requires the `Gradle Test` status check.
+- Frontend requires the `Lint and Build` status check.
+- Both use strict status checks, so branches must be up to date before merging.
+- Force pushes and branch deletion are disabled.
+- Admin enforcement is disabled for now, so repository admins can still bypass in an emergency.
 
 ## Verification
 
