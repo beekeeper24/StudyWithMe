@@ -113,6 +113,28 @@ public class Study {
 		this.status = StudyStatus.CLOSED;
 	}
 
+	public void update(
+		Long requesterMemberId,
+		String title,
+		String description,
+		String progressMethod,
+		String targetAudience,
+		String rules,
+		Integer capacity,
+		String schedule
+	) {
+		if (!ownerMemberId.equals(requesterMemberId)) {
+			throw new BusinessException(StudyErrorCode.NOT_STUDY_OWNER);
+		}
+		this.title = title;
+		this.description = description;
+		this.progressMethod = progressMethod;
+		this.targetAudience = targetAudience;
+		this.rules = rules;
+		this.capacity = capacity;
+		this.schedule = schedule;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();

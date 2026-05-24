@@ -54,6 +54,22 @@ public class StudyService {
 		return toResult(study, requesterMemberId);
 	}
 
+	@Transactional
+	public StudyResult update(Long studyId, Long requesterMemberId, StudyUpdateCommand command) {
+		Study study = getStudyForUpdate(studyId);
+		study.update(
+			requesterMemberId,
+			command.title(),
+			command.progressMethod(),
+			command.progressMethod(),
+			command.targetAudience(),
+			command.rules(),
+			command.capacity(),
+			command.schedule()
+		);
+		return toResult(study, requesterMemberId);
+	}
+
 	@Transactional(readOnly = true)
 	public List<StudyResult> findAll() {
 		return findAll(null);

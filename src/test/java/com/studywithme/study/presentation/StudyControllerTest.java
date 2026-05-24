@@ -3,6 +3,7 @@ package com.studywithme.study.presentation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -168,6 +169,103 @@ class StudyControllerTest {
 						"rules": "풀이 기록 필수",
 						"capacity": 0,
 						"schedule": "매주 화요일 21:00"
+					}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("GLOBAL-400"));
+	}
+
+	@Test
+	@DisplayName("스터디 모집장은 스터디 모집 정보를 수정할 수 있다")
+	void updateStudyByOwner() throws Exception {
+		Member owner = saveMember("owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"알고리즘 스터디",
+				null,
+				"매주 온라인 풀이",
+				"백준 실버 이상",
+				"풀이 인증 필수",
+				6,
+				"화요일 21:00"
+			)
+		);
+
+		mockMvc.perform(put("/api/v1/studies/{studyId}", study.id())
+				.header("Authorization", "Bearer " + accessToken(owner))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"title": "면접 대비 스터디",
+						"progressMethod": "매주 토요일 모의 면접을 진행합니다.",
+						"targetAudience": "백엔드 취업 준비생",
+						"rules": "질문지를 미리 작성하고 피드백을 남깁니다.",
+						"capacity": 4,
+						"schedule": "매주 토요일 10:00"
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.id").value(study.id()))
+			.andExpect(jsonPath("$.data.title").value("면접 대비 스터디"))
+			.andExpect(jsonPath("$.data.progressMethod").value("매주 토요일 모의 면접을 진행합니다."))
+			.andExpect(jsonPath("$.data.targetAudience").value("백엔드 취업 준비생"))
+			.andExpect(jsonPath("$.data.rules").value("질문지를 미리 작성하고 피드백을 남깁니다."))
+			.andExpect(jsonPath("$.data.capacity").value(4))
+			.andExpect(jsonPath("$.data.schedule").value("매주 토요일 10:00"))
+			.andExpect(jsonPath("$.data.ownedByRequester").value(true));
+	}
+
+	@Test
+	@DisplayName("스터디 모집장이 아닌 회원은 스터디 모집 정보를 수정할 수 없다")
+	void rejectUpdateStudyByNonOwner() throws Exception {
+		Member owner = saveMember("owner");
+		Member nonOwner = saveMember("non-owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		mockMvc.perform(put("/api/v1/studies/{studyId}", study.id())
+				.header("Authorization", "Bearer " + accessToken(nonOwner))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"title": "면접 대비 스터디",
+						"progressMethod": "매주 토요일 모의 면접을 진행합니다.",
+						"targetAudience": "백엔드 취업 준비생",
+						"rules": "질문지를 미리 작성하고 피드백을 남깁니다.",
+						"capacity": 4,
+						"schedule": "매주 토요일 10:00"
+					}
+					"""))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("STUDY-004"));
+	}
+
+	@Test
+	@DisplayName("스터디 수정 시 정원은 1명 이상이어야 한다")
+	void rejectUpdateStudyWithZeroCapacity() throws Exception {
+		Member owner = saveMember("owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		mockMvc.perform(put("/api/v1/studies/{studyId}", study.id())
+				.header("Authorization", "Bearer " + accessToken(owner))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"title": "면접 대비 스터디",
+						"progressMethod": "매주 토요일 모의 면접을 진행합니다.",
+						"targetAudience": "백엔드 취업 준비생",
+						"rules": "질문지를 미리 작성하고 피드백을 남깁니다.",
+						"capacity": 0,
+						"schedule": "매주 토요일 10:00"
 					}
 					"""))
 			.andExpect(status().isBadRequest())
