@@ -124,6 +124,58 @@ class StudyControllerTest {
 	}
 
 	@Test
+	@DisplayName("인증한 회원은 구조화된 모집 정보로 스터디를 생성할 수 있다")
+	void createStudyWithStructuredRecruitmentFields() throws Exception {
+		Member owner = saveMember("owner");
+
+		mockMvc.perform(post("/api/v1/studies")
+				.header("Authorization", "Bearer " + accessToken(owner))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"title": "알고리즘 스터디",
+						"progressMethod": "매주 화요일 온라인으로 문제 풀이를 진행합니다.",
+						"targetAudience": "백준 실버 이상, 꾸준히 참여 가능한 사람",
+						"rules": "불참 시 전날 공유하고, 풀이 기록을 남깁니다.",
+						"capacity": 6,
+						"schedule": "매주 화요일 21:00"
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.title").value("알고리즘 스터디"))
+			.andExpect(jsonPath("$.data.progressMethod").value("매주 화요일 온라인으로 문제 풀이를 진행합니다."))
+			.andExpect(jsonPath("$.data.targetAudience").value("백준 실버 이상, 꾸준히 참여 가능한 사람"))
+			.andExpect(jsonPath("$.data.rules").value("불참 시 전날 공유하고, 풀이 기록을 남깁니다."))
+			.andExpect(jsonPath("$.data.capacity").value(6))
+			.andExpect(jsonPath("$.data.schedule").value("매주 화요일 21:00"));
+	}
+
+	@Test
+	@DisplayName("스터디 정원은 1명 이상이어야 한다")
+	void rejectCreateStudyWithZeroCapacity() throws Exception {
+		Member owner = saveMember("owner");
+
+		mockMvc.perform(post("/api/v1/studies")
+				.header("Authorization", "Bearer " + accessToken(owner))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"title": "알고리즘 스터디",
+						"description": "기존 소개",
+						"progressMethod": "매주 화요일 온라인으로 문제 풀이를 진행합니다.",
+						"targetAudience": "백준 실버 이상",
+						"rules": "풀이 기록 필수",
+						"capacity": 0,
+						"schedule": "매주 화요일 21:00"
+					}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("GLOBAL-400"));
+	}
+
+	@Test
 	@DisplayName("스터디 목록은 공개 조회할 수 있다")
 	void listStudiesPublicly() throws Exception {
 		Member owner = saveMember("owner");

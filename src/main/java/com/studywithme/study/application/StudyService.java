@@ -42,7 +42,12 @@ public class StudyService {
 	public StudyResult create(Long requesterMemberId, StudyCreateCommand command) {
 		Study study = studyRepository.save(Study.create(
 			command.title(),
-			command.description(),
+			descriptionFor(command),
+			command.progressMethod(),
+			command.targetAudience(),
+			command.rules(),
+			command.capacity(),
+			command.schedule(),
 			requesterMemberId
 		));
 		studyMemberRepository.save(StudyMember.owner(study.getId(), requesterMemberId));
@@ -241,5 +246,16 @@ public class StudyService {
 			joinedByRequester,
 			requesterMemberId != null && study.getOwnerMemberId().equals(requesterMemberId)
 		);
+	}
+
+	private String descriptionFor(StudyCreateCommand command) {
+		if (hasText(command.description())) {
+			return command.description().trim();
+		}
+		return command.progressMethod().trim();
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
 	}
 }
