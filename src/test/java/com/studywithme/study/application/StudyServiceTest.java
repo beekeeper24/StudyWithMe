@@ -156,6 +156,83 @@ class StudyServiceTest {
 	}
 
 	@Test
+	@DisplayName("참여로 정원이 가득 차면 스터디 모집 상태가 종료된다")
+	void joinStudyClosesRecruitmentWhenCapacityBecomesFull() {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"알고리즘 스터디",
+				null,
+				"온라인 풀이",
+				"백준 실버 이상",
+				"풀이 인증 필수",
+				2,
+				"화요일 21:00"
+			)
+		);
+
+		StudyResult result = studyService.join(study.id(), participant.getId());
+
+		assertThat(result.status()).isEqualTo(StudyStatus.CLOSED);
+		assertThat(studyRepository.findById(study.id()).orElseThrow().getStatus())
+			.isEqualTo(StudyStatus.CLOSED);
+	}
+
+	@Test
+	@DisplayName("정원이 가득 찬 스터디에는 참여할 수 없다")
+	void cannotJoinCapacityFullStudy() {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		Member lateParticipant = saveMember("late-participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"알고리즘 스터디",
+				null,
+				"온라인 풀이",
+				"백준 실버 이상",
+				"풀이 인증 필수",
+				2,
+				"화요일 21:00"
+			)
+		);
+		studyService.join(study.id(), participant.getId());
+
+		assertThatThrownBy(() -> studyService.join(study.id(), lateParticipant.getId()))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(StudyErrorCode.STUDY_CAPACITY_FULL);
+	}
+
+	@Test
+	@DisplayName("정원 마감 후 참여자가 탈퇴해도 스터디는 마감 상태로 남는다")
+	void leaveAfterCapacityClosedStudyDoesNotReopenStudy() {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"알고리즘 스터디",
+				null,
+				"온라인 풀이",
+				"백준 실버 이상",
+				"풀이 인증 필수",
+				2,
+				"화요일 21:00"
+			)
+		);
+		studyService.join(study.id(), participant.getId());
+
+		StudyResult result = studyService.leave(study.id(), participant.getId());
+
+		assertThat(result.status()).isEqualTo(StudyStatus.CLOSED);
+		assertThat(studyRepository.findById(study.id()).orElseThrow().getStatus())
+			.isEqualTo(StudyStatus.CLOSED);
+	}
+
+	@Test
 	@DisplayName("이미 참여한 스터디에 다시 참여할 수 없다")
 	void joinStudyTwiceThrowsAlreadyJoined() {
 		Member owner = saveMember("owner");
