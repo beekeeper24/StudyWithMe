@@ -220,6 +220,12 @@ Completed and merged into `develop`:
    - update request validates required structured fields and capacity >= 1;
    - frontend owners can open study edit mode from study cards/detail and save through the update API;
    - Playwright smoke checked that the edit form opens with title and capacity prefilled.
+34. Study capacity close policy:
+   - study capacity counts the owner and all `JOINED` members;
+   - joining into the final available seat automatically changes the study status to `CLOSED`;
+   - additional joins for a full study return `STUDY-007`;
+   - closed studies stay hidden from the public study list even if a participant later leaves;
+   - there is no reopen API or reopen UI; closed studies remain only as My Page history records.
 
 Active feature work in progress:
 
@@ -235,6 +241,7 @@ Active feature work in progress:
   - `docs/learnings/0032-community-author-contract.md`
   - `docs/learnings/0033-study-structured-fields.md`
   - `docs/learnings/0034-study-update-api.md`
+  - `docs/learnings/0035-study-capacity-close-policy.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
