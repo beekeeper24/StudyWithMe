@@ -214,6 +214,12 @@ Completed and merged into `develop`:
    - capacity is validated as at least 1 when provided;
    - frontend study cards/detail/history render the structured fields and keep legacy description parsing only as old-data fallback;
    - desktop and mobile study-create layouts were checked with Playwright screenshots.
+33. Study update API and UI:
+   - authenticated `PUT /api/v1/studies/{studyId}` updates title and structured recruitment fields;
+   - only the study owner can update study recruitment info, non-owners receive `STUDY-004`;
+   - update request validates required structured fields and capacity >= 1;
+   - frontend owners can open study edit mode from study cards/detail and save through the update API;
+   - Playwright smoke checked that the edit form opens with title and capacity prefilled.
 
 Active feature work in progress:
 
@@ -228,6 +234,7 @@ Active feature work in progress:
   - `docs/learnings/0031-frontend-user-feedback.md`
   - `docs/learnings/0032-community-author-contract.md`
   - `docs/learnings/0033-study-structured-fields.md`
+  - `docs/learnings/0034-study-update-api.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
