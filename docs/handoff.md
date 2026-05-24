@@ -186,6 +186,13 @@ Completed and merged into `develop`:
    - closed study chat rooms can remain visible for history, but the frontend disables the composer when the closed study is known;
    - user-facing refresh controls were removed from profile menu, My Page, study list, chat room list, and notification popup;
    - account withdrawal now uses an in-app confirmation panel instead of browser `confirm` or OAuth/rejoin copy.
+29. GitHub Actions CI baseline:
+   - backend repo has `Backend CI` for PR/push to `develop` and `main`;
+   - backend CI uses Java 21 and runs `./gradlew test --no-daemon --console=plain`;
+   - frontend repo has `Frontend CI` for PR/push to `develop` and `main`;
+   - frontend CI uses Node.js 24 and runs `npm ci`, `npm run lint`, and `npm run build`;
+   - workflow file pushes require GitHub token `workflow` scope;
+   - frontend lockfile was synced for npm `11.12.1`, matching the GitHub runner.
 
 Active feature work in progress:
 
@@ -196,6 +203,7 @@ Active feature work in progress:
   - `docs/learnings/0027-signup-terms-onboarding.md`
   - `docs/learnings/0028-member-withdrawal-rejoin.md`
   - `docs/learnings/0029-closed-study-chat-and-operational-ui.md`
+  - `docs/learnings/0030-github-actions-ci-baseline.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
