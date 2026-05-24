@@ -13,6 +13,7 @@ import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.study.domain.Study;
 import com.studywithme.study.domain.StudyMemberStatus;
+import com.studywithme.study.domain.StudyStatus;
 import com.studywithme.study.exception.StudyErrorCode;
 import com.studywithme.study.repository.StudyMemberRepository;
 import com.studywithme.study.repository.StudyRepository;
@@ -142,6 +143,7 @@ public class ChatService {
 	public ChatMessageResult sendMessage(Long roomId, Long senderMemberId, ChatMessageCreateCommand command) {
 		ChatRoom room = findRoom(roomId);
 		validateRoomMember(room, senderMemberId);
+		validateRoomWritable(room);
 
 		ChatMessage message = chatMessageRepository.save(ChatMessage.create(
 			room.getId(),
@@ -193,6 +195,17 @@ public class ChatService {
 			memberId,
 			StudyMemberStatus.JOINED
 		);
+	}
+
+	private void validateRoomWritable(ChatRoom room) {
+		if (room.getStudyId() == null) {
+			return;
+		}
+		Study study = studyRepository.findById(room.getStudyId())
+			.orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+		if (study.getStatus() == StudyStatus.CLOSED) {
+			throw new BusinessException(ChatErrorCode.STUDY_CHAT_ROOM_CLOSED);
+		}
 	}
 
 	private ChatRoomMember findRoomMember(Long roomId, Long memberId) {
