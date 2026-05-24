@@ -23,6 +23,11 @@ public enum ChatErrorCode implements ErrorCode {
 		"CHAT-004",
 		"채팅 대상 회원을 찾을 수 없습니다.",
 		HttpStatus.NOT_FOUND
+	),
+	STUDY_CHAT_ROOM_CLOSED(
+		"CHAT-005",
+		"마감된 스터디 채팅방에는 메시지를 보낼 수 없습니다.",
+		HttpStatus.CONFLICT
 	);
 
 	private final String code;

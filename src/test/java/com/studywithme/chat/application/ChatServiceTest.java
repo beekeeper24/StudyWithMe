@@ -207,6 +207,28 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("마감된 스터디 채팅방에는 새 메시지를 작성할 수 없다")
+	void rejectMessageToClosedStudyRoom() {
+		Member owner = saveMember("owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+		ChatRoomResult room = chatService.createStudyRoom(study.id(), owner.getId());
+
+		studyService.close(study.id(), owner.getId());
+
+		assertThatThrownBy(() -> chatService.sendMessage(
+			room.id(),
+			owner.getId(),
+			new ChatMessageCreateCommand("마감 후 메시지")
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.STUDY_CHAT_ROOM_CLOSED);
+	}
+
+	@Test
 	@DisplayName("내 채팅방 목록은 내가 참여한 방만 조회한다")
 	void findMyRooms() {
 		Member requester = saveMember("requester");
