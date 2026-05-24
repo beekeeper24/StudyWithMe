@@ -29,6 +29,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +40,14 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class WebSocketStompIntegrationTest {
 
 	@LocalServerPort
@@ -91,8 +95,20 @@ class WebSocketStompIntegrationTest {
 	@Autowired
 	private JwtTokenProvider jwtTokenProvider;
 
+	@Autowired
+	private SimpUserRegistry simpUserRegistry;
+
+	@BeforeEach
+	void setUp() {
+		cleanDatabase();
+	}
+
 	@AfterEach
 	void tearDown() {
+		cleanDatabase();
+	}
+
+	private void cleanDatabase() {
 		notificationRepository.deleteAll();
 		outboxEventRepository.deleteAll();
 		commentRepository.deleteAll();
@@ -111,16 +127,20 @@ class WebSocketStompIntegrationTest {
 		Member receiver = saveMember("receiver");
 		ChatRoomResult room = chatService.createPrivateRoom(sender.getId(), receiver.getId());
 		StompSession session = connect(sender);
-		BlockingQueue<Map<String, Object>> receivedMessages = new LinkedBlockingQueue<>();
-		session.subscribe("/topic/chat.rooms." + room.id(), mapFrameHandler(receivedMessages));
+		try {
+			BlockingQueue<Map<String, Object>> receivedMessages = new LinkedBlockingQueue<>();
+			session.subscribe("/topic/chat.rooms." + room.id(), mapFrameHandler(receivedMessages));
 
-		session.send("/app/chat.rooms." + room.id() + ".messages", new ChatWebSocketMessageRequest("안녕하세요"));
+			session.send("/app/chat.rooms." + room.id() + ".messages", new ChatWebSocketMessageRequest("안녕하세요"));
 
-		Map<String, Object> payload = receivedMessages.poll(5, TimeUnit.SECONDS);
-		assertThat(payload).isNotNull();
-		assertThat(((Number) payload.get("roomId")).longValue()).isEqualTo(room.id());
-		assertThat(((Number) payload.get("senderMemberId")).longValue()).isEqualTo(sender.getId());
-		assertThat(payload.get("content")).isEqualTo("안녕하세요");
+			Map<String, Object> payload = receivedMessages.poll(5, TimeUnit.SECONDS);
+			assertThat(payload).isNotNull();
+			assertThat(((Number) payload.get("roomId")).longValue()).isEqualTo(room.id());
+			assertThat(((Number) payload.get("senderMemberId")).longValue()).isEqualTo(sender.getId());
+			assertThat(payload.get("content")).isEqualTo("안녕하세요");
+		} finally {
+			session.disconnect();
+		}
 	}
 
 	@Test
@@ -129,19 +149,24 @@ class WebSocketStompIntegrationTest {
 		Member receiver = saveMember("receiver");
 		Member actor = saveMember("actor");
 		StompSession session = connect(receiver);
-		BlockingQueue<Map<String, Object>> receivedNotifications = new LinkedBlockingQueue<>();
-		session.subscribe("/user/queue/notifications", mapFrameHandler(receivedNotifications));
+		try {
+			BlockingQueue<Map<String, Object>> receivedNotifications = new LinkedBlockingQueue<>();
+			session.subscribe("/user/queue/notifications", mapFrameHandler(receivedNotifications));
+			awaitUserSubscription(receiver, "/user/queue/notifications");
 
-		PostResult post = postService.create(receiver.getId(), new PostCreateCommand("게시글", "내용"));
-		commentService.create(post.id(), actor.getId(), new CommentCreateCommand("댓글"));
-		notificationOutboxProcessor.processPending(10);
+			PostResult post = postService.create(receiver.getId(), new PostCreateCommand("게시글", "내용"));
+			commentService.create(post.id(), actor.getId(), new CommentCreateCommand("댓글"));
+			notificationOutboxProcessor.processPending(10);
 
-		Map<String, Object> payload = receivedNotifications.poll(5, TimeUnit.SECONDS);
-		assertThat(payload).isNotNull();
-		assertThat(((Number) payload.get("receiverMemberId")).longValue()).isEqualTo(receiver.getId());
-		assertThat(((Number) payload.get("actorMemberId")).longValue()).isEqualTo(actor.getId());
-		assertThat(payload.get("type")).isEqualTo("COMMENT_ON_POST");
-		assertThat(payload.get("message")).isEqualTo("새 댓글이 달렸습니다.");
+			Map<String, Object> payload = receivedNotifications.poll(5, TimeUnit.SECONDS);
+			assertThat(payload).isNotNull();
+			assertThat(((Number) payload.get("receiverMemberId")).longValue()).isEqualTo(receiver.getId());
+			assertThat(((Number) payload.get("actorMemberId")).longValue()).isEqualTo(actor.getId());
+			assertThat(payload.get("type")).isEqualTo("COMMENT_ON_POST");
+			assertThat(payload.get("message")).isEqualTo("새 댓글이 달렸습니다.");
+		} finally {
+			session.disconnect();
+		}
 	}
 
 	private StompSession connect(Member member) throws Exception {
@@ -157,6 +182,24 @@ class WebSocketStompIntegrationTest {
 				new StompSessionHandlerAdapter() {
 			})
 			.get(5, TimeUnit.SECONDS);
+	}
+
+	private void awaitUserSubscription(Member member, String destination) throws InterruptedException {
+		boolean registered = false;
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+		while (System.nanoTime() < deadline) {
+			registered = simpUserRegistry.getUsers()
+				.stream()
+				.filter(user -> user.getName().equals(member.getId().toString()))
+				.flatMap(user -> user.getSessions().stream())
+				.flatMap(session -> session.getSubscriptions().stream())
+				.anyMatch(subscription -> destination.equals(subscription.getDestination()));
+			if (registered) {
+				break;
+			}
+			Thread.sleep(50);
+		}
+		assertThat(registered).isTrue();
 	}
 
 	private Member saveMember(String name) {

@@ -42,15 +42,22 @@ public class PostController {
 	}
 
 	@GetMapping
-	public ApiResponse<List<PostResponse>> findAll() {
-		return ApiResponse.success(postService.findAll().stream()
+	public ApiResponse<List<PostResponse>> findAll(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		Long requesterMemberId = principal == null ? null : principal.memberId();
+		return ApiResponse.success(postService.findAll(requesterMemberId).stream()
 			.map(PostResponse::from)
 			.toList());
 	}
 
 	@GetMapping("/{postId}")
-	public ApiResponse<PostResponse> findById(@PathVariable Long postId) {
-		return ApiResponse.success(PostResponse.from(postService.findById(postId)));
+	public ApiResponse<PostResponse> findById(
+		@PathVariable Long postId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		Long requesterMemberId = principal == null ? null : principal.memberId();
+		return ApiResponse.success(PostResponse.from(postService.findById(postId, requesterMemberId)));
 	}
 
 	@PutMapping("/{postId}")

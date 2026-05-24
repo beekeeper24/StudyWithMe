@@ -138,6 +138,37 @@ class CommentControllerTest {
 	}
 
 	@Test
+	@DisplayName("댓글 목록은 작성자 표시 정보와 요청자 소유 여부를 내려준다")
+	void listCommentsWithAuthorDisplayAndOwnership() throws Exception {
+		Member author = saveMember("author", "댓글러", "https://example.com/commenter.png");
+		PostResult post = savePost(author);
+		commentService.create(post.id(), author.getId(), new CommentCreateCommand("첫 댓글입니다."));
+
+		mockMvc.perform(get("/api/v1/posts/{postId}/comments", post.id())
+				.header("Authorization", "Bearer " + accessToken(author)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data[0].authorMemberId").value(author.getId()))
+			.andExpect(jsonPath("$.data[0].authorNickname").value("댓글러"))
+			.andExpect(jsonPath("$.data[0].authorProfileImageUrl").value("https://example.com/commenter.png"))
+			.andExpect(jsonPath("$.data[0].ownedByRequester").value(true));
+	}
+
+	@Test
+	@DisplayName("댓글 목록을 비회원으로 조회하면 요청자 소유 여부는 false다")
+	void listCommentsPubliclyWithFalseOwnership() throws Exception {
+		Member author = saveMember("author", "댓글러", null);
+		PostResult post = savePost(author);
+		commentService.create(post.id(), author.getId(), new CommentCreateCommand("첫 댓글입니다."));
+
+		mockMvc.perform(get("/api/v1/posts/{postId}/comments", post.id()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data[0].authorNickname").value("댓글러"))
+			.andExpect(jsonPath("$.data[0].ownedByRequester").value(false));
+	}
+
+	@Test
 	@DisplayName("인증한 회원은 댓글을 작성할 수 있다")
 	void createCommentWithBearerToken() throws Exception {
 		Member author = saveMember("author");
@@ -253,12 +284,16 @@ class CommentControllerTest {
 	}
 
 	private Member saveMember(String name) {
+		return saveMember(name, name, null);
+	}
+
+	private Member saveMember(String name, String nickname, String profileImageUrl) {
 		return memberRepository.saveAndFlush(Member.createOAuthMember(
 			name + "@example.com",
-			name,
+			nickname,
 			OAuthProvider.GOOGLE,
 			"google-" + name,
-			null
+			profileImageUrl
 		));
 	}
 

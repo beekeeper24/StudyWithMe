@@ -108,6 +108,35 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("게시글 목록은 작성자 표시 정보와 요청자 소유 여부를 내려준다")
+	void listPostsWithAuthorDisplayAndOwnership() throws Exception {
+		Member author = saveMember("author", "작가", "https://example.com/author.png");
+		postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.header("Authorization", "Bearer " + accessToken(author)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data[0].authorMemberId").value(author.getId()))
+			.andExpect(jsonPath("$.data[0].authorNickname").value("작가"))
+			.andExpect(jsonPath("$.data[0].authorProfileImageUrl").value("https://example.com/author.png"))
+			.andExpect(jsonPath("$.data[0].ownedByRequester").value(true));
+	}
+
+	@Test
+	@DisplayName("게시글 목록을 비회원으로 조회하면 요청자 소유 여부는 false다")
+	void listPostsPubliclyWithFalseOwnership() throws Exception {
+		Member author = saveMember("author", "작가", null);
+		postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
+
+		mockMvc.perform(get("/api/v1/posts"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data[0].authorNickname").value("작가"))
+			.andExpect(jsonPath("$.data[0].ownedByRequester").value(false));
+	}
+
+	@Test
 	@DisplayName("게시글 상세는 공개 조회할 수 있다")
 	void getPostPublicly() throws Exception {
 		Member author = saveMember("author");
@@ -118,6 +147,22 @@ class PostControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.id").value(post.id()))
 			.andExpect(jsonPath("$.data.title").value("첫 게시글"));
+	}
+
+	@Test
+	@DisplayName("게시글 상세는 작성자 표시 정보와 요청자 소유 여부를 내려준다")
+	void getPostWithAuthorDisplayAndOwnership() throws Exception {
+		Member author = saveMember("author", "작가", "https://example.com/author.png");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
+
+		mockMvc.perform(get("/api/v1/posts/{postId}", post.id())
+				.header("Authorization", "Bearer " + accessToken(author)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.authorMemberId").value(author.getId()))
+			.andExpect(jsonPath("$.data.authorNickname").value("작가"))
+			.andExpect(jsonPath("$.data.authorProfileImageUrl").value("https://example.com/author.png"))
+			.andExpect(jsonPath("$.data.ownedByRequester").value(true));
 	}
 
 	@Test
@@ -209,12 +254,16 @@ class PostControllerTest {
 	}
 
 	private Member saveMember(String name) {
+		return saveMember(name, name, null);
+	}
+
+	private Member saveMember(String name, String nickname, String profileImageUrl) {
 		return memberRepository.saveAndFlush(Member.createOAuthMember(
 			name + "@example.com",
-			name,
+			nickname,
 			OAuthProvider.GOOGLE,
 			"google-" + name,
-			null
+			profileImageUrl
 		));
 	}
 

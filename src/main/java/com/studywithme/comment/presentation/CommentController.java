@@ -43,8 +43,12 @@ public class CommentController {
 	}
 
 	@GetMapping("/posts/{postId}/comments")
-	public ApiResponse<List<CommentResponse>> findAllByPostId(@PathVariable Long postId) {
-		return ApiResponse.success(commentService.findAllByPostId(postId).stream()
+	public ApiResponse<List<CommentResponse>> findAllByPostId(
+		@PathVariable Long postId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		Long requesterMemberId = principal == null ? null : principal.memberId();
+		return ApiResponse.success(commentService.findAllByPostId(postId, requesterMemberId).stream()
 			.map(CommentResponse::from)
 			.toList());
 	}
