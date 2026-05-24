@@ -180,6 +180,12 @@ Completed and merged into `develop`:
    - all refresh tokens for the member are revoked and the refresh cookie is cleared;
    - existing access tokens for withdrawn members are rejected by the authentication/account gate;
    - frontend My Page exposes a `회원 탈퇴` button for local testing and normal user flow.
+28. Closed study chat and operational UI cleanup:
+   - backend rejects new messages to study chat rooms whose linked study is `CLOSED`;
+   - REST and WebSocket message writes are both covered because both call `ChatService.sendMessage`;
+   - closed study chat rooms can remain visible for history, but the frontend disables the composer when the closed study is known;
+   - user-facing refresh controls were removed from profile menu, My Page, study list, chat room list, and notification popup;
+   - account withdrawal now uses an in-app confirmation panel instead of browser `confirm` or OAuth/rejoin copy.
 
 Active feature work in progress:
 
@@ -189,6 +195,7 @@ Active feature work in progress:
   - `docs/learnings/0026-member-nickname-onboarding.md`
   - `docs/learnings/0027-signup-terms-onboarding.md`
   - `docs/learnings/0028-member-withdrawal-rejoin.md`
+  - `docs/learnings/0029-closed-study-chat-and-operational-ui.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
