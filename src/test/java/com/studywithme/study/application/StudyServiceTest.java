@@ -80,6 +80,64 @@ class StudyServiceTest {
 	}
 
 	@Test
+	@DisplayName("스터디 모집장은 스터디 모집 정보를 수정할 수 있다")
+	void ownerCanUpdateStudy() {
+		Member owner = saveMember("owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		StudyResult result = studyService.update(
+			study.id(),
+			owner.getId(),
+			new StudyUpdateCommand(
+				"면접 대비 스터디",
+				"매주 토요일 모의 면접",
+				"백엔드 취업 준비생",
+				"질문지 작성 필수",
+				4,
+				"토요일 10:00"
+			)
+		);
+
+		assertThat(result.title()).isEqualTo("면접 대비 스터디");
+		assertThat(result.progressMethod()).isEqualTo("매주 토요일 모의 면접");
+		assertThat(result.targetAudience()).isEqualTo("백엔드 취업 준비생");
+		assertThat(result.rules()).isEqualTo("질문지 작성 필수");
+		assertThat(result.capacity()).isEqualTo(4);
+		assertThat(result.schedule()).isEqualTo("토요일 10:00");
+		assertThat(result.ownedByRequester()).isTrue();
+	}
+
+	@Test
+	@DisplayName("스터디 모집장이 아닌 사용자는 스터디 모집 정보를 수정할 수 없다")
+	void nonOwnerCannotUpdateStudy() {
+		Member owner = saveMember("owner");
+		Member nonOwner = saveMember("non-owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		assertThatThrownBy(() -> studyService.update(
+			study.id(),
+			nonOwner.getId(),
+			new StudyUpdateCommand(
+				"면접 대비 스터디",
+				"매주 토요일 모의 면접",
+				"백엔드 취업 준비생",
+				"질문지 작성 필수",
+				4,
+				"토요일 10:00"
+			)
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(StudyErrorCode.NOT_STUDY_OWNER);
+	}
+
+	@Test
 	@DisplayName("스터디에 참여하면 참여자 정보가 MEMBER 역할로 생성된다")
 	void joinStudyCreatesMemberMembership() {
 		Member owner = saveMember("owner");
