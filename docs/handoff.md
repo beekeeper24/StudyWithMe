@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 ## Read This First
 
@@ -194,6 +194,13 @@ Completed and merged into `develop`:
    - workflow file pushes require GitHub token `workflow` scope;
    - frontend lockfile was synced for npm `11.12.1`, matching the GitHub runner;
    - `develop` branch protection requires backend `Gradle Test` and frontend `Lint and Build` checks before merge.
+30. Frontend user feedback baseline:
+   - frontend API failures preserve HTTP status and backend error code via `ApiClientError`;
+   - common user actions surface success/failure with a top-right toast instead of only the developer activity log;
+   - nickname and signup validation remain inline in the form;
+   - expired access-token failures guide the user to log in again and clear authenticated UI state;
+   - closed study chat send attempts show a normal in-app message instead of only writing to the hidden dev log;
+   - desktop and mobile toast placement was checked with Playwright screenshots.
 
 Active feature work in progress:
 
@@ -205,6 +212,7 @@ Active feature work in progress:
   - `docs/learnings/0028-member-withdrawal-rejoin.md`
   - `docs/learnings/0029-closed-study-chat-and-operational-ui.md`
   - `docs/learnings/0030-github-actions-ci-baseline.md`
+  - `docs/learnings/0031-frontend-user-feedback.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
