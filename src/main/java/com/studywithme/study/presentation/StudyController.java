@@ -32,7 +32,15 @@ public class StudyController {
 		@Valid @RequestBody StudyCreateRequest request
 	) {
 		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
-		StudyCreateCommand command = new StudyCreateCommand(request.title(), request.description());
+		StudyCreateCommand command = new StudyCreateCommand(
+			request.title(),
+			request.description(),
+			request.progressMethod(),
+			request.targetAudience(),
+			request.rules(),
+			request.capacity(),
+			request.schedule()
+		);
 		return ApiResponse.success(StudyResponse.from(
 			studyService.create(authenticatedPrincipal.memberId(), command)
 		));

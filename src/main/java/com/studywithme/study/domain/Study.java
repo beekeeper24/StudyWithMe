@@ -31,6 +31,21 @@ public class Study {
 	@Column(nullable = false, length = 2000)
 	private String description;
 
+	@Column(name = "progress_method", length = 500)
+	private String progressMethod;
+
+	@Column(name = "target_audience", length = 500)
+	private String targetAudience;
+
+	@Column(length = 1000)
+	private String rules;
+
+	@Column
+	private Integer capacity;
+
+	@Column(length = 200)
+	private String schedule;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private StudyStatus status;
@@ -44,15 +59,51 @@ public class Study {
 	protected Study() {
 	}
 
-	private Study(String title, String description, Long ownerMemberId) {
+	private Study(
+		String title,
+		String description,
+		String progressMethod,
+		String targetAudience,
+		String rules,
+		Integer capacity,
+		String schedule,
+		Long ownerMemberId
+	) {
 		this.title = title;
 		this.description = description;
+		this.progressMethod = progressMethod;
+		this.targetAudience = targetAudience;
+		this.rules = rules;
+		this.capacity = capacity;
+		this.schedule = schedule;
 		this.ownerMemberId = ownerMemberId;
 		this.status = StudyStatus.RECRUITING;
 	}
 
 	public static Study create(String title, String description, Long ownerMemberId) {
-		return new Study(title, description, ownerMemberId);
+		return new Study(title, description, null, null, null, null, null, ownerMemberId);
+	}
+
+	public static Study create(
+		String title,
+		String description,
+		String progressMethod,
+		String targetAudience,
+		String rules,
+		Integer capacity,
+		String schedule,
+		Long ownerMemberId
+	) {
+		return new Study(
+			title,
+			description,
+			progressMethod,
+			targetAudience,
+			rules,
+			capacity,
+			schedule,
+			ownerMemberId
+		);
 	}
 
 	public void close(Long requesterMemberId) {
@@ -88,6 +139,26 @@ public class Study {
 
 	public String getDescription() {
 		return description;
+	}
+
+	public String getProgressMethod() {
+		return progressMethod;
+	}
+
+	public String getTargetAudience() {
+		return targetAudience;
+	}
+
+	public String getRules() {
+		return rules;
+	}
+
+	public Integer getCapacity() {
+		return capacity;
+	}
+
+	public String getSchedule() {
+		return schedule;
 	}
 
 	public StudyStatus getStatus() {

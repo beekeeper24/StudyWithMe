@@ -54,6 +54,32 @@ class StudyServiceTest {
 	}
 
 	@Test
+	@DisplayName("스터디를 생성하면 구조화된 모집 정보를 결과에 포함한다")
+	void createStudyReturnsStructuredRecruitmentFields() {
+		Member owner = saveMember("owner");
+
+		StudyResult result = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"알고리즘 스터디",
+				null,
+				"매주 화요일 온라인 풀이",
+				"백준 실버 이상",
+				"풀이 기록 필수",
+				6,
+				"화요일 21:00"
+			)
+		);
+
+		assertThat(result.progressMethod()).isEqualTo("매주 화요일 온라인 풀이");
+		assertThat(result.targetAudience()).isEqualTo("백준 실버 이상");
+		assertThat(result.rules()).isEqualTo("풀이 기록 필수");
+		assertThat(result.capacity()).isEqualTo(6);
+		assertThat(result.schedule()).isEqualTo("화요일 21:00");
+		assertThat(result.description()).isEqualTo("매주 화요일 온라인 풀이");
+	}
+
+	@Test
 	@DisplayName("스터디에 참여하면 참여자 정보가 MEMBER 역할로 생성된다")
 	void joinStudyCreatesMemberMembership() {
 		Member owner = saveMember("owner");
