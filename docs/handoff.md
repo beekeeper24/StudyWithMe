@@ -201,6 +201,12 @@ Completed and merged into `develop`:
    - expired access-token failures guide the user to log in again and clear authenticated UI state;
    - closed study chat send attempts show a normal in-app message instead of only writing to the hidden dev log;
    - desktop and mobile toast placement was checked with Playwright screenshots.
+31. Community author display contract:
+   - post list/detail responses include author nickname, author profile image, and `ownedByRequester`;
+   - comment/reply list responses include author nickname, author profile image, and `ownedByRequester`;
+   - public list/detail/comment APIs still work without authentication and return requester ownership as false;
+   - frontend passes the access token to community reads when available, shows author avatars/nicknames instead of raw member ids, and hides post edit/delete actions from non-owners;
+   - `WebSocketStompIntegrationTest` was stabilized by waiting for the user queue subscription registration and cleaning notification/outbox data around each test.
 
 Active feature work in progress:
 
@@ -213,6 +219,7 @@ Active feature work in progress:
   - `docs/learnings/0029-closed-study-chat-and-operational-ui.md`
   - `docs/learnings/0030-github-actions-ci-baseline.md`
   - `docs/learnings/0031-frontend-user-feedback.md`
+  - `docs/learnings/0032-community-author-contract.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
