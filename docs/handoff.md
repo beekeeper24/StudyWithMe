@@ -192,7 +192,8 @@ Completed and merged into `develop`:
    - frontend repo has `Frontend CI` for PR/push to `develop` and `main`;
    - frontend CI uses Node.js 24 and runs `npm ci`, `npm run lint`, and `npm run build`;
    - workflow file pushes require GitHub token `workflow` scope;
-   - frontend lockfile was synced for npm `11.12.1`, matching the GitHub runner.
+   - frontend lockfile was synced for npm `11.12.1`, matching the GitHub runner;
+   - `develop` branch protection requires backend `Gradle Test` and frontend `Lint and Build` checks before merge.
 
 Active feature work in progress:
 
