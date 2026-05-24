@@ -207,6 +207,13 @@ Completed and merged into `develop`:
    - public list/detail/comment APIs still work without authentication and return requester ownership as false;
    - frontend passes the access token to community reads when available, shows author avatars/nicknames instead of raw member ids, and hides post edit/delete actions from non-owners;
    - `WebSocketStompIntegrationTest` was stabilized by waiting for the user queue subscription registration and cleaning notification/outbox data around each test.
+32. Study structured recruitment fields:
+   - Flyway V12 adds `progress_method`, `target_audience`, `rules`, `capacity`, and `schedule` to `studies`;
+   - study create request/response now supports `progressMethod`, `targetAudience`, `rules`, `capacity`, and `schedule`;
+   - `description` remains for compatibility, but new frontend study creation no longer builds a synthetic description string;
+   - capacity is validated as at least 1 when provided;
+   - frontend study cards/detail/history render the structured fields and keep legacy description parsing only as old-data fallback;
+   - desktop and mobile study-create layouts were checked with Playwright screenshots.
 
 Active feature work in progress:
 
@@ -220,10 +227,11 @@ Active feature work in progress:
   - `docs/learnings/0030-github-actions-ci-baseline.md`
   - `docs/learnings/0031-frontend-user-feedback.md`
   - `docs/learnings/0032-community-author-contract.md`
+  - `docs/learnings/0033-study-structured-fields.md`
 - Local runtime after the latest work:
   - backend is running on `8081` with the `oauth` profile;
   - frontend is running on `5173`;
-  - PostgreSQL schema has V11 applied locally.
+  - PostgreSQL schema has V12 applied locally after the structured study field migration.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
