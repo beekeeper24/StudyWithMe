@@ -33,6 +33,11 @@ public enum StudyErrorCode implements ErrorCode {
 		"STUDY-006",
 		"참여하지 않은 스터디입니다.",
 		HttpStatus.CONFLICT
+	),
+	STUDY_CAPACITY_FULL(
+		"STUDY-007",
+		"스터디 정원이 마감되었습니다.",
+		HttpStatus.CONFLICT
 	);
 
 	private final String code;

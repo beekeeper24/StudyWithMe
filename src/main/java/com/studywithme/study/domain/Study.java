@@ -113,6 +113,10 @@ public class Study {
 		this.status = StudyStatus.CLOSED;
 	}
 
+	public void closeWhenCapacityFull() {
+		this.status = StudyStatus.CLOSED;
+	}
+
 	public void update(
 		Long requesterMemberId,
 		String title,

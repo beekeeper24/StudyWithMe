@@ -67,6 +67,7 @@ public class StudyService {
 			command.capacity(),
 			command.schedule()
 		);
+		closeIfCapacityFull(study);
 		return toResult(study, requesterMemberId);
 	}
 
@@ -156,8 +157,14 @@ public class StudyService {
 	@Transactional
 	public StudyResult join(Long studyId, Long requesterMemberId) {
 		Study study = getStudyForUpdate(studyId);
+		if (study.getStatus() == StudyStatus.CLOSED && isCapacityFull(study)) {
+			throw new BusinessException(StudyErrorCode.STUDY_CAPACITY_FULL);
+		}
 		if (study.getStatus() == StudyStatus.CLOSED) {
 			throw new BusinessException(StudyErrorCode.STUDY_ALREADY_CLOSED);
+		}
+		if (isCapacityFull(study)) {
+			throw new BusinessException(StudyErrorCode.STUDY_CAPACITY_FULL);
 		}
 		StudyMember existingMember = studyMemberRepository.findByStudyIdAndMemberId(studyId, requesterMemberId)
 			.orElse(null);
@@ -166,10 +173,12 @@ public class StudyService {
 		}
 		if (existingMember != null) {
 			existingMember.rejoin();
+			closeIfCapacityFull(study);
 			return toResult(study, requesterMemberId);
 		}
 
 		studyMemberRepository.save(StudyMember.member(studyId, requesterMemberId));
+		closeIfCapacityFull(study);
 		return toResult(study, requesterMemberId);
 	}
 
@@ -240,6 +249,24 @@ public class StudyService {
 
 	private boolean isClosedStudy(Study study) {
 		return study != null && study.getStatus() == StudyStatus.CLOSED;
+	}
+
+	private void closeIfCapacityFull(Study study) {
+		if (isCapacityFull(study)) {
+			study.closeWhenCapacityFull();
+		}
+	}
+
+	private boolean isCapacityFull(Study study) {
+		Integer capacity = study.getCapacity();
+		if (capacity == null) {
+			return false;
+		}
+		long joinedCount = studyMemberRepository.countByStudyIdAndStatus(
+			study.getId(),
+			StudyMemberStatus.JOINED
+		);
+		return joinedCount >= capacity;
 	}
 
 	private StudyResult toResult(Study study, Long requesterMemberId, boolean joinedByRequester) {

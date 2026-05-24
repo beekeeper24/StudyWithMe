@@ -422,6 +422,94 @@ class StudyControllerTest {
 	}
 
 	@Test
+	@DisplayName("참여로 정원이 가득 차면 스터디 모집이 자동 마감되고 공개 목록에서 숨겨진다")
+	void joinStudyClosesRecruitmentWhenCapacityBecomesFull() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"알고리즘 스터디",
+				null,
+				"온라인 풀이",
+				"백준 실버 이상",
+				"풀이 인증 필수",
+				2,
+				"화요일 21:00"
+			)
+		);
+
+		mockMvc.perform(post("/api/v1/studies/{studyId}/join", study.id())
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.status").value("CLOSED"));
+
+		mockMvc.perform(get("/api/v1/studies"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(0));
+	}
+
+	@Test
+	@DisplayName("정원이 가득 찬 스터디에는 참여할 수 없다")
+	void rejectJoinStudyWhenCapacityIsFull() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		Member lateParticipant = saveMember("late-participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"알고리즘 스터디",
+				null,
+				"온라인 풀이",
+				"백준 실버 이상",
+				"풀이 인증 필수",
+				2,
+				"화요일 21:00"
+			)
+		);
+		studyService.join(study.id(), participant.getId());
+
+		mockMvc.perform(post("/api/v1/studies/{studyId}/join", study.id())
+				.header("Authorization", "Bearer " + accessToken(lateParticipant)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("STUDY-007"));
+	}
+
+	@Test
+	@DisplayName("정원 마감 후 참여자가 탈퇴해도 스터디는 공개 목록에 다시 나타나지 않는다")
+	void leaveAfterCapacityClosedStudyKeepsStudyHiddenFromPublicList() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"알고리즘 스터디",
+				null,
+				"온라인 풀이",
+				"백준 실버 이상",
+				"풀이 인증 필수",
+				2,
+				"화요일 21:00"
+			)
+		);
+		studyService.join(study.id(), participant.getId());
+
+		mockMvc.perform(post("/api/v1/studies/{studyId}/leave", study.id())
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.status").value("CLOSED"));
+
+		mockMvc.perform(get("/api/v1/studies"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(0));
+	}
+
+	@Test
 	@DisplayName("인증한 참여자는 스터디에서 나갈 수 있다")
 	void leaveStudyByParticipantWithBearerToken() throws Exception {
 		Member owner = saveMember("owner");
