@@ -19,6 +19,16 @@ import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.notification.application.NotificationOutboxProcessor;
+import com.studywithme.notification.domain.NotificationType;
+import com.studywithme.notification.repository.NotificationRepository;
+import com.studywithme.outbox.repository.OutboxEventRepository;
+import com.studywithme.study.application.StudyCreateCommand;
+import com.studywithme.study.application.StudyResult;
+import com.studywithme.study.application.StudyService;
+import com.studywithme.study.domain.StudyStatus;
+import com.studywithme.study.repository.StudyMemberRepository;
+import com.studywithme.study.repository.StudyRepository;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,8 +68,30 @@ class AuthControllerTest {
 	@Autowired
 	private OAuthLoginService oAuthLoginService;
 
+	@Autowired
+	private StudyService studyService;
+
+	@Autowired
+	private StudyRepository studyRepository;
+
+	@Autowired
+	private StudyMemberRepository studyMemberRepository;
+
+	@Autowired
+	private OutboxEventRepository outboxEventRepository;
+
+	@Autowired
+	private NotificationRepository notificationRepository;
+
+	@Autowired
+	private NotificationOutboxProcessor notificationOutboxProcessor;
+
 	@AfterEach
 	void tearDown() {
+		notificationRepository.deleteAll();
+		outboxEventRepository.deleteAll();
+		studyMemberRepository.deleteAll();
+		studyRepository.deleteAll();
 		refreshTokenRepository.deleteAll();
 		memberRepository.deleteAll();
 	}
@@ -455,6 +487,105 @@ class AuthControllerTest {
 			OAuthProvider.GOOGLE,
 			"google-withdraw"
 		).orElseThrow().getId()).isEqualTo(signedUpAgain.getId());
+	}
+
+	@Test
+	@DisplayName("회원탈퇴 시 모집 중이거나 마감된 소유 스터디를 삭제하고 참여자와 신청자에게 알림을 보낸다")
+	void withdrawMemberDeletesOwnedActiveStudies() throws Exception {
+		Member owner = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"owner-with-study@example.com",
+			"owner-with-study",
+			OAuthProvider.GOOGLE,
+			"google-owner-with-study",
+			null
+		));
+		Member participant = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"participant-with-study@example.com",
+			"participant-with-study",
+			OAuthProvider.GOOGLE,
+			"google-participant-with-study",
+			null
+		));
+		Member applicant = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"applicant-with-study@example.com",
+			"applicant-with-study",
+			OAuthProvider.GOOGLE,
+			"google-applicant-with-study",
+			null
+		));
+		StudyResult recruitingStudy = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"탈퇴 테스트 스터디",
+				null,
+				"온라인 진행",
+				"테스트 대상",
+				"규칙",
+				10,
+				"매주"
+			)
+		);
+		studyService.join(recruitingStudy.id(), participant.getId());
+		studyService.requestJoin(recruitingStudy.id(), applicant.getId());
+		StudyResult closedStudy = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"마감 테스트 스터디",
+				null,
+				"온라인 진행",
+				"테스트 대상",
+				"규칙",
+				10,
+				"매주"
+			)
+		);
+		studyService.close(closedStudy.id(), owner.getId());
+		StudyResult endedStudy = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"종료 테스트 스터디",
+				null,
+				"온라인 진행",
+				"테스트 대상",
+				"규칙",
+				10,
+				"매주"
+			)
+		);
+		studyService.end(endedStudy.id(), owner.getId());
+		outboxEventRepository.deleteAll();
+		String ownerAccessToken = jwtTokenProvider.createAccessToken(owner).token();
+		String participantAccessToken = jwtTokenProvider.createAccessToken(participant).token();
+
+		mockMvc.perform(delete("/api/v1/auth/me")
+				.header("Authorization", "Bearer " + ownerAccessToken))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true));
+
+		assertThat(studyRepository.findById(recruitingStudy.id()).orElseThrow().getStatus())
+			.isEqualTo(StudyStatus.DELETED);
+		assertThat(studyRepository.findById(closedStudy.id()).orElseThrow().getStatus())
+			.isEqualTo(StudyStatus.DELETED);
+		assertThat(studyRepository.findById(endedStudy.id()).orElseThrow().getStatus())
+			.isEqualTo(StudyStatus.ENDED);
+		mockMvc.perform(get("/api/v1/studies")
+				.header("Authorization", "Bearer " + participantAccessToken))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.length()").value(0));
+		mockMvc.perform(get("/api/v1/studies/me")
+				.header("Authorization", "Bearer " + participantAccessToken))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.pastStudies[0].status").value("DELETED"))
+			.andExpect(jsonPath("$.data.pastStudies[0].ownerNickname").value("탈퇴한 회원"));
+
+		notificationOutboxProcessor.processPending(10);
+
+		assertThat(notificationRepository.findAllByReceiverMemberIdOrderByCreatedAtDesc(participant.getId()))
+			.extracting(notification -> notification.getType())
+			.contains(NotificationType.STUDY_DELETED);
+		assertThat(notificationRepository.findAllByReceiverMemberIdOrderByCreatedAtDesc(applicant.getId()))
+			.extracting(notification -> notification.getType())
+			.contains(NotificationType.STUDY_DELETED);
 	}
 
 	@Test

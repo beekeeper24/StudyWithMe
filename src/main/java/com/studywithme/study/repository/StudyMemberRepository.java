@@ -2,6 +2,7 @@ package com.studywithme.study.repository;
 
 import com.studywithme.study.domain.StudyMember;
 import com.studywithme.study.domain.StudyMemberStatus;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,6 +26,8 @@ public interface StudyMemberRepository extends JpaRepository<StudyMember, Long> 
 	List<StudyMember> findAllByStudyId(Long studyId);
 
 	List<StudyMember> findAllByStudyIdAndStatus(Long studyId, StudyMemberStatus status);
+
+	List<StudyMember> findAllByStudyIdAndStatusIn(Long studyId, Collection<StudyMemberStatus> statuses);
 
 	List<StudyMember> findAllByMemberId(Long memberId);
 

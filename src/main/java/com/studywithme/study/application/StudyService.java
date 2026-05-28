@@ -2,6 +2,7 @@ package com.studywithme.study.application;
 
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.study.domain.Study;
@@ -349,10 +350,23 @@ public class StudyService {
 	@Transactional
 	public StudyResult delete(Long studyId, Long requesterMemberId) {
 		Study study = getStudyForUpdate(studyId);
-		List<Long> receiverMemberIds = findJoinedMemberIds(studyId);
+		List<Long> receiverMemberIds = findStudyDeletionReceiverMemberIds(studyId);
 		study.delete(requesterMemberId);
 		outboxEventPublisher.publishStudyDeleted(studyId, requesterMemberId, receiverMemberIds);
 		return toResult(study, requesterMemberId);
+	}
+
+	@Transactional
+	public void deleteOwnedActiveStudies(Long ownerMemberId) {
+		List<Study> studies = studyRepository.findAllByOwnerMemberIdAndStatusIn(
+			ownerMemberId,
+			List.of(StudyStatus.RECRUITING, StudyStatus.CLOSED)
+		);
+		for (Study study : studies) {
+			List<Long> receiverMemberIds = findStudyDeletionReceiverMemberIds(study.getId());
+			study.delete(ownerMemberId);
+			outboxEventPublisher.publishStudyDeleted(study.getId(), ownerMemberId, receiverMemberIds);
+		}
 	}
 
 	private Study getStudy(Long studyId) {
@@ -401,6 +415,17 @@ public class StudyService {
 		return studyMemberRepository.findAllByStudyIdAndStatus(studyId, StudyMemberStatus.JOINED)
 			.stream()
 			.map(StudyMember::getMemberId)
+			.toList();
+	}
+
+	private List<Long> findStudyDeletionReceiverMemberIds(Long studyId) {
+		return studyMemberRepository.findAllByStudyIdAndStatusIn(
+				studyId,
+				List.of(StudyMemberStatus.JOINED, StudyMemberStatus.PENDING)
+			)
+			.stream()
+			.map(StudyMember::getMemberId)
+			.distinct()
 			.toList();
 	}
 
@@ -471,8 +496,8 @@ public class StudyService {
 		boolean joinedByRequester,
 		boolean joinRequestedByRequester
 	) {
-		String ownerNickname = owner == null ? null : owner.getNickname();
-		String ownerProfileImageUrl = owner == null ? null : owner.getProfileImageUrl();
+		String ownerNickname = ownerNickname(owner);
+		String ownerProfileImageUrl = ownerProfileImageUrl(owner);
 		return StudyResult.from(
 			study,
 			ownerNickname,
@@ -492,5 +517,22 @@ public class StudyService {
 
 	private boolean hasText(String value) {
 		return value != null && !value.isBlank();
+	}
+
+	private String ownerNickname(Member owner) {
+		if (owner == null) {
+			return null;
+		}
+		if (owner.getStatus() == MemberStatus.WITHDRAWN) {
+			return "탈퇴한 회원";
+		}
+		return owner.getNickname();
+	}
+
+	private String ownerProfileImageUrl(Member owner) {
+		if (owner == null || owner.getStatus() == MemberStatus.WITHDRAWN) {
+			return null;
+		}
+		return owner.getProfileImageUrl();
 	}
 }
