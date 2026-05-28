@@ -2,11 +2,11 @@
 
 ## Harness Routing
 
-Use the harness stack automatically by task type and risk. Do not ask the user to name a harness for ordinary work.
+Use the main Codex flow by default. Add harnesses only when they clearly reduce risk, add review value, or enable useful parallel work.
 
-- Oh My Codex is the default orchestration and runtime layer when available.
-- Codex should decide when to use OMX team, parallel workers, or other orchestration based on task shape and risk. The user does not need to explicitly request sub-agents for substantial work.
-- Use OMX team/orchestration proactively when work can be split into independent implementation, review, research, or verification tracks without creating file conflicts.
+- Oh My Codex is available as an orchestration layer, but it is not the default execution path for ordinary work.
+- Use Codex main flow for normal implementation, debugging, review, and documentation unless there is a concrete reason to add a harness or sub-agent.
+- Use OMX team/orchestration only when work can be split into independent implementation, review, research, or verification tracks without creating file conflicts and the parallelism or second review is worth the overhead.
 - Keep simple tasks in the main Codex flow. Do not add orchestration overhead for trivial edits, typo fixes, formatting-only changes, or clear one-file fixes.
 - If the active runtime blocks sub-agent or team execution, state the constraint briefly and continue with the best available harness fallback.
 - Use normal Codex flow for trivial edits, typo fixes, formatting-only changes, and clear one-file fixes; still verify before completion when feasible.
@@ -15,12 +15,12 @@ Use the harness stack automatically by task type and risk. Do not ask the user t
 - Use Superpowers `test-driven-development` for complex logic, authentication, authorization, data migration, concurrency, or high-risk behavior changes.
 - Use Superpowers `systematic-debugging` when the bug cause is unclear.
 - Use Superpowers `verification-before-completion` before completing non-trivial work.
-- Use gstack only through `cso` / `/cso` for security review by default. Do not run full gstack review, QA, product, or release workflows unless the user explicitly expands scope.
-- Use Compound Engineering after meaningful work to codify operational learnings, missed assumptions, reusable project rules, and repetition-prevention notes. Keep these notes separate from human-facing work logs.
+- For security review, explicitly use gstack `cso` / `/cso`. Do not substitute a general review workflow when the task calls for security review.
+- Use Compound Engineering only when there is an important learning, or when the same mistake/pattern has repeated at least three times. Keep these notes separate from human-facing work logs.
 
 ## Harness Composition
 
-Use harnesses together when they cover different parts of the work. The default question is not "did the user ask for a harness?" but "which harness combination reduces risk or improves throughput for this task?"
+Use harnesses together only when they cover genuinely different parts of the work. The default path is Codex main flow; the default question is "does a harness add enough review, parallelism, or risk reduction to justify the overhead?"
 
 - Do not run multiple planning harnesses by default. Pick one lead planning harness, then add other harnesses only for distinct follow-up roles such as parallel execution, security review, verification, or learning capture.
 - Use OMX-led planning when the main uncertainty is requirements, boundaries, acceptance criteria, or how to split work across agents.
@@ -35,11 +35,11 @@ Use harnesses together when they cover different parts of the work. The default 
 - New feature or behavior change:
   - Use Superpowers `brainstorming` or `writing-plans` to shape the approach when the feature goal is clear enough to plan implementation.
   - Use OMX `deep-interview` first only when the feature goal, boundaries, or acceptance criteria are still unclear.
-  - Use OMX team/orchestration if implementation, tests, docs, and review can be split safely.
+  - Use OMX team/orchestration only if implementation, tests, docs, and review can be split safely and the parallel/review value is clear.
   - Use main Codex for final integration and verification.
 - High-risk backend logic:
   - Use Superpowers `test-driven-development`.
-  - Prefer OMX team/orchestration when independent test, implementation, and review tracks exist.
+  - Add OMX team/orchestration only when independent test, implementation, and review tracks exist and are worth coordinating.
   - Applies to authentication, authorization, token handling, data migration, concurrency, and state transitions.
 - Superpowers TDD test design:
   - Do not stop at happy-path-only tests.
@@ -55,7 +55,7 @@ Use harnesses together when they cover different parts of the work. The default 
   - Applies to OAuth2, JWT, refresh tokens, secrets, deployment security, data exposure, chat access control, notifications, and WebSocket security.
 - Meaningful completed work:
   - Use Superpowers `verification-before-completion` before claiming completion.
-  - Use Compound Engineering after review or implementation to capture repeated mistakes, missed assumptions, reusable project rules, and prevention notes.
+  - Use Compound Engineering only for important learnings or mistakes/patterns that have repeated at least three times.
   - Update Notion work logs for human-facing study/progress context when the work is meaningful.
 
 OMX team/orchestration is preferred when at least two of these are true:
@@ -115,18 +115,23 @@ Learning notes split:
 
 - Use Git Flow-style branch management.
 - `main` is the stable release branch. Do not commit or push routine work directly to `main`.
-- `develop` is the integration branch. Feature work is merged into `develop` only after local verification.
-- Create feature branches from `develop`.
+- `develop` is the integration branch. Merge into `develop` only after a coherent issue, feature, domain, infrastructure, or MVP slice is locally verified and PR-ready.
+- Create work branches from `develop` for each GitHub issue or coherent implementation slice.
+- A work branch represents one reviewable deliverable, such as OAuth login, chat access control, notification flow, infrastructure setup, or a domain feature. Do not open and merge a PR merely because one intermediate task ended.
+- Keep incremental checkpoint commits on the same work branch while that deliverable is still in progress.
+- Split a large feature into multiple PRs only when each PR leaves `develop` coherent, runnable, and understandable on its own.
 - Use branch prefixes: `feature/...`, `fix/...`, `test/...`, `refactor/...`, `chore/...`, `docs/...`, `release/...`, and `hotfix/...`.
 - Do not use a `codex/` branch prefix.
 - Push work branches and `develop` as needed. Promote to `main` only through an intentional release step.
 - Split commits by reviewable intent, not by tool run.
-- When the user asks to commit and organize work as a PR, treat the default completion path as:
-  1. commit the verified work;
-  2. open or update a PR into `develop`;
-  3. mark the PR ready;
-  4. merge it into `develop`;
-  5. sync local `develop`.
+- When the user asks to commit during an active work branch, commit the verified checkpoint and push the branch if useful; do not open or merge a PR unless the issue/feature/MVP slice is ready or the user explicitly asks for a PR.
+- When the issue/feature/MVP slice is ready for integration, treat the default completion path as:
+  1. commit all verified work on the work branch;
+  2. push the work branch;
+  3. open or update a PR into `develop`;
+  4. mark the PR ready after local verification and any required CI/review checks;
+  5. merge it into `develop`;
+  6. sync local `develop`.
 - Stop at a draft/open PR only when the user explicitly asks for review-only handling, when verification is incomplete, or when CI/conflicts/blockers make merge unsafe. State the blocker and next activation step clearly.
 
 ## Reporting
