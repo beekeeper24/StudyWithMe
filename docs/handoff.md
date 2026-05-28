@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-05-25
+Last updated: 2026-05-29
 
 ## Read This First
 
@@ -226,6 +226,32 @@ Completed and merged into `develop`:
    - additional joins for a full study return `STUDY-007`;
    - closed studies stay hidden from the public study list even if a participant later leaves;
    - there is no reopen API or reopen UI; closed studies remain only as My Page history records.
+35. Study join request and owner approval flow:
+   - study participation is no longer immediate membership;
+   - requester creates a pending join request and the owner approves, rejects, or sees pending requests from study detail;
+   - requester can cancel a pending request before approval;
+   - owner receives a participation-request notification and requester receives approval/rejection notifications;
+   - pre-join users can open a 1:1 private chat with the study owner from recruiting study detail;
+   - accepted members can use the study group chat, while the owner-chat shortcut is hidden after participation.
+36. Study lifecycle and history behavior:
+   - public study list shows recruiting studies only;
+   - closed or ended studies remain visible to participants through My Page history instead of disappearing entirely;
+   - owners can end a joined/closed study so it moves to past study history;
+   - owner deletion is available for ended/deleted-history cleanup flows, but the UI should not show misleading delete actions for already deleted studies;
+   - withdrawing an owner removes their active recruiting studies from the public recruiting list.
+37. Notification interaction baseline:
+   - notification popup uses unread/read visual state;
+   - notification items support per-item read, all-read, delete, and click-to-read behavior;
+   - clicking actionable study notifications navigates to the relevant study context;
+   - private chat request creates a notification for the other participant;
+   - study group chat does not create separate notifications for normal group messages.
+38. Community board categories and frontend board UI:
+   - Flyway V14 adds `posts.board_type` with `FREE`, `QUESTION`, `REVIEW`, and `NOTICE`;
+   - post create accepts `boardType`, defaulting to `FREE` for compatibility;
+   - post list supports optional `GET /api/v1/posts?boardType=...` filtering;
+   - post responses include `boardType`;
+   - frontend community now has separate board tabs, a table-style list, independent write screen, independent detail screen, and comments below the post detail;
+   - community list/detail hide raw publication status labels and use author/time oriented board presentation.
 
 Active feature work in progress:
 
@@ -243,9 +269,9 @@ Active feature work in progress:
   - `docs/learnings/0034-study-update-api.md`
   - `docs/learnings/0035-study-capacity-close-policy.md`
 - Local runtime after the latest work:
-  - backend is running on `8081` with the `oauth` profile;
+  - backend is running on `8081`;
   - frontend is running on `5173`;
-  - PostgreSQL schema has V12 applied locally after the structured study field migration.
+  - PostgreSQL schema has V14 applied locally after the post board type migration.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;
