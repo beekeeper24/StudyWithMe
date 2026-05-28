@@ -66,6 +66,9 @@ public class ChatService {
 		return chatRoomRepository.findByRoomKey(roomKey)
 			.map(room -> {
 				restoreRoomMember(room.getId(), requesterMemberId);
+				if (restoreRoomMemberIfHidden(room.getId(), targetMemberId)) {
+					outboxEventPublisher.publishPrivateChatRequested(room.getId(), targetMemberId, requesterMemberId);
+				}
 				return toRoomResult(room, requesterMemberId);
 			})
 			.orElseGet(() -> {
@@ -226,6 +229,13 @@ public class ChatService {
 
 	private void restoreRoomMember(Long roomId, Long memberId) {
 		findRoomMember(roomId, memberId).restore();
+	}
+
+	private boolean restoreRoomMemberIfHidden(Long roomId, Long memberId) {
+		ChatRoomMember roomMember = findRoomMember(roomId, memberId);
+		boolean hidden = roomMember.getHiddenAt() != null;
+		roomMember.restore();
+		return hidden;
 	}
 
 	private void syncStudyRoomMembers(Long roomId, Long studyId) {

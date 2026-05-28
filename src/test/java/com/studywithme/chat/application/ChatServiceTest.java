@@ -2,6 +2,7 @@ package com.studywithme.chat.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -280,6 +281,25 @@ class ChatServiceTest {
 		assertThat(restoredRoom.id()).isEqualTo(room.id());
 		assertThat(chatService.findMyRooms(requester.getId())).extracting(ChatRoomResult::id)
 			.containsExactly(room.id());
+	}
+
+	@Test
+	@DisplayName("상대방이 삭제한 기존 1:1 채팅방을 다시 요청하면 상대방 목록에도 복구하고 알림을 보낸다")
+	void restoreTargetHiddenPrivateRoomWhenRequestingAgain() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		chatService.hideRoom(room.id(), target.getId());
+		clearInvocations(outboxEventPublisher);
+
+		ChatRoomResult restoredRoom = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		assertThat(restoredRoom.id()).isEqualTo(room.id());
+		assertThat(chatService.findMyRooms(requester.getId())).extracting(ChatRoomResult::id)
+			.containsExactly(room.id());
+		assertThat(chatService.findMyRooms(target.getId())).extracting(ChatRoomResult::id)
+			.containsExactly(room.id());
+		verify(outboxEventPublisher).publishPrivateChatRequested(room.id(), target.getId(), requester.getId());
 	}
 
 	@Test
