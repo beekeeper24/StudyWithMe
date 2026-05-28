@@ -11,6 +11,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.study.application.StudyCreateCommand;
 import com.studywithme.study.application.StudyResult;
 import com.studywithme.study.application.StudyService;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @DataJpaTest
 @Import({
@@ -42,6 +44,9 @@ class ChatServiceTest {
 
 	@Autowired
 	private StudyService studyService;
+
+	@MockitoBean
+	private OutboxEventPublisher outboxEventPublisher;
 
 	@Test
 	@DisplayName("1:1 채팅방은 두 회원 조합당 하나만 생성된다")
@@ -207,8 +212,8 @@ class ChatServiceTest {
 	}
 
 	@Test
-	@DisplayName("마감된 스터디 채팅방에는 새 메시지를 작성할 수 없다")
-	void rejectMessageToClosedStudyRoom() {
+	@DisplayName("모집이 마감된 스터디 채팅방에도 참여자는 메시지를 작성할 수 있다")
+	void sendMessageToRecruitmentClosedStudyRoom() {
 		Member owner = saveMember("owner");
 		StudyResult study = studyService.create(
 			owner.getId(),
@@ -218,14 +223,13 @@ class ChatServiceTest {
 
 		studyService.close(study.id(), owner.getId());
 
-		assertThatThrownBy(() -> chatService.sendMessage(
+		ChatMessageResult message = chatService.sendMessage(
 			room.id(),
 			owner.getId(),
 			new ChatMessageCreateCommand("마감 후 메시지")
-		))
-			.isInstanceOf(BusinessException.class)
-			.extracting("errorCode")
-			.isEqualTo(ChatErrorCode.STUDY_CHAT_ROOM_CLOSED);
+		);
+
+		assertThat(message.content()).isEqualTo("마감 후 메시지");
 	}
 
 	@Test

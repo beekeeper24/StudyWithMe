@@ -74,7 +74,9 @@ public class ChatService {
 
 	@Transactional
 	public ChatRoomResult createStudyRoom(Long studyId, Long requesterMemberId) {
-		if (!studyRepository.existsById(studyId)) {
+		Study study = studyRepository.findById(studyId)
+			.orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+		if (study.getStatus() == StudyStatus.DELETED) {
 			throw new BusinessException(StudyErrorCode.STUDY_NOT_FOUND);
 		}
 		if (!studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
@@ -190,6 +192,10 @@ public class ChatService {
 		if (room.getStudyId() == null) {
 			return true;
 		}
+		Study study = studyRepository.findById(room.getStudyId()).orElse(null);
+		if (study == null || study.getStatus() == StudyStatus.DELETED) {
+			return false;
+		}
 		return studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
 			room.getStudyId(),
 			memberId,
@@ -203,7 +209,7 @@ public class ChatService {
 		}
 		Study study = studyRepository.findById(room.getStudyId())
 			.orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-		if (study.getStatus() == StudyStatus.CLOSED) {
+		if (study.getStatus() == StudyStatus.ENDED || study.getStatus() == StudyStatus.DELETED) {
 			throw new BusinessException(ChatErrorCode.STUDY_CHAT_ROOM_CLOSED);
 		}
 	}

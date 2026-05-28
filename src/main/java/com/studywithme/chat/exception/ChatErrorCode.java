@@ -26,7 +26,7 @@ public enum ChatErrorCode implements ErrorCode {
 	),
 	STUDY_CHAT_ROOM_CLOSED(
 		"CHAT-005",
-		"마감된 스터디 채팅방에는 메시지를 보낼 수 없습니다.",
+		"종료된 스터디 채팅방에는 메시지를 보낼 수 없습니다.",
 		HttpStatus.CONFLICT
 	);
 

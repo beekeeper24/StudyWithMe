@@ -10,6 +10,7 @@ import com.studywithme.study.application.StudyUpdateCommand;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -104,7 +105,54 @@ public class StudyController {
 	) {
 		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
 		return ApiResponse.success(StudyResponse.from(
-			studyService.join(studyId, authenticatedPrincipal.memberId())
+			studyService.requestJoin(studyId, authenticatedPrincipal.memberId())
+		));
+	}
+
+	@GetMapping("/{studyId}/join-requests")
+	public ApiResponse<List<StudyJoinRequestResponse>> findJoinRequests(
+		@PathVariable Long studyId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(studyService.findJoinRequests(studyId, authenticatedPrincipal.memberId())
+			.stream()
+			.map(StudyJoinRequestResponse::from)
+			.toList());
+	}
+
+	@PostMapping("/{studyId}/join-requests/{memberId}/approve")
+	public ApiResponse<StudyResponse> approveJoinRequest(
+		@PathVariable Long studyId,
+		@PathVariable Long memberId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(StudyResponse.from(
+			studyService.approveJoinRequest(studyId, authenticatedPrincipal.memberId(), memberId)
+		));
+	}
+
+	@PostMapping("/{studyId}/join-requests/{memberId}/reject")
+	public ApiResponse<StudyResponse> rejectJoinRequest(
+		@PathVariable Long studyId,
+		@PathVariable Long memberId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(StudyResponse.from(
+			studyService.rejectJoinRequest(studyId, authenticatedPrincipal.memberId(), memberId)
+		));
+	}
+
+	@PostMapping("/{studyId}/join-requests/cancel")
+	public ApiResponse<StudyResponse> cancelJoinRequest(
+		@PathVariable Long studyId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(StudyResponse.from(
+			studyService.cancelJoinRequest(studyId, authenticatedPrincipal.memberId())
 		));
 	}
 
@@ -127,6 +175,28 @@ public class StudyController {
 		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
 		return ApiResponse.success(StudyResponse.from(
 			studyService.close(studyId, authenticatedPrincipal.memberId())
+		));
+	}
+
+	@PostMapping("/{studyId}/end")
+	public ApiResponse<StudyResponse> end(
+		@PathVariable Long studyId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(StudyResponse.from(
+			studyService.end(studyId, authenticatedPrincipal.memberId())
+		));
+	}
+
+	@DeleteMapping("/{studyId}")
+	public ApiResponse<StudyResponse> delete(
+		@PathVariable Long studyId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(StudyResponse.from(
+			studyService.delete(studyId, authenticatedPrincipal.memberId())
 		));
 	}
 

@@ -7,6 +7,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.study.domain.StudyMember;
 import com.studywithme.study.domain.StudyMemberRole;
 import com.studywithme.study.domain.StudyMemberStatus;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @DataJpaTest
 @Import(StudyService.class)
@@ -36,6 +38,9 @@ class StudyServiceTest {
 	@Autowired
 	private StudyService studyService;
 
+	@MockitoBean
+	private OutboxEventPublisher outboxEventPublisher;
+
 	@Test
 	@DisplayName("스터디를 생성하면 모집장 참여 정보가 OWNER 역할로 생성된다")
 	void createStudyCreatesOwnerMembership() {
@@ -51,6 +56,27 @@ class StudyServiceTest {
 			.orElseThrow();
 		assertThat(result.ownerMemberId()).isEqualTo(owner.getId());
 		assertThat(studyMember.getRole()).isEqualTo(StudyMemberRole.OWNER);
+	}
+
+	@Test
+	@DisplayName("생성 시점에 정원이 찬 스터디는 자동으로 마감된다")
+	void createStudyClosesWhenOwnerFillsCapacity() {
+		Member owner = saveMember("owner");
+
+		StudyResult result = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"1인 스터디",
+				null,
+				"혼자 진행",
+				"기록이 필요한 사람",
+				"매일 기록",
+				1,
+				"매일"
+			)
+		);
+
+		assertThat(result.status()).isEqualTo(StudyStatus.CLOSED);
 	}
 
 	@Test

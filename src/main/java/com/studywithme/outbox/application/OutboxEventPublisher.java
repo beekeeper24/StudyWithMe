@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 public class OutboxEventPublisher {
 
 	private static final String AGGREGATE_TYPE_COMMENT = "COMMENT";
+	private static final String AGGREGATE_TYPE_STUDY = "STUDY";
 
 	private final ObjectMapper objectMapper;
 	private final OutboxEventRepository outboxEventRepository;
@@ -75,11 +76,75 @@ public class OutboxEventPublisher {
 		save("COMMENT_MENTIONED", commentId, payload);
 	}
 
+	public void publishStudyJoinRequested(Long studyId, Long ownerMemberId, Long actorMemberId) {
+		saveStudy("STUDY_JOIN_REQUESTED", studyId, new StudySingleReceiverPayload(
+			studyId,
+			ownerMemberId,
+			actorMemberId
+		));
+	}
+
+	public void publishStudyJoinApproved(Long studyId, Long participantMemberId, Long actorMemberId) {
+		saveStudy("STUDY_JOIN_APPROVED", studyId, new StudySingleReceiverPayload(
+			studyId,
+			participantMemberId,
+			actorMemberId
+		));
+	}
+
+	public void publishStudyJoinRejected(Long studyId, Long participantMemberId, Long actorMemberId) {
+		saveStudy("STUDY_JOIN_REJECTED", studyId, new StudySingleReceiverPayload(
+			studyId,
+			participantMemberId,
+			actorMemberId
+		));
+	}
+
+	public void publishStudyJoinCancelled(Long studyId, Long ownerMemberId, Long actorMemberId) {
+		saveStudy("STUDY_JOIN_CANCELLED", studyId, new StudySingleReceiverPayload(
+			studyId,
+			ownerMemberId,
+			actorMemberId
+		));
+	}
+
+	public void publishStudyEnded(Long studyId, Long actorMemberId, List<Long> receiverMemberIds) {
+		publishStudyMultiReceiver("STUDY_ENDED", studyId, actorMemberId, receiverMemberIds);
+	}
+
+	public void publishStudyDeleted(Long studyId, Long actorMemberId, List<Long> receiverMemberIds) {
+		publishStudyMultiReceiver("STUDY_DELETED", studyId, actorMemberId, receiverMemberIds);
+	}
+
+	private void publishStudyMultiReceiver(
+		String eventType,
+		Long studyId,
+		Long actorMemberId,
+		List<Long> receiverMemberIds
+	) {
+		if (receiverMemberIds == null || receiverMemberIds.isEmpty()) {
+			return;
+		}
+		saveStudy(eventType, studyId, new StudyMultiReceiverPayload(
+			studyId,
+			actorMemberId,
+			receiverMemberIds
+		));
+	}
+
 	private void save(String eventType, Long aggregateId, Object payload) {
+		save(eventType, AGGREGATE_TYPE_COMMENT, aggregateId, payload);
+	}
+
+	private void saveStudy(String eventType, Long aggregateId, Object payload) {
+		save(eventType, AGGREGATE_TYPE_STUDY, aggregateId, payload);
+	}
+
+	private void save(String eventType, String aggregateType, Long aggregateId, Object payload) {
 		try {
 			outboxEventRepository.save(OutboxEvent.create(
 				eventType,
-				AGGREGATE_TYPE_COMMENT,
+				aggregateType,
 				aggregateId,
 				objectMapper.writeValueAsString(payload)
 			));
@@ -111,6 +176,20 @@ public class OutboxEventPublisher {
 		Long actorMemberId,
 		List<Long> mentionedMemberIds,
 		List<Long> replacedNotificationReceiverMemberIds
+	) {
+	}
+
+	private record StudySingleReceiverPayload(
+		Long studyId,
+		Long receiverMemberId,
+		Long actorMemberId
+	) {
+	}
+
+	private record StudyMultiReceiverPayload(
+		Long studyId,
+		Long actorMemberId,
+		List<Long> receiverMemberIds
 	) {
 	}
 }

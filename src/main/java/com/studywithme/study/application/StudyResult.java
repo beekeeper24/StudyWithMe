@@ -18,13 +18,14 @@ public record StudyResult(
 	String schedule,
 	StudyStatus status,
 	boolean joinedByRequester,
+	boolean joinRequestedByRequester,
 	boolean ownedByRequester,
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt
 ) {
 
 	public static StudyResult from(Study study) {
-		return from(study, null, null, false, false);
+		return from(study, null, null, false, false, false);
 	}
 
 	public static StudyResult from(
@@ -32,6 +33,7 @@ public record StudyResult(
 		String ownerNickname,
 		String ownerProfileImageUrl,
 		boolean joinedByRequester,
+		boolean joinRequestedByRequester,
 		boolean ownedByRequester
 	) {
 		return new StudyResult(
@@ -48,6 +50,7 @@ public record StudyResult(
 			study.getSchedule(),
 			study.getStatus(),
 			joinedByRequester,
+			joinRequestedByRequester,
 			ownedByRequester,
 			study.getCreatedAt(),
 			study.getUpdatedAt()

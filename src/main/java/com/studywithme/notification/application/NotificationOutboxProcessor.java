@@ -78,6 +78,18 @@ public class NotificationOutboxProcessor {
 			processReplyCreated(sourceEventId, payload);
 		} else if ("COMMENT_MENTIONED".equals(eventType)) {
 			processCommentMentioned(sourceEventId, payload);
+		} else if ("STUDY_JOIN_REQUESTED".equals(eventType)) {
+			processStudySingleReceiver(sourceEventId, payload, NotificationType.STUDY_JOIN_REQUESTED, "스터디 참여 신청이 도착했습니다.");
+		} else if ("STUDY_JOIN_APPROVED".equals(eventType)) {
+			processStudySingleReceiver(sourceEventId, payload, NotificationType.STUDY_JOIN_APPROVED, "스터디 참여 신청이 승인되었습니다.");
+		} else if ("STUDY_JOIN_REJECTED".equals(eventType)) {
+			processStudySingleReceiver(sourceEventId, payload, NotificationType.STUDY_JOIN_REJECTED, "스터디 참여 신청이 거절되었습니다.");
+		} else if ("STUDY_JOIN_CANCELLED".equals(eventType)) {
+			processStudySingleReceiver(sourceEventId, payload, NotificationType.STUDY_JOIN_CANCELLED, "스터디 참여 신청이 취소되었습니다.");
+		} else if ("STUDY_ENDED".equals(eventType)) {
+			processStudyMultiReceiver(sourceEventId, payload, NotificationType.STUDY_ENDED, "스터디가 종료되었습니다.");
+		} else if ("STUDY_DELETED".equals(eventType)) {
+			processStudyMultiReceiver(sourceEventId, payload, NotificationType.STUDY_DELETED, "스터디가 삭제되었습니다.");
 		}
 	}
 
@@ -129,6 +141,44 @@ public class NotificationOutboxProcessor {
 		}
 	}
 
+	private void processStudySingleReceiver(
+		String sourceEventId,
+		String eventPayload,
+		NotificationType type,
+		String message
+	) throws Exception {
+		JsonNode payload = objectMapper.readTree(eventPayload);
+		createStudyNotificationIfNeeded(
+			sourceEventId,
+			payload.required("receiverMemberId").asLong(),
+			payload.required("actorMemberId").asLong(),
+			type,
+			payload.required("studyId").asLong(),
+			message
+		);
+	}
+
+	private void processStudyMultiReceiver(
+		String sourceEventId,
+		String eventPayload,
+		NotificationType type,
+		String message
+	) throws Exception {
+		JsonNode payload = objectMapper.readTree(eventPayload);
+		Long actorMemberId = payload.required("actorMemberId").asLong();
+		Long studyId = payload.required("studyId").asLong();
+		for (Long receiverMemberId : readLongArray(payload.required("receiverMemberIds"))) {
+			createStudyNotificationIfNeeded(
+				sourceEventId,
+				receiverMemberId,
+				actorMemberId,
+				type,
+				studyId,
+				message
+			);
+		}
+	}
+
 	private boolean isReplacedByMention(Long commentId, Long receiverMemberId) throws Exception {
 		List<OutboxEvent> mentionEvents = outboxEventRepository.findAllByEventTypeAndAggregateTypeAndAggregateIdOrderByOccurredAtAsc(
 			"COMMENT_MENTIONED",
@@ -174,6 +224,40 @@ public class NotificationOutboxProcessor {
 				actorMemberId,
 				type,
 				NotificationTargetType.COMMENT,
+				targetId,
+				sourceEventId,
+				message
+			));
+			publishAfterCommit(NotificationResult.from(notification));
+		} catch (DataIntegrityViolationException ignored) {
+			// Another worker may have processed the same at-least-once event first.
+		}
+	}
+
+	private void createStudyNotificationIfNeeded(
+		String sourceEventId,
+		Long receiverMemberId,
+		Long actorMemberId,
+		NotificationType type,
+		Long targetId,
+		String message
+	) {
+		if (receiverMemberId.equals(actorMemberId)) {
+			return;
+		}
+		if (notificationRepository.existsBySourceEventIdAndReceiverMemberIdAndType(
+			sourceEventId,
+			receiverMemberId,
+			type
+		)) {
+			return;
+		}
+		try {
+			Notification notification = notificationRepository.save(Notification.create(
+				receiverMemberId,
+				actorMemberId,
+				type,
+				NotificationTargetType.STUDY,
 				targetId,
 				sourceEventId,
 				message
