@@ -12,6 +12,7 @@ import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.mention.application.MentionExtractor;
 import com.studywithme.mention.application.MentionTargetResolver;
 import com.studywithme.notification.domain.Notification;
+import com.studywithme.notification.domain.NotificationTargetType;
 import com.studywithme.notification.domain.NotificationType;
 import com.studywithme.notification.repository.NotificationRepository;
 import com.studywithme.outbox.application.OutboxEventPublisher;
@@ -57,6 +58,31 @@ class NotificationOutboxProcessorTest {
 
 	@Autowired
 	private NotificationOutboxProcessor processor;
+
+	@Test
+	@DisplayName("PRIVATE_CHAT_REQUESTED event를 처리하면 상대방에게 채팅방 알림을 만든다")
+	void processPrivateChatRequestedCreatesNotificationForTargetMember() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		Long roomId = 101L;
+		outboxEventRepository.deleteAll();
+		notificationRepository.deleteAll();
+		OutboxEventPublisher publisher = new OutboxEventPublisher(new ObjectMapper(), outboxEventRepository);
+		publisher.publishPrivateChatRequested(roomId, target.getId(), requester.getId());
+
+		int processedCount = processor.processPending(10);
+
+		List<Notification> notifications = notificationRepository.findAll();
+		assertThat(processedCount).isEqualTo(1);
+		assertThat(notifications).singleElement().satisfies(notification -> {
+			assertThat(notification.getReceiverMemberId()).isEqualTo(target.getId());
+			assertThat(notification.getActorMemberId()).isEqualTo(requester.getId());
+			assertThat(notification.getType()).isEqualTo(NotificationType.PRIVATE_CHAT_REQUESTED);
+			assertThat(notification.getTargetType()).isEqualTo(NotificationTargetType.CHAT_ROOM);
+			assertThat(notification.getTargetId()).isEqualTo(roomId);
+			assertThat(notification.getMessage()).isEqualTo("1:1 채팅 요청이 도착했습니다.");
+		});
+	}
 
 	@Test
 	@DisplayName("COMMENT_CREATED event를 처리하면 게시글 작성자에게 알림을 만든다")

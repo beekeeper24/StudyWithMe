@@ -2,6 +2,8 @@ package com.studywithme.chat.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.studywithme.chat.domain.ChatRoomType;
 import com.studywithme.chat.exception.ChatErrorCode;
@@ -61,6 +63,8 @@ class ChatServiceTest {
 		assertThat(second.type()).isEqualTo(ChatRoomType.PRIVATE);
 		assertThat(chatRoomRepository.count()).isEqualTo(1);
 		assertThat(chatRoomMemberRepository.findAllByRoomId(first.id())).hasSize(2);
+		verify(outboxEventPublisher).publishPrivateChatRequested(first.id(), target.getId(), requester.getId());
+		verify(outboxEventPublisher, never()).publishPrivateChatRequested(second.id(), requester.getId(), target.getId());
 	}
 
 	@Test

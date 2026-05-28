@@ -101,6 +101,7 @@ public class SecurityConfig {
 					"/api/v1/chat/rooms/*/members"
 				).authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/*/read").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/api/v1/notifications/*").authenticated()
 				.requestMatchers(
 					"/actuator/health",
 					"/actuator/info",

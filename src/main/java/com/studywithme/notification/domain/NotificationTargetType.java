@@ -2,5 +2,6 @@ package com.studywithme.notification.domain;
 
 public enum NotificationTargetType {
 	COMMENT,
-	STUDY
+	STUDY,
+	CHAT_ROOM
 }

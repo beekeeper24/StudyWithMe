@@ -12,6 +12,7 @@ public class OutboxEventPublisher {
 
 	private static final String AGGREGATE_TYPE_COMMENT = "COMMENT";
 	private static final String AGGREGATE_TYPE_STUDY = "STUDY";
+	private static final String AGGREGATE_TYPE_CHAT_ROOM = "CHAT_ROOM";
 
 	private final ObjectMapper objectMapper;
 	private final OutboxEventRepository outboxEventRepository;
@@ -116,6 +117,14 @@ public class OutboxEventPublisher {
 		publishStudyMultiReceiver("STUDY_DELETED", studyId, actorMemberId, receiverMemberIds);
 	}
 
+	public void publishPrivateChatRequested(Long roomId, Long receiverMemberId, Long actorMemberId) {
+		save("PRIVATE_CHAT_REQUESTED", AGGREGATE_TYPE_CHAT_ROOM, roomId, new PrivateChatRequestedPayload(
+			roomId,
+			receiverMemberId,
+			actorMemberId
+		));
+	}
+
 	private void publishStudyMultiReceiver(
 		String eventType,
 		Long studyId,
@@ -190,6 +199,13 @@ public class OutboxEventPublisher {
 		Long studyId,
 		Long actorMemberId,
 		List<Long> receiverMemberIds
+	) {
+	}
+
+	private record PrivateChatRequestedPayload(
+		Long roomId,
+		Long receiverMemberId,
+		Long actorMemberId
 	) {
 	}
 }

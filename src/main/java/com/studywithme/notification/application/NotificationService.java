@@ -32,4 +32,14 @@ public class NotificationService {
 		notification.markRead(requesterMemberId);
 		return NotificationResult.from(notification);
 	}
+
+	@Transactional
+	public void delete(Long notificationId, Long requesterMemberId) {
+		Notification notification = notificationRepository.findById(notificationId)
+			.orElseThrow(() -> new BusinessException(NotificationErrorCode.NOTIFICATION_NOT_FOUND));
+		if (!notification.getReceiverMemberId().equals(requesterMemberId)) {
+			throw new BusinessException(NotificationErrorCode.NOT_NOTIFICATION_OWNER);
+		}
+		notificationRepository.delete(notification);
+	}
 }

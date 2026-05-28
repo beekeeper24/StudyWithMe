@@ -90,6 +90,8 @@ public class NotificationOutboxProcessor {
 			processStudyMultiReceiver(sourceEventId, payload, NotificationType.STUDY_ENDED, "스터디가 종료되었습니다.");
 		} else if ("STUDY_DELETED".equals(eventType)) {
 			processStudyMultiReceiver(sourceEventId, payload, NotificationType.STUDY_DELETED, "스터디가 삭제되었습니다.");
+		} else if ("PRIVATE_CHAT_REQUESTED".equals(eventType)) {
+			processChatSingleReceiver(sourceEventId, payload, NotificationType.PRIVATE_CHAT_REQUESTED, "1:1 채팅 요청이 도착했습니다.");
 		}
 	}
 
@@ -179,6 +181,24 @@ public class NotificationOutboxProcessor {
 		}
 	}
 
+	private void processChatSingleReceiver(
+		String sourceEventId,
+		String eventPayload,
+		NotificationType type,
+		String message
+	) throws Exception {
+		JsonNode payload = objectMapper.readTree(eventPayload);
+		createTargetNotificationIfNeeded(
+			sourceEventId,
+			payload.required("receiverMemberId").asLong(),
+			payload.required("actorMemberId").asLong(),
+			type,
+			NotificationTargetType.CHAT_ROOM,
+			payload.required("roomId").asLong(),
+			message
+		);
+	}
+
 	private boolean isReplacedByMention(Long commentId, Long receiverMemberId) throws Exception {
 		List<OutboxEvent> mentionEvents = outboxEventRepository.findAllByEventTypeAndAggregateTypeAndAggregateIdOrderByOccurredAtAsc(
 			"COMMENT_MENTIONED",
@@ -242,6 +262,26 @@ public class NotificationOutboxProcessor {
 		Long targetId,
 		String message
 	) {
+		createTargetNotificationIfNeeded(
+			sourceEventId,
+			receiverMemberId,
+			actorMemberId,
+			type,
+			NotificationTargetType.STUDY,
+			targetId,
+			message
+		);
+	}
+
+	private void createTargetNotificationIfNeeded(
+		String sourceEventId,
+		Long receiverMemberId,
+		Long actorMemberId,
+		NotificationType type,
+		NotificationTargetType targetType,
+		Long targetId,
+		String message
+	) {
 		if (receiverMemberId.equals(actorMemberId)) {
 			return;
 		}
@@ -257,7 +297,7 @@ public class NotificationOutboxProcessor {
 				receiverMemberId,
 				actorMemberId,
 				type,
-				NotificationTargetType.STUDY,
+				targetType,
 				targetId,
 				sourceEventId,
 				message

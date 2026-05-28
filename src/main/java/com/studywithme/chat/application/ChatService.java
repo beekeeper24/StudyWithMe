@@ -11,6 +11,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.study.domain.Study;
 import com.studywithme.study.domain.StudyMemberStatus;
 import com.studywithme.study.domain.StudyStatus;
@@ -34,6 +35,7 @@ public class ChatService {
 	private final MemberRepository memberRepository;
 	private final StudyRepository studyRepository;
 	private final StudyMemberRepository studyMemberRepository;
+	private final OutboxEventPublisher outboxEventPublisher;
 
 	public ChatService(
 		ChatRoomRepository chatRoomRepository,
@@ -41,7 +43,8 @@ public class ChatService {
 		ChatMessageRepository chatMessageRepository,
 		MemberRepository memberRepository,
 		StudyRepository studyRepository,
-		StudyMemberRepository studyMemberRepository
+		StudyMemberRepository studyMemberRepository,
+		OutboxEventPublisher outboxEventPublisher
 	) {
 		this.chatRoomRepository = chatRoomRepository;
 		this.chatRoomMemberRepository = chatRoomMemberRepository;
@@ -49,6 +52,7 @@ public class ChatService {
 		this.memberRepository = memberRepository;
 		this.studyRepository = studyRepository;
 		this.studyMemberRepository = studyMemberRepository;
+		this.outboxEventPublisher = outboxEventPublisher;
 	}
 
 	@Transactional
@@ -68,6 +72,7 @@ public class ChatService {
 				ChatRoom room = chatRoomRepository.save(ChatRoom.privateRoom(roomKey));
 				chatRoomMemberRepository.save(ChatRoomMember.join(room.getId(), requesterMemberId));
 				chatRoomMemberRepository.save(ChatRoomMember.join(room.getId(), targetMemberId));
+				outboxEventPublisher.publishPrivateChatRequested(room.getId(), targetMemberId, requesterMemberId);
 				return toRoomResult(room, requesterMemberId);
 			});
 	}
