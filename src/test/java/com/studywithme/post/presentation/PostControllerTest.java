@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.studywithme.auth.token.JwtTokenProvider;
 import com.studywithme.auth.token.RefreshTokenRepository;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.post.application.PostCreateCommand;
@@ -205,6 +206,47 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("일반 회원은 공지사항 게시글을 작성할 수 없다")
+	void rejectNoticePostByNonAdmin() throws Exception {
+		Member author = saveMember("author");
+
+		mockMvc.perform(post("/api/v1/posts")
+				.header("Authorization", "Bearer " + accessToken(author))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"boardType": "NOTICE",
+						"title": "공지",
+						"content": "관리자 공지입니다."
+					}
+					"""))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("POST-003"));
+	}
+
+	@Test
+	@DisplayName("관리자는 공지사항 게시글을 작성할 수 있다")
+	void createNoticePostByAdmin() throws Exception {
+		Member admin = saveAdmin("admin");
+
+		mockMvc.perform(post("/api/v1/posts")
+				.header("Authorization", "Bearer " + accessToken(admin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"boardType": "NOTICE",
+						"title": "공지",
+						"content": "관리자 공지입니다."
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.boardType").value("NOTICE"))
+			.andExpect(jsonPath("$.data.title").value("공지"));
+	}
+
+	@Test
 	@DisplayName("작성자는 게시글을 수정할 수 있다")
 	void updatePostByAuthorWithBearerToken() throws Exception {
 		Member author = saveMember("author");
@@ -284,6 +326,18 @@ class PostControllerTest {
 			"google-" + name,
 			profileImageUrl
 		));
+	}
+
+	private Member saveAdmin(String name) {
+		Member member = Member.createOAuthMember(
+			name + "@example.com",
+			name,
+			OAuthProvider.GOOGLE,
+			"google-" + name,
+			null
+		);
+		member.grantRole(MemberRole.ADMIN);
+		return memberRepository.saveAndFlush(member);
 	}
 
 	private String accessToken(Member member) {

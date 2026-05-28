@@ -13,6 +13,11 @@ public enum PostErrorCode implements ErrorCode {
 		"POST-002",
 		"게시글 작성자만 수행할 수 있습니다.",
 		HttpStatus.FORBIDDEN
+	),
+	NOTICE_ADMIN_REQUIRED(
+		"POST-003",
+		"공지사항은 관리자만 작성할 수 있습니다.",
+		HttpStatus.FORBIDDEN
 	);
 
 	private final String code;
