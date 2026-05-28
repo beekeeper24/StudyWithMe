@@ -56,12 +56,23 @@ public class StudyMember {
 		this.status = StudyMemberStatus.JOINED;
 	}
 
+	private StudyMember(Long studyId, Long memberId, StudyMemberRole role, StudyMemberStatus status) {
+		this.studyId = studyId;
+		this.memberId = memberId;
+		this.role = role;
+		this.status = status;
+	}
+
 	public static StudyMember owner(Long studyId, Long memberId) {
 		return new StudyMember(studyId, memberId, StudyMemberRole.OWNER);
 	}
 
 	public static StudyMember member(Long studyId, Long memberId) {
 		return new StudyMember(studyId, memberId, StudyMemberRole.MEMBER);
+	}
+
+	public static StudyMember request(Long studyId, Long memberId) {
+		return new StudyMember(studyId, memberId, StudyMemberRole.MEMBER, StudyMemberStatus.PENDING);
 	}
 
 	@PrePersist
@@ -74,13 +85,41 @@ public class StudyMember {
 		this.leftAt = LocalDateTime.now();
 	}
 
+	public void cancelRequest() {
+		this.status = StudyMemberStatus.LEFT;
+		this.leftAt = LocalDateTime.now();
+	}
+
+	public void reject() {
+		this.status = StudyMemberStatus.LEFT;
+		this.leftAt = LocalDateTime.now();
+	}
+
 	public void rejoin() {
+		this.status = StudyMemberStatus.JOINED;
+		this.leftAt = null;
+	}
+
+	public void requestAgain() {
+		this.status = StudyMemberStatus.PENDING;
+		this.leftAt = null;
+	}
+
+	public void approve() {
 		this.status = StudyMemberStatus.JOINED;
 		this.leftAt = null;
 	}
 
 	public boolean isJoined() {
 		return status == StudyMemberStatus.JOINED;
+	}
+
+	public boolean isPending() {
+		return status == StudyMemberStatus.PENDING;
+	}
+
+	public boolean isLeft() {
+		return status == StudyMemberStatus.LEFT;
 	}
 
 	public Long getId() {

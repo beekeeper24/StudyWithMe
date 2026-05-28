@@ -113,6 +113,20 @@ public class Study {
 		this.status = StudyStatus.CLOSED;
 	}
 
+	public void end(Long requesterMemberId) {
+		if (!ownerMemberId.equals(requesterMemberId)) {
+			throw new BusinessException(StudyErrorCode.NOT_STUDY_OWNER);
+		}
+		this.status = StudyStatus.ENDED;
+	}
+
+	public void delete(Long requesterMemberId) {
+		if (!ownerMemberId.equals(requesterMemberId)) {
+			throw new BusinessException(StudyErrorCode.NOT_STUDY_OWNER);
+		}
+		this.status = StudyStatus.DELETED;
+	}
+
 	public void closeWhenCapacityFull() {
 		this.status = StudyStatus.CLOSED;
 	}

@@ -1,5 +1,6 @@
 package com.studywithme.notification.presentation;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -119,6 +120,55 @@ class NotificationControllerTest {
 		));
 
 		mockMvc.perform(post("/api/v1/notifications/{notificationId}/read", notification.getId())
+				.header("Authorization", "Bearer " + accessToken(other)))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("NOTIFICATION-002"));
+	}
+
+	@Test
+	@DisplayName("인증한 회원은 자신의 알림을 삭제할 수 있다")
+	void deleteMyNotification() throws Exception {
+		Member receiver = saveMember("receiver");
+		Member actor = saveMember("actor");
+		Notification notification = notificationRepository.save(Notification.create(
+			receiver.getId(),
+			actor.getId(),
+			NotificationType.COMMENT_ON_POST,
+			NotificationTargetType.COMMENT,
+			1L,
+			"event-1",
+			"새 댓글이 달렸습니다."
+		));
+
+		mockMvc.perform(delete("/api/v1/notifications/{notificationId}", notification.getId())
+				.header("Authorization", "Bearer " + accessToken(receiver)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true));
+
+		mockMvc.perform(get("/api/v1/notifications")
+				.header("Authorization", "Bearer " + accessToken(receiver)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.length()").value(0));
+	}
+
+	@Test
+	@DisplayName("다른 회원의 알림은 삭제할 수 없다")
+	void rejectDeleteOtherMemberNotification() throws Exception {
+		Member receiver = saveMember("receiver");
+		Member actor = saveMember("actor");
+		Member other = saveMember("other");
+		Notification notification = notificationRepository.save(Notification.create(
+			receiver.getId(),
+			actor.getId(),
+			NotificationType.COMMENT_ON_POST,
+			NotificationTargetType.COMMENT,
+			1L,
+			"event-1",
+			"새 댓글이 달렸습니다."
+		));
+
+		mockMvc.perform(delete("/api/v1/notifications/{notificationId}", notification.getId())
 				.header("Authorization", "Bearer " + accessToken(other)))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.success").value(false))

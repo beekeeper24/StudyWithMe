@@ -57,6 +57,9 @@ app:
       poll-interval-ms: ${OUTBOX_KAFKA_POLL_INTERVAL_MS:5000}
       batch-size: ${OUTBOX_KAFKA_BATCH_SIZE:100}
   notification:
+    outbox:
+      worker-enabled: ${NOTIFICATION_OUTBOX_WORKER_ENABLED:true}
+      poll-interval-ms: ${NOTIFICATION_OUTBOX_POLL_INTERVAL_MS:5000}
     kafka:
       consumer-enabled: ${NOTIFICATION_KAFKA_CONSUMER_ENABLED:false}
       group-id: ${NOTIFICATION_KAFKA_GROUP_ID:studywithme-notification}

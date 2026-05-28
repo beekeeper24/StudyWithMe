@@ -7,6 +7,7 @@ import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import com.studywithme.notification.application.NotificationService;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,6 +43,16 @@ public class NotificationController {
 		return ApiResponse.success(NotificationResponse.from(
 			notificationService.markRead(notificationId, authenticatedPrincipal.memberId())
 		));
+	}
+
+	@DeleteMapping("/{notificationId}")
+	public ApiResponse<Void> delete(
+		@PathVariable Long notificationId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		notificationService.delete(notificationId, authenticatedPrincipal.memberId());
+		return ApiResponse.success(null);
 	}
 
 	private AuthenticatedMemberPrincipal requirePrincipal(AuthenticatedMemberPrincipal principal) {

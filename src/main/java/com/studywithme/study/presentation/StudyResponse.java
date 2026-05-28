@@ -19,6 +19,7 @@ public record StudyResponse(
 	String schedule,
 	String status,
 	boolean joinedByRequester,
+	boolean joinRequestedByRequester,
 	boolean ownedByRequester,
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt
@@ -39,6 +40,7 @@ public record StudyResponse(
 			result.schedule(),
 			result.status().name(),
 			result.joinedByRequester(),
+			result.joinRequestedByRequester(),
 			result.ownedByRequester(),
 			result.createdAt(),
 			result.updatedAt()

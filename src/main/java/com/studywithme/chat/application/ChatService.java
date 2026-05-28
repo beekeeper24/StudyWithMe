@@ -11,6 +11,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.study.domain.Study;
 import com.studywithme.study.domain.StudyMemberStatus;
 import com.studywithme.study.domain.StudyStatus;
@@ -34,6 +35,7 @@ public class ChatService {
 	private final MemberRepository memberRepository;
 	private final StudyRepository studyRepository;
 	private final StudyMemberRepository studyMemberRepository;
+	private final OutboxEventPublisher outboxEventPublisher;
 
 	public ChatService(
 		ChatRoomRepository chatRoomRepository,
@@ -41,7 +43,8 @@ public class ChatService {
 		ChatMessageRepository chatMessageRepository,
 		MemberRepository memberRepository,
 		StudyRepository studyRepository,
-		StudyMemberRepository studyMemberRepository
+		StudyMemberRepository studyMemberRepository,
+		OutboxEventPublisher outboxEventPublisher
 	) {
 		this.chatRoomRepository = chatRoomRepository;
 		this.chatRoomMemberRepository = chatRoomMemberRepository;
@@ -49,6 +52,7 @@ public class ChatService {
 		this.memberRepository = memberRepository;
 		this.studyRepository = studyRepository;
 		this.studyMemberRepository = studyMemberRepository;
+		this.outboxEventPublisher = outboxEventPublisher;
 	}
 
 	@Transactional
@@ -62,19 +66,25 @@ public class ChatService {
 		return chatRoomRepository.findByRoomKey(roomKey)
 			.map(room -> {
 				restoreRoomMember(room.getId(), requesterMemberId);
+				if (restoreRoomMemberIfHidden(room.getId(), targetMemberId)) {
+					outboxEventPublisher.publishPrivateChatRequested(room.getId(), targetMemberId, requesterMemberId);
+				}
 				return toRoomResult(room, requesterMemberId);
 			})
 			.orElseGet(() -> {
 				ChatRoom room = chatRoomRepository.save(ChatRoom.privateRoom(roomKey));
 				chatRoomMemberRepository.save(ChatRoomMember.join(room.getId(), requesterMemberId));
 				chatRoomMemberRepository.save(ChatRoomMember.join(room.getId(), targetMemberId));
+				outboxEventPublisher.publishPrivateChatRequested(room.getId(), targetMemberId, requesterMemberId);
 				return toRoomResult(room, requesterMemberId);
 			});
 	}
 
 	@Transactional
 	public ChatRoomResult createStudyRoom(Long studyId, Long requesterMemberId) {
-		if (!studyRepository.existsById(studyId)) {
+		Study study = studyRepository.findById(studyId)
+			.orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+		if (study.getStatus() == StudyStatus.DELETED) {
 			throw new BusinessException(StudyErrorCode.STUDY_NOT_FOUND);
 		}
 		if (!studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
@@ -190,6 +200,10 @@ public class ChatService {
 		if (room.getStudyId() == null) {
 			return true;
 		}
+		Study study = studyRepository.findById(room.getStudyId()).orElse(null);
+		if (study == null || study.getStatus() == StudyStatus.DELETED) {
+			return false;
+		}
 		return studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
 			room.getStudyId(),
 			memberId,
@@ -203,7 +217,7 @@ public class ChatService {
 		}
 		Study study = studyRepository.findById(room.getStudyId())
 			.orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-		if (study.getStatus() == StudyStatus.CLOSED) {
+		if (study.getStatus() == StudyStatus.ENDED || study.getStatus() == StudyStatus.DELETED) {
 			throw new BusinessException(ChatErrorCode.STUDY_CHAT_ROOM_CLOSED);
 		}
 	}
@@ -215,6 +229,13 @@ public class ChatService {
 
 	private void restoreRoomMember(Long roomId, Long memberId) {
 		findRoomMember(roomId, memberId).restore();
+	}
+
+	private boolean restoreRoomMemberIfHidden(Long roomId, Long memberId) {
+		ChatRoomMember roomMember = findRoomMember(roomId, memberId);
+		boolean hidden = roomMember.getHiddenAt() != null;
+		roomMember.restore();
+		return hidden;
 	}
 
 	private void syncStudyRoomMembers(Long roomId, Long studyId) {

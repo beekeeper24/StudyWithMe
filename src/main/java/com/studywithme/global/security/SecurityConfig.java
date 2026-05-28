@@ -67,6 +67,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.PUT, "/api/v1/auth/me/signup").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/auth/me").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/studies/me").authenticated()
+				.requestMatchers(HttpMethod.GET, "/api/v1/studies/*/join-requests").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/studies", "/api/v1/studies/*").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments").permitAll()
@@ -76,6 +77,10 @@ public class SecurityConfig {
 					"/api/v1/studies/*/join",
 					"/api/v1/studies/*/leave",
 					"/api/v1/studies/*/close",
+					"/api/v1/studies/*/end",
+					"/api/v1/studies/*/join-requests/*/approve",
+					"/api/v1/studies/*/join-requests/*/reject",
+					"/api/v1/studies/*/join-requests/cancel",
 					"/api/v1/studies/*/chat-room",
 					"/api/v1/posts",
 					"/api/v1/posts/*/comments",
@@ -84,7 +89,7 @@ public class SecurityConfig {
 					"/api/v1/chat/rooms/*/messages"
 				).authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()
-				.requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/chat/rooms/*").authenticated()
@@ -96,6 +101,7 @@ public class SecurityConfig {
 					"/api/v1/chat/rooms/*/members"
 				).authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/*/read").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/api/v1/notifications/*").authenticated()
 				.requestMatchers(
 					"/actuator/health",
 					"/actuator/info",

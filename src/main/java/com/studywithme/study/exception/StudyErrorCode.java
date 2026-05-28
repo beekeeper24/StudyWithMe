@@ -38,6 +38,16 @@ public enum StudyErrorCode implements ErrorCode {
 		"STUDY-007",
 		"스터디 정원이 마감되었습니다.",
 		HttpStatus.CONFLICT
+	),
+	STUDY_ALREADY_ENDED(
+		"STUDY-008",
+		"이미 종료된 스터디입니다.",
+		HttpStatus.CONFLICT
+	),
+	ALREADY_REQUESTED(
+		"STUDY-009",
+		"이미 참여 신청한 스터디입니다.",
+		HttpStatus.CONFLICT
 	);
 
 	private final String code;

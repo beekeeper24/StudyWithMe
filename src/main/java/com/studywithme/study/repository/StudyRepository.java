@@ -17,6 +17,8 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
 
 	List<Study> findAllByStatusOrderByCreatedAtDesc(StudyStatus status, Pageable pageable);
 
+	List<Study> findAllByOwnerMemberIdAndStatusIn(Long ownerMemberId, List<StudyStatus> statuses);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select s from Study s where s.id = :id")
 	Optional<Study> findByIdForUpdate(@Param("id") Long id);

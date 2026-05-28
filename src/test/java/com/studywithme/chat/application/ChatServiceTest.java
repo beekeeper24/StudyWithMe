@@ -2,6 +2,9 @@ package com.studywithme.chat.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.studywithme.chat.domain.ChatRoomType;
 import com.studywithme.chat.exception.ChatErrorCode;
@@ -11,6 +14,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.study.application.StudyCreateCommand;
 import com.studywithme.study.application.StudyResult;
 import com.studywithme.study.application.StudyService;
@@ -20,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @DataJpaTest
 @Import({
@@ -43,6 +48,9 @@ class ChatServiceTest {
 	@Autowired
 	private StudyService studyService;
 
+	@MockitoBean
+	private OutboxEventPublisher outboxEventPublisher;
+
 	@Test
 	@DisplayName("1:1 채팅방은 두 회원 조합당 하나만 생성된다")
 	void createPrivateRoomReturnsExistingRoomForSamePair() {
@@ -56,6 +64,8 @@ class ChatServiceTest {
 		assertThat(second.type()).isEqualTo(ChatRoomType.PRIVATE);
 		assertThat(chatRoomRepository.count()).isEqualTo(1);
 		assertThat(chatRoomMemberRepository.findAllByRoomId(first.id())).hasSize(2);
+		verify(outboxEventPublisher).publishPrivateChatRequested(first.id(), target.getId(), requester.getId());
+		verify(outboxEventPublisher, never()).publishPrivateChatRequested(second.id(), requester.getId(), target.getId());
 	}
 
 	@Test
@@ -207,8 +217,8 @@ class ChatServiceTest {
 	}
 
 	@Test
-	@DisplayName("마감된 스터디 채팅방에는 새 메시지를 작성할 수 없다")
-	void rejectMessageToClosedStudyRoom() {
+	@DisplayName("모집이 마감된 스터디 채팅방에도 참여자는 메시지를 작성할 수 있다")
+	void sendMessageToRecruitmentClosedStudyRoom() {
 		Member owner = saveMember("owner");
 		StudyResult study = studyService.create(
 			owner.getId(),
@@ -218,14 +228,13 @@ class ChatServiceTest {
 
 		studyService.close(study.id(), owner.getId());
 
-		assertThatThrownBy(() -> chatService.sendMessage(
+		ChatMessageResult message = chatService.sendMessage(
 			room.id(),
 			owner.getId(),
 			new ChatMessageCreateCommand("마감 후 메시지")
-		))
-			.isInstanceOf(BusinessException.class)
-			.extracting("errorCode")
-			.isEqualTo(ChatErrorCode.STUDY_CHAT_ROOM_CLOSED);
+		);
+
+		assertThat(message.content()).isEqualTo("마감 후 메시지");
 	}
 
 	@Test
@@ -272,6 +281,25 @@ class ChatServiceTest {
 		assertThat(restoredRoom.id()).isEqualTo(room.id());
 		assertThat(chatService.findMyRooms(requester.getId())).extracting(ChatRoomResult::id)
 			.containsExactly(room.id());
+	}
+
+	@Test
+	@DisplayName("상대방이 삭제한 기존 1:1 채팅방을 다시 요청하면 상대방 목록에도 복구하고 알림을 보낸다")
+	void restoreTargetHiddenPrivateRoomWhenRequestingAgain() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		chatService.hideRoom(room.id(), target.getId());
+		clearInvocations(outboxEventPublisher);
+
+		ChatRoomResult restoredRoom = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		assertThat(restoredRoom.id()).isEqualTo(room.id());
+		assertThat(chatService.findMyRooms(requester.getId())).extracting(ChatRoomResult::id)
+			.containsExactly(room.id());
+		assertThat(chatService.findMyRooms(target.getId())).extracting(ChatRoomResult::id)
+			.containsExactly(room.id());
+		verify(outboxEventPublisher).publishPrivateChatRequested(room.id(), target.getId(), requester.getId());
 	}
 
 	@Test

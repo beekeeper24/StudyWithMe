@@ -1,6 +1,7 @@
 package com.studywithme.study.presentation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -12,6 +13,10 @@ import com.studywithme.auth.token.RefreshTokenRepository;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.notification.application.NotificationOutboxProcessor;
+import com.studywithme.notification.domain.NotificationType;
+import com.studywithme.notification.repository.NotificationRepository;
+import com.studywithme.outbox.repository.OutboxEventRepository;
 import com.studywithme.study.application.StudyCreateCommand;
 import com.studywithme.study.application.StudyResult;
 import com.studywithme.study.application.StudyService;
@@ -44,6 +49,15 @@ class StudyControllerTest {
 	private StudyMemberRepository studyMemberRepository;
 
 	@Autowired
+	private NotificationRepository notificationRepository;
+
+	@Autowired
+	private OutboxEventRepository outboxEventRepository;
+
+	@Autowired
+	private NotificationOutboxProcessor notificationOutboxProcessor;
+
+	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
 
 	@Autowired
@@ -54,6 +68,8 @@ class StudyControllerTest {
 
 	@AfterEach
 	void tearDown() {
+		notificationRepository.deleteAll();
+		outboxEventRepository.deleteAll();
 		studyMemberRepository.deleteAll();
 		studyRepository.deleteAll();
 		refreshTokenRepository.deleteAll();
@@ -98,6 +114,24 @@ class StudyControllerTest {
 	@DisplayName("인증하지 않고 스터디 모집을 종료하면 AUTH-003 응답을 반환한다")
 	void rejectUnauthenticatedCloseStudy() throws Exception {
 		mockMvc.perform(post("/api/v1/studies/{studyId}/close", 1L))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
+	}
+
+	@Test
+	@DisplayName("인증하지 않고 스터디를 종료하면 AUTH-003 응답을 반환한다")
+	void rejectUnauthenticatedEndStudy() throws Exception {
+		mockMvc.perform(post("/api/v1/studies/{studyId}/end", 1L))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
+	}
+
+	@Test
+	@DisplayName("인증하지 않고 스터디를 삭제하면 AUTH-003 응답을 반환한다")
+	void rejectUnauthenticatedDeleteStudy() throws Exception {
+		mockMvc.perform(delete("/api/v1/studies/{studyId}", 1L))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.success").value(false))
 			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
@@ -310,7 +344,30 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("인증한 회원은 마이페이지용 현재/지난 스터디 이력을 조회할 수 있다")
+	@DisplayName("공개 스터디 목록은 탈퇴한 모집장의 스터디를 제외한다")
+	void listStudiesExcludesWithdrawnOwnerStudies() throws Exception {
+		Member activeOwner = saveMember("active-owner");
+		Member withdrawnOwner = saveMember("withdrawn-owner");
+		StudyResult visible = studyService.create(
+			activeOwner.getId(),
+			new StudyCreateCommand("보이는 스터디", "진행 중")
+		);
+		studyService.create(
+			withdrawnOwner.getId(),
+			new StudyCreateCommand("숨겨야 하는 스터디", "진행 중")
+		);
+		withdrawnOwner.withdraw();
+		memberRepository.saveAndFlush(withdrawnOwner);
+
+		mockMvc.perform(get("/api/v1/studies"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(1))
+			.andExpect(jsonPath("$.data[0].id").value(visible.id()));
+	}
+
+	@Test
+	@DisplayName("모집 마감은 현재 스터디에 남고 종료/탈퇴는 지난 스터디로 조회한다")
 	void findMyStudies() throws Exception {
 		Member owner = saveMember("owner");
 		Member participant = saveMember("participant");
@@ -325,6 +382,12 @@ class StudyControllerTest {
 		);
 		studyService.join(closed.id(), participant.getId());
 		studyService.close(closed.id(), owner.getId());
+		StudyResult ended = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("종료된 스터디", "완료")
+		);
+		studyService.join(ended.id(), participant.getId());
+		studyService.end(ended.id(), owner.getId());
 		StudyResult left = studyService.create(
 			owner.getId(),
 			new StudyCreateCommand("나간 스터디", "이탈")
@@ -336,9 +399,40 @@ class StudyControllerTest {
 				.header("Authorization", "Bearer " + accessToken(participant)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.activeStudies.length()").value(1))
+			.andExpect(jsonPath("$.data.activeStudies.length()").value(2))
 			.andExpect(jsonPath("$.data.activeStudies[0].id").value(active.id()))
-			.andExpect(jsonPath("$.data.pastStudies.length()").value(2));
+			.andExpect(jsonPath("$.data.activeStudies[1].id").value(closed.id()))
+			.andExpect(jsonPath("$.data.pastStudies.length()").value(2))
+			.andExpect(jsonPath("$.data.pastStudies[0].id").value(ended.id()))
+			.andExpect(jsonPath("$.data.pastStudies[1].id").value(left.id()));
+	}
+
+	@Test
+	@DisplayName("삭제된 스터디는 공개 상세에서 숨기고 내 지난 스터디에는 남긴다")
+	void keepDeletedStudyInMyPastStudies() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("삭제할 스터디", "삭제 예정")
+		);
+		studyService.join(study.id(), participant.getId());
+		studyService.delete(study.id(), owner.getId());
+
+		mockMvc.perform(get("/api/v1/studies/{studyId}", study.id())
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("STUDY-001"));
+
+		mockMvc.perform(get("/api/v1/studies/me")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.activeStudies.length()").value(0))
+			.andExpect(jsonPath("$.data.pastStudies.length()").value(1))
+			.andExpect(jsonPath("$.data.pastStudies[0].id").value(study.id()))
+			.andExpect(jsonPath("$.data.pastStudies[0].status").value("DELETED"));
 	}
 
 	@Test
@@ -405,7 +499,7 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("인증한 회원은 스터디에 참여할 수 있다")
+	@DisplayName("인증한 회원은 스터디 참여를 신청할 수 있다")
 	void joinStudyWithBearerToken() throws Exception {
 		Member owner = saveMember("owner");
 		Member participant = saveMember("participant");
@@ -418,11 +512,94 @@ class StudyControllerTest {
 				.header("Authorization", "Bearer " + accessToken(participant)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.id").value(study.id()));
+			.andExpect(jsonPath("$.data.id").value(study.id()))
+			.andExpect(jsonPath("$.data.joinedByRequester").value(false))
+			.andExpect(jsonPath("$.data.joinRequestedByRequester").value(true));
+
+		mockMvc.perform(get("/api/v1/studies/{studyId}/join-requests", study.id())
+				.header("Authorization", "Bearer " + accessToken(owner)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(1))
+			.andExpect(jsonPath("$.data[0].memberId").value(participant.getId()));
 	}
 
 	@Test
-	@DisplayName("참여로 정원이 가득 차면 스터디 모집이 자동 마감되고 공개 목록에서 숨겨진다")
+	@DisplayName("참여 신청자는 승인 전 신청을 취소할 수 있다")
+	void cancelJoinRequestByRequester() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+		studyService.requestJoin(study.id(), participant.getId());
+
+		mockMvc.perform(post("/api/v1/studies/{studyId}/join-requests/cancel", study.id())
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.joinRequestedByRequester").value(false));
+
+		assertThat(studyMemberRepository.findByStudyIdAndMemberId(study.id(), participant.getId()))
+			.get()
+			.extracting("status")
+			.isEqualTo(StudyMemberStatus.LEFT);
+	}
+
+	@Test
+	@DisplayName("스터디 모집장은 참여 신청을 거절할 수 있다")
+	void rejectJoinRequestByOwner() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+		studyService.requestJoin(study.id(), participant.getId());
+
+		mockMvc.perform(post(
+					"/api/v1/studies/{studyId}/join-requests/{memberId}/reject",
+					study.id(),
+					participant.getId()
+				)
+				.header("Authorization", "Bearer " + accessToken(owner)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true));
+
+		assertThat(studyMemberRepository.findByStudyIdAndMemberId(study.id(), participant.getId()))
+			.get()
+			.extracting("status")
+			.isEqualTo(StudyMemberStatus.LEFT);
+	}
+
+	@Test
+	@DisplayName("스터디 신청과 승인 결과는 알림으로 남는다")
+	void createNotificationsForJoinRequestAndApproval() {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		studyService.requestJoin(study.id(), participant.getId());
+		notificationOutboxProcessor.processPending(10);
+
+		assertThat(notificationRepository.findAllByReceiverMemberIdOrderByCreatedAtDesc(owner.getId()))
+			.anySatisfy(notification -> assertThat(notification.getType())
+				.isEqualTo(NotificationType.STUDY_JOIN_REQUESTED));
+
+		studyService.approveJoinRequest(study.id(), owner.getId(), participant.getId());
+		notificationOutboxProcessor.processPending(10);
+
+		assertThat(notificationRepository.findAllByReceiverMemberIdOrderByCreatedAtDesc(participant.getId()))
+			.anySatisfy(notification -> assertThat(notification.getType())
+				.isEqualTo(NotificationType.STUDY_JOIN_APPROVED));
+	}
+
+	@Test
+	@DisplayName("참여 신청을 승인해 정원이 가득 차면 스터디 모집이 자동 마감되고 공개 목록에서 숨겨진다")
 	void joinStudyClosesRecruitmentWhenCapacityBecomesFull() throws Exception {
 		Member owner = saveMember("owner");
 		Member participant = saveMember("participant");
@@ -441,6 +618,17 @@ class StudyControllerTest {
 
 		mockMvc.perform(post("/api/v1/studies/{studyId}/join", study.id())
 				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.joinRequestedByRequester").value(true))
+			.andExpect(jsonPath("$.data.status").value("RECRUITING"));
+
+		mockMvc.perform(post(
+					"/api/v1/studies/{studyId}/join-requests/{memberId}/approve",
+					study.id(),
+					participant.getId()
+				)
+				.header("Authorization", "Bearer " + accessToken(owner)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.status").value("CLOSED"));
@@ -591,6 +779,55 @@ class StudyControllerTest {
 		);
 
 		mockMvc.perform(post("/api/v1/studies/{studyId}/close", study.id())
+				.header("Authorization", "Bearer " + accessToken(nonOwner)))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("STUDY-004"));
+	}
+
+	@Test
+	@DisplayName("스터디 모집장은 스터디를 종료할 수 있다")
+	void endStudyByOwnerWithBearerToken() throws Exception {
+		Member owner = saveMember("owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		mockMvc.perform(post("/api/v1/studies/{studyId}/end", study.id())
+				.header("Authorization", "Bearer " + accessToken(owner)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.status").value("ENDED"));
+	}
+
+	@Test
+	@DisplayName("스터디 모집장은 스터디를 삭제할 수 있다")
+	void deleteStudyByOwnerWithBearerToken() throws Exception {
+		Member owner = saveMember("owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		mockMvc.perform(delete("/api/v1/studies/{studyId}", study.id())
+				.header("Authorization", "Bearer " + accessToken(owner)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.status").value("DELETED"));
+	}
+
+	@Test
+	@DisplayName("스터디 모집장이 아닌 회원은 스터디를 삭제할 수 없다")
+	void rejectDeleteStudyByNonOwner() throws Exception {
+		Member owner = saveMember("owner");
+		Member nonOwner = saveMember("non-owner");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
+		);
+
+		mockMvc.perform(delete("/api/v1/studies/{studyId}", study.id())
 				.header("Authorization", "Bearer " + accessToken(nonOwner)))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.success").value(false))
