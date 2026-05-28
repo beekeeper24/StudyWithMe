@@ -344,6 +344,29 @@ class StudyControllerTest {
 	}
 
 	@Test
+	@DisplayName("공개 스터디 목록은 탈퇴한 모집장의 스터디를 제외한다")
+	void listStudiesExcludesWithdrawnOwnerStudies() throws Exception {
+		Member activeOwner = saveMember("active-owner");
+		Member withdrawnOwner = saveMember("withdrawn-owner");
+		StudyResult visible = studyService.create(
+			activeOwner.getId(),
+			new StudyCreateCommand("보이는 스터디", "진행 중")
+		);
+		studyService.create(
+			withdrawnOwner.getId(),
+			new StudyCreateCommand("숨겨야 하는 스터디", "진행 중")
+		);
+		withdrawnOwner.withdraw();
+		memberRepository.saveAndFlush(withdrawnOwner);
+
+		mockMvc.perform(get("/api/v1/studies"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(1))
+			.andExpect(jsonPath("$.data[0].id").value(visible.id()));
+	}
+
+	@Test
 	@DisplayName("모집 마감은 현재 스터디에 남고 종료/탈퇴는 지난 스터디로 조회한다")
 	void findMyStudies() throws Exception {
 		Member owner = saveMember("owner");

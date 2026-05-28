@@ -94,6 +94,7 @@ public class StudyService {
 
 		return studies
 			.stream()
+			.filter(study -> isActiveOwner(owners.get(study.getOwnerMemberId())))
 			.map(study -> toResult(
 				study,
 				owners.get(study.getOwnerMemberId()),
@@ -534,5 +535,9 @@ public class StudyService {
 			return null;
 		}
 		return owner.getProfileImageUrl();
+	}
+
+	private boolean isActiveOwner(Member owner) {
+		return owner != null && owner.getStatus() == MemberStatus.ACTIVE;
 	}
 }
