@@ -2,6 +2,7 @@ package com.studywithme.post.application;
 
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.post.domain.Post;
 import com.studywithme.post.domain.PostBoardType;
@@ -31,6 +32,7 @@ public class PostService {
 
 	@Transactional
 	public PostResult create(Long requesterMemberId, PostCreateCommand command) {
+		ensureCanCreate(command.boardType(), requesterMemberId);
 		Post post = postRepository.save(Post.create(
 			command.boardType(),
 			command.title(),
@@ -38,6 +40,18 @@ public class PostService {
 			requesterMemberId
 		));
 		return toResult(post, requesterMemberId);
+	}
+
+	private void ensureCanCreate(PostBoardType boardType, Long requesterMemberId) {
+		if (boardType != PostBoardType.NOTICE) {
+			return;
+		}
+		boolean isAdmin = memberRepository.findById(requesterMemberId)
+			.map(member -> member.getRoles().contains(MemberRole.ADMIN))
+			.orElse(false);
+		if (!isAdmin) {
+			throw new BusinessException(PostErrorCode.NOTICE_ADMIN_REQUIRED);
+		}
 	}
 
 	@Transactional(readOnly = true)

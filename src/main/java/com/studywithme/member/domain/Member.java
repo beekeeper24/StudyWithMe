@@ -133,6 +133,10 @@ public class Member {
 		this.termsAgreedAt = agreedAt;
 	}
 
+	public void grantRole(MemberRole role) {
+		this.roles.add(role);
+	}
+
 	public boolean isNicknameRequired() {
 		return nickname == null || nickname.isBlank();
 	}
