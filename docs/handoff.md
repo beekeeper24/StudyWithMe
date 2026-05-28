@@ -252,6 +252,12 @@ Completed and merged into `develop`:
    - post responses include `boardType`;
    - frontend community now has separate board tabs, a table-style list, independent write screen, independent detail screen, and comments below the post detail;
    - community list/detail hide raw publication status labels and use author/time oriented board presentation.
+39. Community permissions and comment delete UI:
+   - `NOTICE` post creation is restricted to members with `ADMIN` role;
+   - non-admin notice creation returns `POST-003`;
+   - frontend hides notice write entry for non-admin users and keeps a client-side guard;
+   - frontend shows delete actions for requester-owned comments and replies;
+   - comment delete calls `DELETE /api/v1/comments/{commentId}` and reloads the post detail comments.
 
 Active feature work in progress:
 
