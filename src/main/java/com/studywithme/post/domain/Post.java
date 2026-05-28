@@ -25,6 +25,10 @@ public class Post {
 	@Column(name = "author_member_id", nullable = false)
 	private Long authorMemberId;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "board_type", nullable = false, length = 20)
+	private PostBoardType boardType;
+
 	@Column(nullable = false, length = 100)
 	private String title;
 
@@ -44,15 +48,20 @@ public class Post {
 	protected Post() {
 	}
 
-	private Post(String title, String content, Long authorMemberId) {
+	private Post(PostBoardType boardType, String title, String content, Long authorMemberId) {
+		this.boardType = boardType == null ? PostBoardType.FREE : boardType;
 		this.title = title;
 		this.content = content;
 		this.authorMemberId = authorMemberId;
 		this.status = PostStatus.PUBLISHED;
 	}
 
+	public static Post create(PostBoardType boardType, String title, String content, Long authorMemberId) {
+		return new Post(boardType, title, content, authorMemberId);
+	}
+
 	public static Post create(String title, String content, Long authorMemberId) {
-		return new Post(title, content, authorMemberId);
+		return create(PostBoardType.FREE, title, content, authorMemberId);
 	}
 
 	public void update(Long requesterMemberId, String title, String content) {
@@ -90,6 +99,10 @@ public class Post {
 
 	public Long getAuthorMemberId() {
 		return authorMemberId;
+	}
+
+	public PostBoardType getBoardType() {
+		return boardType;
 	}
 
 	public String getTitle() {

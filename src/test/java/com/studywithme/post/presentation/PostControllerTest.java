@@ -15,6 +15,7 @@ import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.post.application.PostCreateCommand;
 import com.studywithme.post.application.PostResult;
 import com.studywithme.post.application.PostService;
+import com.studywithme.post.domain.PostBoardType;
 import com.studywithme.post.repository.PostRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -108,6 +109,22 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("게시글 목록은 게시판 종류로 필터링할 수 있다")
+	void listPostsByBoardType() throws Exception {
+		Member author = saveMember("author");
+		postService.create(author.getId(), new PostCreateCommand("자유 글", "내용"));
+		postService.create(author.getId(), new PostCreateCommand(PostBoardType.QUESTION, "질문 글", "내용"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("boardType", "QUESTION"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(1))
+			.andExpect(jsonPath("$.data[0].boardType").value("QUESTION"))
+			.andExpect(jsonPath("$.data[0].title").value("질문 글"));
+	}
+
+	@Test
 	@DisplayName("게시글 목록은 작성자 표시 정보와 요청자 소유 여부를 내려준다")
 	void listPostsWithAuthorDisplayAndOwnership() throws Exception {
 		Member author = saveMember("author", "작가", "https://example.com/author.png");
@@ -175,12 +192,14 @@ class PostControllerTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
+						"boardType": "QUESTION",
 						"title": "첫 게시글",
 						"content": "반갑습니다."
 					}
 					"""))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.boardType").value("QUESTION"))
 			.andExpect(jsonPath("$.data.title").value("첫 게시글"))
 			.andExpect(jsonPath("$.data.authorMemberId").value(author.getId()));
 	}

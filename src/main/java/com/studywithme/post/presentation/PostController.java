@@ -7,6 +7,7 @@ import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import com.studywithme.post.application.PostCreateCommand;
 import com.studywithme.post.application.PostService;
 import com.studywithme.post.application.PostUpdateCommand;
+import com.studywithme.post.domain.PostBoardType;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -35,7 +37,11 @@ public class PostController {
 		@Valid @RequestBody PostCreateRequest request
 	) {
 		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
-		PostCreateCommand command = new PostCreateCommand(request.title(), request.content());
+		PostCreateCommand command = new PostCreateCommand(
+			request.boardType() == null ? PostBoardType.FREE : request.boardType(),
+			request.title(),
+			request.content()
+		);
 		return ApiResponse.success(PostResponse.from(
 			postService.create(authenticatedPrincipal.memberId(), command)
 		));
@@ -43,10 +49,11 @@ public class PostController {
 
 	@GetMapping
 	public ApiResponse<List<PostResponse>> findAll(
+		@RequestParam(required = false) PostBoardType boardType,
 		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
 	) {
 		Long requesterMemberId = principal == null ? null : principal.memberId();
-		return ApiResponse.success(postService.findAll(requesterMemberId).stream()
+		return ApiResponse.success(postService.findAll(boardType, requesterMemberId).stream()
 			.map(PostResponse::from)
 			.toList());
 	}

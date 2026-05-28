@@ -4,6 +4,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.post.domain.Post;
+import com.studywithme.post.domain.PostBoardType;
 import com.studywithme.post.domain.PostStatus;
 import com.studywithme.post.exception.PostErrorCode;
 import com.studywithme.post.repository.PostRepository;
@@ -31,6 +32,7 @@ public class PostService {
 	@Transactional
 	public PostResult create(Long requesterMemberId, PostCreateCommand command) {
 		Post post = postRepository.save(Post.create(
+			command.boardType(),
 			command.title(),
 			command.content(),
 			requesterMemberId
@@ -45,10 +47,15 @@ public class PostService {
 
 	@Transactional(readOnly = true)
 	public List<PostResult> findAll(Long requesterMemberId) {
-		List<Post> posts = postRepository.findAllByStatusOrderByCreatedAtDesc(
-			PostStatus.PUBLISHED,
-			PageRequest.of(0, POST_LIST_LIMIT)
-		);
+		return findAll(null, requesterMemberId);
+	}
+
+	@Transactional(readOnly = true)
+	public List<PostResult> findAll(PostBoardType boardType, Long requesterMemberId) {
+		PageRequest pageable = PageRequest.of(0, POST_LIST_LIMIT);
+		List<Post> posts = boardType == null
+			? postRepository.findAllByStatusOrderByCreatedAtDesc(PostStatus.PUBLISHED, pageable)
+			: postRepository.findAllByBoardTypeAndStatusOrderByCreatedAtDesc(boardType, PostStatus.PUBLISHED, pageable);
 		Map<Long, Member> authors = findAuthors(posts);
 		return posts.stream()
 			.map(post -> toResult(post, authors.get(post.getAuthorMemberId()), requesterMemberId))
