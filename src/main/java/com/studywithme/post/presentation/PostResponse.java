@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public record PostResponse(
 	Long id,
 	Long authorMemberId,
+	String boardType,
 	String authorNickname,
 	String authorProfileImageUrl,
 	boolean ownedByRequester,
@@ -20,6 +21,7 @@ public record PostResponse(
 		return new PostResponse(
 			result.id(),
 			result.authorMemberId(),
+			result.boardType().name(),
 			result.authorNickname(),
 			result.authorProfileImageUrl(),
 			result.ownedByRequester(),

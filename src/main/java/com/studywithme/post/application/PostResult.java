@@ -2,12 +2,14 @@ package com.studywithme.post.application;
 
 import com.studywithme.member.domain.Member;
 import com.studywithme.post.domain.Post;
+import com.studywithme.post.domain.PostBoardType;
 import com.studywithme.post.domain.PostStatus;
 import java.time.LocalDateTime;
 
 public record PostResult(
 	Long id,
 	Long authorMemberId,
+	PostBoardType boardType,
 	String authorNickname,
 	String authorProfileImageUrl,
 	boolean ownedByRequester,
@@ -26,6 +28,7 @@ public record PostResult(
 		return new PostResult(
 			post.getId(),
 			post.getAuthorMemberId(),
+			post.getBoardType(),
 			author == null ? null : author.getNickname(),
 			author == null ? null : author.getProfileImageUrl(),
 			requesterMemberId != null && post.getAuthorMemberId().equals(requesterMemberId),
