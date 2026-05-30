@@ -50,10 +50,12 @@ public class PostController {
 	@GetMapping
 	public ApiResponse<List<PostResponse>> findAll(
 		@RequestParam(required = false) PostBoardType boardType,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "50") int size,
 		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
 	) {
 		Long requesterMemberId = principal == null ? null : principal.memberId();
-		return ApiResponse.success(postService.findAll(boardType, requesterMemberId).stream()
+		return ApiResponse.success(postService.findAll(boardType, requesterMemberId, page, size).stream()
 			.map(PostResponse::from)
 			.toList());
 	}

@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studywithme.auth.oauth.OAuth2UserProfile;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,5 +95,72 @@ class OAuthLoginServiceTest {
 		assertThat(existingMember.isNicknameRequired()).isFalse();
 		assertThat(existingMember.getEmail()).isEqualTo("updated@example.com");
 		assertThat(existingMember.getProfileImageUrl()).isEqualTo("https://example.com/updated.png");
+	}
+
+	@Test
+	@DisplayName("설정된 관리자 이메일로 로그인하면 ADMIN 권한을 부여한다")
+	void grantAdminRoleForConfiguredEmail() {
+		AdminRoleProperties properties = new AdminRoleProperties();
+		properties.setEmails(List.of("ADMIN@example.com"));
+		OAuthLoginService oauthLoginService = new OAuthLoginService(
+			memberRepository,
+			new AdminRoleService(properties)
+		);
+
+		Member member = oauthLoginService.loginOrSignUp(new OAuth2UserProfile(
+			OAuthProvider.GOOGLE,
+			"google-admin",
+			"admin@example.com",
+			"admin",
+			null
+		));
+
+		assertThat(member.getRoles()).contains(MemberRole.USER, MemberRole.ADMIN);
+	}
+
+	@Test
+	@DisplayName("서버 기동 부트스트랩은 설정된 ACTIVE 회원에게 ADMIN 권한을 부여한다")
+	void bootstrapAdminRoleForExistingActiveMember() {
+		Member member = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"admin@example.com",
+			"admin",
+			OAuthProvider.GOOGLE,
+			"google-admin",
+			null
+		));
+		AdminRoleService adminRoleService = adminRoleService("ADMIN@example.com");
+		AdminRoleBootstrapper bootstrapper = new AdminRoleBootstrapper(memberRepository, adminRoleService);
+
+		bootstrapper.run(null);
+
+		Member found = memberRepository.findById(member.getId()).orElseThrow();
+		assertThat(found.getRoles()).contains(MemberRole.ADMIN);
+	}
+
+	@Test
+	@DisplayName("서버 기동 부트스트랩은 탈퇴 회원에게 ADMIN 권한을 부여하지 않는다")
+	void skipWithdrawnMemberWhenBootstrappingAdminRole() {
+		Member member = Member.createOAuthMember(
+			"admin@example.com",
+			"admin",
+			OAuthProvider.GOOGLE,
+			"google-admin",
+			null
+		);
+		member.withdraw("withdrawn@example.com", "withdrawn:admin");
+		memberRepository.saveAndFlush(member);
+		AdminRoleService adminRoleService = adminRoleService("admin@example.com", "withdrawn@example.com");
+		AdminRoleBootstrapper bootstrapper = new AdminRoleBootstrapper(memberRepository, adminRoleService);
+
+		bootstrapper.run(null);
+
+		Member found = memberRepository.findById(member.getId()).orElseThrow();
+		assertThat(found.getRoles()).doesNotContain(MemberRole.ADMIN);
+	}
+
+	private AdminRoleService adminRoleService(String... emails) {
+		AdminRoleProperties properties = new AdminRoleProperties();
+		properties.setEmails(List.of(emails));
+		return new AdminRoleService(properties);
 	}
 }

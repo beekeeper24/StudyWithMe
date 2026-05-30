@@ -3,6 +3,7 @@ package com.studywithme.auth.application;
 import com.studywithme.auth.oauth.OAuth2UserProfile;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.repository.MemberRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,9 +11,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class OAuthLoginService {
 
 	private final MemberRepository memberRepository;
+	private final AdminRoleService adminRoleService;
+
+	@Autowired
+	public OAuthLoginService(MemberRepository memberRepository, AdminRoleService adminRoleService) {
+		this.memberRepository = memberRepository;
+		this.adminRoleService = adminRoleService;
+	}
 
 	public OAuthLoginService(MemberRepository memberRepository) {
-		this.memberRepository = memberRepository;
+		this(memberRepository, new AdminRoleService(new AdminRoleProperties()));
 	}
 
 	@Transactional
@@ -22,6 +30,7 @@ public class OAuthLoginService {
 			profile.subject()
 		).map(member -> {
 			member.updateOAuthProfile(profile.email(), profile.profileImageUrl());
+			adminRoleService.grantIfConfiguredAdmin(member);
 			return member;
 		}).orElseGet(() -> signUp(profile));
 	}
@@ -34,6 +43,7 @@ public class OAuthLoginService {
 			profile.subject(),
 			profile.profileImageUrl()
 		);
+		adminRoleService.grantIfConfiguredAdmin(member);
 		return memberRepository.save(member);
 	}
 }
