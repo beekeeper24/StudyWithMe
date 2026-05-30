@@ -126,6 +126,23 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("게시글 목록은 페이지와 크기를 지정해 조회할 수 있다")
+	void listPostsWithPagination() throws Exception {
+		Member author = saveMember("author");
+		postService.create(author.getId(), new PostCreateCommand("첫 번째", "내용"));
+		postService.create(author.getId(), new PostCreateCommand("두 번째", "내용"));
+		postService.create(author.getId(), new PostCreateCommand("세 번째", "내용"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("page", "1")
+				.param("size", "2"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(1))
+			.andExpect(jsonPath("$.data[0].title").value("첫 번째"));
+	}
+
+	@Test
 	@DisplayName("게시글 목록은 작성자 표시 정보와 요청자 소유 여부를 내려준다")
 	void listPostsWithAuthorDisplayAndOwnership() throws Exception {
 		Member author = saveMember("author", "작가", "https://example.com/author.png");

@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-05-29
+Last updated: 2026-05-31
 
 ## Read This First
 
@@ -264,6 +264,14 @@ Completed and merged into `develop`:
    - non-notice post update/delete remains author-only;
    - frontend shows notice edit/delete actions to ADMIN users and keeps regular post actions based on ownership;
    - authorization was checked in the service layer against DB member roles, not only client-side state or JWT UI flags.
+41. Admin email bootstrap and community navigation polish:
+   - backend supports `app.admin.emails` / `APP_ADMIN_EMAILS` as the configured ADMIN allow-list;
+   - configured ACTIVE members receive `ADMIN` on OAuth login and existing matching members are bootstrapped at application startup;
+   - local PostgreSQL granted ADMIN to the currently used `ahwnsk94@gmail.com` ACTIVE rows for immediate notice-admin testing;
+   - `GET /api/v1/posts` now accepts non-breaking `page` and `size` query parameters while preserving list response compatibility;
+   - frontend community detail routes use `/community/{board}/{postId}` and list routes use `/community/{board}`;
+   - frontend community list requests 20 posts per page and exposes previous/next controls;
+   - requester-owned comment/reply deletion now opens an in-app confirmation modal before calling delete.
 
 Active feature work in progress:
 
@@ -283,7 +291,8 @@ Active feature work in progress:
 - Local runtime after the latest work:
   - backend is running on `8081`;
   - frontend is running on `5173`;
-  - PostgreSQL schema has V14 applied locally after the post board type migration.
+  - PostgreSQL schema has V14 applied locally after the post board type migration;
+  - local ADMIN role has been inserted for ACTIVE `ahwnsk94@gmail.com` rows to unblock notice admin testing.
 
 - Flyway V6 notification/outbox schema:
   - `outbox_events`;

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PostService {
 
 	private static final int POST_LIST_LIMIT = 50;
+	private static final int POST_LIST_DEFAULT_PAGE = 0;
 
 	private final PostRepository postRepository;
 	private final MemberRepository memberRepository;
@@ -61,7 +62,12 @@ public class PostService {
 
 	@Transactional(readOnly = true)
 	public List<PostResult> findAll(PostBoardType boardType, Long requesterMemberId) {
-		PageRequest pageable = PageRequest.of(0, POST_LIST_LIMIT);
+		return findAll(boardType, requesterMemberId, POST_LIST_DEFAULT_PAGE, POST_LIST_LIMIT);
+	}
+
+	@Transactional(readOnly = true)
+	public List<PostResult> findAll(PostBoardType boardType, Long requesterMemberId, int page, int size) {
+		PageRequest pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
 		List<Post> posts = boardType == null
 			? postRepository.findAllByStatusOrderByCreatedAtDesc(PostStatus.PUBLISHED, pageable)
 			: postRepository.findAllByBoardTypeAndStatusOrderByCreatedAtDesc(boardType, PostStatus.PUBLISHED, pageable);
@@ -69,6 +75,17 @@ public class PostService {
 		return posts.stream()
 			.map(post -> toResult(post, authors.get(post.getAuthorMemberId()), requesterMemberId))
 			.toList();
+	}
+
+	private int normalizePage(int page) {
+		return Math.max(page, POST_LIST_DEFAULT_PAGE);
+	}
+
+	private int normalizeSize(int size) {
+		if (size <= 0) {
+			return POST_LIST_LIMIT;
+		}
+		return Math.min(size, POST_LIST_LIMIT);
 	}
 
 	@Transactional(readOnly = true)
