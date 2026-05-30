@@ -258,6 +258,12 @@ Completed and merged into `develop`:
    - frontend hides notice write entry for non-admin users and keeps a client-side guard;
    - frontend shows delete actions for requester-owned comments and replies;
    - comment delete calls `DELETE /api/v1/comments/{commentId}` and reloads the post detail comments.
+40. Notice post management policy:
+   - `NOTICE` post update/delete is restricted to members with `ADMIN` role;
+   - any ADMIN can update/delete NOTICE posts, even if another ADMIN originally wrote the notice;
+   - non-notice post update/delete remains author-only;
+   - frontend shows notice edit/delete actions to ADMIN users and keeps regular post actions based on ownership;
+   - authorization was checked in the service layer against DB member roles, not only client-side state or JWT UI flags.
 
 Active feature work in progress:
 
