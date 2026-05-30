@@ -135,6 +135,9 @@ public class StudyService {
 	@Transactional(readOnly = true)
 	public MyStudyHistoryResult findMyStudies(Long requesterMemberId) {
 		List<StudyMember> memberships = studyMemberRepository.findAllByMemberId(requesterMemberId);
+		List<StudyMember> visibleMemberships = memberships.stream()
+			.filter(membership -> membership.getHistoryHiddenAt() == null)
+			.toList();
 		List<Long> studyIds = memberships.stream()
 			.map(StudyMember::getStudyId)
 			.distinct()
@@ -144,17 +147,17 @@ public class StudyService {
 			.collect(Collectors.toMap(Study::getId, Function.identity()));
 		Map<Long, Member> owners = findOwners(studies.values().stream().toList());
 
-		List<StudyResult> activeStudies = memberships.stream()
+		List<StudyResult> activeStudies = visibleMemberships.stream()
 			.filter(StudyMember::isJoined)
 			.map(StudyMember::getStudyId)
 			.map(studies::get)
 			.filter(study -> study != null && isActiveStudy(study))
 			.map(study -> toResult(study, owners.get(study.getOwnerMemberId()), requesterMemberId, true, false))
 			.toList();
-		List<StudyResult> pastStudies = memberships.stream()
+		List<StudyResult> pastStudies = visibleMemberships.stream()
 			.map(StudyMember::getStudyId)
 			.map(studies::get)
-			.filter(study -> study != null && isPastStudy(study, memberships))
+			.filter(study -> study != null && isPastStudy(study, visibleMemberships))
 			.map(study -> toResult(
 				study,
 				owners.get(study.getOwnerMemberId()),
@@ -169,6 +172,36 @@ public class StudyService {
 			.toList();
 
 		return new MyStudyHistoryResult(activeStudies, pastStudies);
+	}
+
+	@Transactional
+	public void hideMyStudyHistory(Long studyId, Long requesterMemberId) {
+		Study study = getStudy(studyId);
+		StudyMember membership = studyMemberRepository.findByStudyIdAndMemberId(studyId, requesterMemberId)
+			.orElseThrow(() -> new BusinessException(StudyErrorCode.NOT_STUDY_MEMBER));
+		if (!isPastStudy(study, List.of(membership))) {
+			throw new BusinessException(StudyErrorCode.STUDY_HISTORY_NOT_PAST);
+		}
+		membership.hideHistory();
+	}
+
+	@Transactional
+	public void hideAllMyPastStudyHistory(Long requesterMemberId) {
+		List<StudyMember> memberships = studyMemberRepository.findAllByMemberId(requesterMemberId);
+		List<Long> studyIds = memberships.stream()
+			.map(StudyMember::getStudyId)
+			.distinct()
+			.toList();
+		Map<Long, Study> studies = studyRepository.findAllById(studyIds)
+			.stream()
+			.collect(Collectors.toMap(Study::getId, Function.identity()));
+
+		for (StudyMember membership : memberships) {
+			Study study = studies.get(membership.getStudyId());
+			if (study != null && membership.getHistoryHiddenAt() == null && isPastStudy(study, List.of(membership))) {
+				membership.hideHistory();
+			}
+		}
 	}
 
 	@Transactional

@@ -272,6 +272,14 @@ Completed and merged into `develop`:
    - frontend community detail routes use `/community/{board}/{postId}` and list routes use `/community/{board}`;
    - frontend community list requests 20 posts per page and exposes previous/next controls;
    - requester-owned comment/reply deletion now opens an in-app confirmation modal before calling delete.
+42. My Page past study history cleanup:
+   - Flyway V15 adds `study_members.history_hidden_at`;
+   - authenticated `DELETE /api/v1/studies/me/history/{studyId}` hides a past study from the requester’s My Page history only;
+   - authenticated `DELETE /api/v1/studies/me/history` hides all requester-visible past study history;
+   - active/current studies cannot be hidden through this endpoint and return `STUDY-010`;
+   - hidden history does not delete the study itself and does not affect other members’ history;
+   - frontend past study rows show a small `X` history cleanup action, plus a compact `전체 삭제` action in the past-study header;
+   - frontend history cleanup and destructive study delete confirmations use the in-app confirmation modal instead of browser `window.confirm`.
 
 Active feature work in progress:
 
@@ -292,6 +300,7 @@ Active feature work in progress:
   - backend is running on `8081`;
   - frontend is running on `5173`;
   - PostgreSQL schema has V14 applied locally after the post board type migration;
+  - PostgreSQL schema has V15 applied locally after the study history hide migration;
   - local ADMIN role has been inserted for ACTIVE `ahwnsk94@gmail.com` rows to unblock notice admin testing.
 
 - Flyway V6 notification/outbox schema:

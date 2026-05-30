@@ -89,6 +89,8 @@ public class SecurityConfig {
 					"/api/v1/chat/rooms/*/messages"
 				).authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/api/v1/studies/me/history").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/api/v1/studies/me/history/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/comments/*").authenticated()

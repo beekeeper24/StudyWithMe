@@ -436,6 +436,85 @@ class StudyControllerTest {
 	}
 
 	@Test
+	@DisplayName("내 지난 스터디 기록은 목록에서 숨길 수 있다")
+	void hideMyPastStudyHistory() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("종료된 스터디", "완료")
+		);
+		studyService.join(study.id(), participant.getId());
+		studyService.end(study.id(), owner.getId());
+
+		mockMvc.perform(delete("/api/v1/studies/me/history/{studyId}", study.id())
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true));
+
+		mockMvc.perform(get("/api/v1/studies/me")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.pastStudies.length()").value(0));
+	}
+
+	@Test
+	@DisplayName("참여 중인 스터디는 지난 스터디 기록 삭제를 할 수 없다")
+	void rejectHideActiveStudyHistory() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult study = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("참여 중인 스터디", "진행 중")
+		);
+		studyService.join(study.id(), participant.getId());
+
+		mockMvc.perform(delete("/api/v1/studies/me/history/{studyId}", study.id())
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("STUDY-010"));
+	}
+
+	@Test
+	@DisplayName("내 지난 스터디 기록 전체를 목록에서 숨길 수 있다")
+	void hideAllMyPastStudyHistory() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult active = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("참여 중인 스터디", "진행 중")
+		);
+		studyService.join(active.id(), participant.getId());
+		StudyResult ended = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("종료된 스터디", "완료")
+		);
+		studyService.join(ended.id(), participant.getId());
+		studyService.end(ended.id(), owner.getId());
+		StudyResult left = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("나간 스터디", "이탈")
+		);
+		studyService.join(left.id(), participant.getId());
+		studyService.leave(left.id(), participant.getId());
+
+		mockMvc.perform(delete("/api/v1/studies/me/history")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true));
+
+		mockMvc.perform(get("/api/v1/studies/me")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.activeStudies.length()").value(1))
+			.andExpect(jsonPath("$.data.activeStudies[0].id").value(active.id()))
+			.andExpect(jsonPath("$.data.pastStudies.length()").value(0));
+	}
+
+	@Test
 	@DisplayName("인증하지 않고 내 스터디 이력을 조회하면 AUTH-003 응답을 반환한다")
 	void rejectUnauthenticatedFindMyStudies() throws Exception {
 		mockMvc.perform(get("/api/v1/studies/me"))
