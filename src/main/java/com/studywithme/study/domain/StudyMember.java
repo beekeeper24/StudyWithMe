@@ -46,6 +46,9 @@ public class StudyMember {
 	@Column(name = "left_at")
 	private LocalDateTime leftAt;
 
+	@Column(name = "history_hidden_at")
+	private LocalDateTime historyHiddenAt;
+
 	protected StudyMember() {
 	}
 
@@ -98,16 +101,23 @@ public class StudyMember {
 	public void rejoin() {
 		this.status = StudyMemberStatus.JOINED;
 		this.leftAt = null;
+		this.historyHiddenAt = null;
 	}
 
 	public void requestAgain() {
 		this.status = StudyMemberStatus.PENDING;
 		this.leftAt = null;
+		this.historyHiddenAt = null;
 	}
 
 	public void approve() {
 		this.status = StudyMemberStatus.JOINED;
 		this.leftAt = null;
+		this.historyHiddenAt = null;
+	}
+
+	public void hideHistory() {
+		this.historyHiddenAt = LocalDateTime.now();
 	}
 
 	public boolean isJoined() {
@@ -148,5 +158,9 @@ public class StudyMember {
 
 	public LocalDateTime getLeftAt() {
 		return leftAt;
+	}
+
+	public LocalDateTime getHistoryHiddenAt() {
+		return historyHiddenAt;
 	}
 }

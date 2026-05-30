@@ -48,6 +48,11 @@ public enum StudyErrorCode implements ErrorCode {
 		"STUDY-009",
 		"이미 참여 신청한 스터디입니다.",
 		HttpStatus.CONFLICT
+	),
+	STUDY_HISTORY_NOT_PAST(
+		"STUDY-010",
+		"지난 스터디 기록만 삭제할 수 있습니다.",
+		HttpStatus.CONFLICT
 	);
 
 	private final String code;

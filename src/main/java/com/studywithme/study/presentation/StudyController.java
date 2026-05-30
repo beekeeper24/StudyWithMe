@@ -89,6 +89,25 @@ public class StudyController {
 		));
 	}
 
+	@DeleteMapping("/me/history/{studyId}")
+	public ApiResponse<Void> hideMyStudyHistory(
+		@PathVariable Long studyId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		studyService.hideMyStudyHistory(studyId, authenticatedPrincipal.memberId());
+		return ApiResponse.success(null);
+	}
+
+	@DeleteMapping("/me/history")
+	public ApiResponse<Void> hideAllMyPastStudyHistory(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		studyService.hideAllMyPastStudyHistory(authenticatedPrincipal.memberId());
+		return ApiResponse.success(null);
+	}
+
 	@GetMapping("/{studyId}")
 	public ApiResponse<StudyResponse> findById(
 		@PathVariable Long studyId,
