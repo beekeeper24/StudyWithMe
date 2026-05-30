@@ -66,12 +66,20 @@ public class Post {
 
 	public void update(Long requesterMemberId, String title, String content) {
 		requireAuthor(requesterMemberId);
+		updateContent(title, content);
+	}
+
+	public void updateContent(String title, String content) {
 		this.title = title;
 		this.content = content;
 	}
 
 	public void delete(Long requesterMemberId) {
 		requireAuthor(requesterMemberId);
+		delete();
+	}
+
+	public void delete() {
 		this.status = PostStatus.DELETED;
 	}
 

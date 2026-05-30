@@ -289,6 +289,55 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("일반 회원은 공지사항 게시글을 수정할 수 없다")
+	void rejectUpdateNoticePostByNonAdmin() throws Exception {
+		Member admin = saveAdmin("admin");
+		Member nonAdmin = saveMember("non-admin");
+		PostResult post = postService.create(
+			admin.getId(),
+			new PostCreateCommand(PostBoardType.NOTICE, "공지", "내용")
+		);
+
+		mockMvc.perform(put("/api/v1/posts/{postId}", post.id())
+				.header("Authorization", "Bearer " + accessToken(nonAdmin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"title": "수정",
+						"content": "내용"
+					}
+					"""))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("POST-003"));
+	}
+
+	@Test
+	@DisplayName("관리자는 다른 관리자가 작성한 공지사항 게시글도 수정할 수 있다")
+	void updateNoticePostByAdmin() throws Exception {
+		Member authorAdmin = saveAdmin("author-admin");
+		Member anotherAdmin = saveAdmin("another-admin");
+		PostResult post = postService.create(
+			authorAdmin.getId(),
+			new PostCreateCommand(PostBoardType.NOTICE, "공지", "내용")
+		);
+
+		mockMvc.perform(put("/api/v1/posts/{postId}", post.id())
+				.header("Authorization", "Bearer " + accessToken(anotherAdmin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+						"title": "수정된 공지",
+						"content": "수정된 내용"
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.title").value("수정된 공지"))
+			.andExpect(jsonPath("$.data.content").value("수정된 내용"));
+	}
+
+	@Test
 	@DisplayName("작성자는 게시글을 삭제할 수 있다")
 	void deletePostByAuthorWithBearerToken() throws Exception {
 		Member author = saveMember("author");
@@ -312,6 +361,39 @@ class PostControllerTest {
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.success").value(false))
 			.andExpect(jsonPath("$.error.code").value("POST-002"));
+	}
+
+	@Test
+	@DisplayName("일반 회원은 공지사항 게시글을 삭제할 수 없다")
+	void rejectDeleteNoticePostByNonAdmin() throws Exception {
+		Member admin = saveAdmin("admin");
+		Member nonAdmin = saveMember("non-admin");
+		PostResult post = postService.create(
+			admin.getId(),
+			new PostCreateCommand(PostBoardType.NOTICE, "공지", "내용")
+		);
+
+		mockMvc.perform(delete("/api/v1/posts/{postId}", post.id())
+				.header("Authorization", "Bearer " + accessToken(nonAdmin)))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("POST-003"));
+	}
+
+	@Test
+	@DisplayName("관리자는 다른 관리자가 작성한 공지사항 게시글도 삭제할 수 있다")
+	void deleteNoticePostByAdmin() throws Exception {
+		Member authorAdmin = saveAdmin("author-admin");
+		Member anotherAdmin = saveAdmin("another-admin");
+		PostResult post = postService.create(
+			authorAdmin.getId(),
+			new PostCreateCommand(PostBoardType.NOTICE, "공지", "내용")
+		);
+
+		mockMvc.perform(delete("/api/v1/posts/{postId}", post.id())
+				.header("Authorization", "Bearer " + accessToken(anotherAdmin)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true));
 	}
 
 	private Member saveMember(String name) {

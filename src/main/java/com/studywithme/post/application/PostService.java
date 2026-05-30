@@ -46,12 +46,7 @@ public class PostService {
 		if (boardType != PostBoardType.NOTICE) {
 			return;
 		}
-		boolean isAdmin = memberRepository.findById(requesterMemberId)
-			.map(member -> member.getRoles().contains(MemberRole.ADMIN))
-			.orElse(false);
-		if (!isAdmin) {
-			throw new BusinessException(PostErrorCode.NOTICE_ADMIN_REQUIRED);
-		}
+		ensureAdmin(requesterMemberId);
 	}
 
 	@Transactional(readOnly = true)
@@ -89,15 +84,34 @@ public class PostService {
 	@Transactional
 	public PostResult update(Long postId, Long requesterMemberId, PostUpdateCommand command) {
 		Post post = getPublishedPost(postId);
-		post.update(requesterMemberId, command.title(), command.content());
+		if (post.getBoardType() == PostBoardType.NOTICE) {
+			ensureAdmin(requesterMemberId);
+			post.updateContent(command.title(), command.content());
+		} else {
+			post.update(requesterMemberId, command.title(), command.content());
+		}
 		return toResult(post, requesterMemberId);
 	}
 
 	@Transactional
 	public PostResult delete(Long postId, Long requesterMemberId) {
 		Post post = getPublishedPost(postId);
-		post.delete(requesterMemberId);
+		if (post.getBoardType() == PostBoardType.NOTICE) {
+			ensureAdmin(requesterMemberId);
+			post.delete();
+		} else {
+			post.delete(requesterMemberId);
+		}
 		return toResult(post, requesterMemberId);
+	}
+
+	private void ensureAdmin(Long requesterMemberId) {
+		boolean isAdmin = memberRepository.findById(requesterMemberId)
+			.map(member -> member.getRoles().contains(MemberRole.ADMIN))
+			.orElse(false);
+		if (!isAdmin) {
+			throw new BusinessException(PostErrorCode.NOTICE_ADMIN_REQUIRED);
+		}
 	}
 
 	private Post getPublishedPost(Long postId) {
