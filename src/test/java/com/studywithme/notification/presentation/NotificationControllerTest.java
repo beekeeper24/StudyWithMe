@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.studywithme.auth.token.JwtTokenProvider;
 import com.studywithme.auth.token.RefreshTokenRepository;
+import com.studywithme.comment.domain.Comment;
+import com.studywithme.comment.repository.CommentRepository;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
@@ -15,6 +17,9 @@ import com.studywithme.notification.domain.Notification;
 import com.studywithme.notification.domain.NotificationTargetType;
 import com.studywithme.notification.domain.NotificationType;
 import com.studywithme.notification.repository.NotificationRepository;
+import com.studywithme.post.domain.Post;
+import com.studywithme.post.domain.PostBoardType;
+import com.studywithme.post.repository.PostRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +42,12 @@ class NotificationControllerTest {
 	private NotificationRepository notificationRepository;
 
 	@Autowired
+	private CommentRepository commentRepository;
+
+	@Autowired
+	private PostRepository postRepository;
+
+	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
 
 	@Autowired
@@ -45,6 +56,8 @@ class NotificationControllerTest {
 	@AfterEach
 	void tearDown() {
 		notificationRepository.deleteAll();
+		commentRepository.deleteAll();
+		postRepository.deleteAll();
 		refreshTokenRepository.deleteAll();
 		memberRepository.deleteAll();
 	}
@@ -63,12 +76,24 @@ class NotificationControllerTest {
 	void listMyNotifications() throws Exception {
 		Member receiver = saveMember("receiver");
 		Member actor = saveMember("actor");
+		Post post = postRepository.saveAndFlush(Post.create(
+			PostBoardType.QUESTION,
+			"질문입니다",
+			"본문",
+			receiver.getId()
+		));
+		Comment comment = commentRepository.saveAndFlush(Comment.create(
+			post.getId(),
+			actor.getId(),
+			null,
+			"댓글입니다"
+		));
 		notificationRepository.save(Notification.create(
 			receiver.getId(),
 			actor.getId(),
 			NotificationType.COMMENT_ON_POST,
 			NotificationTargetType.COMMENT,
-			1L,
+			comment.getId(),
 			"event-1",
 			"새 댓글이 달렸습니다."
 		));
@@ -78,6 +103,8 @@ class NotificationControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data[0].type").value("COMMENT_ON_POST"))
+			.andExpect(jsonPath("$.data[0].targetId").value(comment.getId()))
+			.andExpect(jsonPath("$.data[0].targetPostId").value(post.getId()))
 			.andExpect(jsonPath("$.data[0].read").value(false));
 	}
 
