@@ -73,25 +73,30 @@ public class PostService {
 
 	@Transactional(readOnly = true)
 	public PostPageResult findPage(PostBoardType boardType, Long requesterMemberId, int page, int size) {
-		return findPage(boardType, null, requesterMemberId, page, size);
+		return findPage(boardType, null, PostSearchScope.ALL, requesterMemberId, page, size);
 	}
 
 	@Transactional(readOnly = true)
 	public PostPageResult findPage(
 		PostBoardType boardType,
 		String keyword,
+		PostSearchScope searchScope,
 		Long requesterMemberId,
 		int page,
 		int size
 	) {
 		PageRequest pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
 		String normalizedKeyword = normalizeKeyword(keyword);
+		PostSearchScope normalizedSearchScope = normalizeSearchScope(searchScope);
 		Page<Post> postPage = normalizedKeyword == null
 			? findPublishedPosts(boardType, pageable)
 			: postRepository.searchPublishedPosts(
 				boardType,
 				PostStatus.PUBLISHED,
 				normalizedKeyword,
+				normalizedSearchScope.includesTitle(),
+				normalizedSearchScope.includesContent(),
+				normalizedSearchScope.includesAuthor(),
 				pageable
 			);
 		List<Post> posts = postPage.getContent();
@@ -137,6 +142,10 @@ public class PostService {
 			return null;
 		}
 		return keyword.trim();
+	}
+
+	private PostSearchScope normalizeSearchScope(PostSearchScope searchScope) {
+		return searchScope == null ? PostSearchScope.ALL : searchScope;
 	}
 
 	@Transactional(readOnly = true)

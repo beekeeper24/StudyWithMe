@@ -742,3 +742,12 @@ StudyWithMe 프로젝트 이어서 작업하자.
     - dated worklog pages directly under `StudyWithMe`
 - Do not create another nested `작업일지` page under `StudyWithMe`.
 - Keep repo learnings under `docs/learnings/`.
+
+## Recent Implementation Notes
+
+### 49. Community search scope
+
+- Backend post list search now accepts `searchScope` with `ALL`, `TITLE`, `TITLE_CONTENT`, and `AUTHOR`.
+- `keyword` omitted or blank still uses the normal published-list query path instead of the search query.
+- Frontend community search removes the page/count text beside the search box and uses a dropdown to choose the search scope.
+- The frontend requests 20 posts per page (`postPageSize = 20`); pagination "next" is only testable after a board has at least 21 matching posts.

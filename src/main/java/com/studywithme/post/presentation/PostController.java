@@ -5,6 +5,7 @@ import com.studywithme.global.common.ApiResponse;
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import com.studywithme.post.application.PostCreateCommand;
+import com.studywithme.post.application.PostSearchScope;
 import com.studywithme.post.application.PostService;
 import com.studywithme.post.application.PostUpdateCommand;
 import com.studywithme.post.domain.PostBoardType;
@@ -50,13 +51,14 @@ public class PostController {
 	public ApiResponse<PostPageResponse> findAll(
 		@RequestParam(required = false) PostBoardType boardType,
 		@RequestParam(required = false) String keyword,
+		@RequestParam(defaultValue = "ALL") PostSearchScope searchScope,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "50") int size,
 		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
 	) {
 		Long requesterMemberId = principal == null ? null : principal.memberId();
 		return ApiResponse.success(PostPageResponse.from(
-			postService.findPage(boardType, keyword, requesterMemberId, page, size)
+			postService.findPage(boardType, keyword, searchScope, requesterMemberId, page, size)
 		));
 	}
 
