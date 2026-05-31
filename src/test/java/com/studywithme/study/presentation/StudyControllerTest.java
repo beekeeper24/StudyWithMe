@@ -183,6 +183,7 @@ class StudyControllerTest {
 			.andExpect(jsonPath("$.data.targetAudience").value("백준 실버 이상, 꾸준히 참여 가능한 사람"))
 			.andExpect(jsonPath("$.data.rules").value("불참 시 전날 공유하고, 풀이 기록을 남깁니다."))
 			.andExpect(jsonPath("$.data.capacity").value(6))
+			.andExpect(jsonPath("$.data.joinedMemberCount").value(1))
 			.andExpect(jsonPath("$.data.schedule").value("매주 화요일 21:00"));
 	}
 
@@ -318,6 +319,7 @@ class StudyControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content[0].ownerNickname").value("owner"))
 			.andExpect(jsonPath("$.data.content[0].ownerProfileImageUrl").doesNotExist())
+			.andExpect(jsonPath("$.data.content[0].joinedMemberCount").value(1))
 			.andExpect(jsonPath("$.data.content[0].joinedByRequester").value(false))
 			.andExpect(jsonPath("$.data.content[0].ownedByRequester").value(false));
 	}
@@ -604,16 +606,19 @@ class StudyControllerTest {
 	@DisplayName("스터디 상세는 공개 조회할 수 있다")
 	void getStudyPublicly() throws Exception {
 		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
 		StudyResult study = studyService.create(
 			owner.getId(),
 			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
 		);
+		studyService.join(study.id(), participant.getId());
 
 		mockMvc.perform(get("/api/v1/studies/{studyId}", study.id()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.id").value(study.id()))
 			.andExpect(jsonPath("$.data.ownerNickname").value("owner"))
+			.andExpect(jsonPath("$.data.joinedMemberCount").value(2))
 			.andExpect(jsonPath("$.data.joinedByRequester").value(false))
 			.andExpect(jsonPath("$.data.ownedByRequester").value(false));
 	}

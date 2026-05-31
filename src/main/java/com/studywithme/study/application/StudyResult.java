@@ -15,6 +15,7 @@ public record StudyResult(
 	String targetAudience,
 	String rules,
 	Integer capacity,
+	long joinedMemberCount,
 	String schedule,
 	StudyStatus status,
 	boolean joinedByRequester,
@@ -25,13 +26,14 @@ public record StudyResult(
 ) {
 
 	public static StudyResult from(Study study) {
-		return from(study, null, null, false, false, false);
+		return from(study, null, null, 0, false, false, false);
 	}
 
 	public static StudyResult from(
 		Study study,
 		String ownerNickname,
 		String ownerProfileImageUrl,
+		long joinedMemberCount,
 		boolean joinedByRequester,
 		boolean joinRequestedByRequester,
 		boolean ownedByRequester
@@ -47,6 +49,7 @@ public record StudyResult(
 			study.getTargetAudience(),
 			study.getRules(),
 			study.getCapacity(),
+			joinedMemberCount,
 			study.getSchedule(),
 			study.getStatus(),
 			joinedByRequester,

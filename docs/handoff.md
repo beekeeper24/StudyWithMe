@@ -776,3 +776,9 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - Public study list remains limited to recruiting studies owned by active members.
 - Public study list accepts `keyword`, `page`, and `size`; size is capped at 50.
 - Frontend study menu uses previous/next pagination; recruiting pages are server-backed and active-study pages are sliced from the loaded member history.
+
+### 54. Study participant count
+
+- Study responses include `joinedMemberCount`, counting current `JOINED` study members including the owner.
+- Frontend study cards and detail modal show current participants against capacity.
+- Study detail modal also shows remaining seats, using `마감` when the capacity has been reached.
