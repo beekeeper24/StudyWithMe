@@ -576,10 +576,15 @@ public class StudyService {
 	) {
 		String ownerNickname = ownerNickname(owner);
 		String ownerProfileImageUrl = ownerProfileImageUrl(owner);
+		long joinedMemberCount = studyMemberRepository.countByStudyIdAndStatus(
+			study.getId(),
+			StudyMemberStatus.JOINED
+		);
 		return StudyResult.from(
 			study,
 			ownerNickname,
 			ownerProfileImageUrl,
+			joinedMemberCount,
 			joinedByRequester,
 			joinRequestedByRequester,
 			requesterMemberId != null && study.getOwnerMemberId().equals(requesterMemberId)
