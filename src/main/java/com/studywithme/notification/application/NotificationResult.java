@@ -12,6 +12,7 @@ public record NotificationResult(
 	NotificationType type,
 	NotificationTargetType targetType,
 	Long targetId,
+	Long targetPostId,
 	String message,
 	boolean read,
 	LocalDateTime createdAt,
@@ -26,6 +27,23 @@ public record NotificationResult(
 			notification.getType(),
 			notification.getTargetType(),
 			notification.getTargetId(),
+			null,
+			notification.getMessage(),
+			notification.isRead(),
+			notification.getCreatedAt(),
+			notification.getReadAt()
+		);
+	}
+
+	public static NotificationResult from(Notification notification, Long targetPostId) {
+		return new NotificationResult(
+			notification.getId(),
+			notification.getReceiverMemberId(),
+			notification.getActorMemberId(),
+			notification.getType(),
+			notification.getTargetType(),
+			notification.getTargetId(),
+			targetPostId,
 			notification.getMessage(),
 			notification.isRead(),
 			notification.getCreatedAt(),

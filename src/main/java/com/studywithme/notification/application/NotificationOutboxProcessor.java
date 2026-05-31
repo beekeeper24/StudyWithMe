@@ -2,6 +2,8 @@ package com.studywithme.notification.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.studywithme.comment.domain.Comment;
+import com.studywithme.comment.repository.CommentRepository;
 import com.studywithme.notification.domain.Notification;
 import com.studywithme.notification.domain.NotificationTargetType;
 import com.studywithme.notification.domain.NotificationType;
@@ -26,17 +28,20 @@ public class NotificationOutboxProcessor {
 	private final ObjectMapper objectMapper;
 	private final OutboxEventRepository outboxEventRepository;
 	private final NotificationRepository notificationRepository;
+	private final CommentRepository commentRepository;
 	private final ObjectProvider<NotificationRealtimePublisher> notificationRealtimePublisher;
 
 	public NotificationOutboxProcessor(
 		ObjectMapper objectMapper,
 		OutboxEventRepository outboxEventRepository,
 		NotificationRepository notificationRepository,
+		CommentRepository commentRepository,
 		ObjectProvider<NotificationRealtimePublisher> notificationRealtimePublisher
 	) {
 		this.objectMapper = objectMapper;
 		this.outboxEventRepository = outboxEventRepository;
 		this.notificationRepository = notificationRepository;
+		this.commentRepository = commentRepository;
 		this.notificationRealtimePublisher = notificationRealtimePublisher;
 	}
 
@@ -248,7 +253,7 @@ public class NotificationOutboxProcessor {
 				sourceEventId,
 				message
 			));
-			publishAfterCommit(NotificationResult.from(notification));
+			publishAfterCommit(NotificationResult.from(notification, findTargetPostId(targetId)));
 		} catch (DataIntegrityViolationException ignored) {
 			// Another worker may have processed the same at-least-once event first.
 		}
@@ -306,6 +311,12 @@ public class NotificationOutboxProcessor {
 		} catch (DataIntegrityViolationException ignored) {
 			// Another worker may have processed the same at-least-once event first.
 		}
+	}
+
+	private Long findTargetPostId(Long commentId) {
+		return commentRepository.findById(commentId)
+			.map(Comment::getPostId)
+			.orElse(null);
 	}
 
 	private void publishAfterCommit(NotificationResult notification) {

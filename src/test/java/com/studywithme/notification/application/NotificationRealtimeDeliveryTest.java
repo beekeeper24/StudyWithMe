@@ -79,6 +79,7 @@ class NotificationRealtimeDeliveryTest {
 			.satisfies(notification -> {
 				assertThat(notification.receiverMemberId()).isEqualTo(postAuthor.getId());
 				assertThat(notification.actorMemberId()).isEqualTo(commentAuthor.getId());
+				assertThat(notification.targetPostId()).isEqualTo(post.id());
 			});
 	}
 

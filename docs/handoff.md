@@ -258,6 +258,11 @@ Completed and merged into `develop`:
    - frontend hides notice write entry for non-admin users and keeps a client-side guard;
    - frontend shows delete actions for requester-owned comments and replies;
    - comment delete calls `DELETE /api/v1/comments/{commentId}` and reloads the post detail comments.
+40. Community notification routing:
+   - comment/reply/mention notifications still keep `targetType = COMMENT` and `targetId = commentId`;
+   - notification API and realtime payloads now include nullable `targetPostId` for COMMENT notifications;
+   - frontend notification clicks use `targetPostId` to open the matching community post detail route;
+   - study and chat notification click behavior remains unchanged.
 40. Notice post management policy:
    - `NOTICE` post update/delete is restricted to members with `ADMIN` role;
    - any ADMIN can update/delete NOTICE posts, even if another ADMIN originally wrote the notice;

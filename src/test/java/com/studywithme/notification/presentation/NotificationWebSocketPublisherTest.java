@@ -26,6 +26,7 @@ class NotificationWebSocketPublisherTest {
 			NotificationType.COMMENT_ON_POST,
 			NotificationTargetType.COMMENT,
 			100L,
+			1L,
 			"새 댓글이 달렸습니다.",
 			false,
 			LocalDateTime.now(),
