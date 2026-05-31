@@ -263,21 +263,21 @@ Completed and merged into `develop`:
    - notification API and realtime payloads now include nullable `targetPostId` for COMMENT notifications;
    - frontend notification clicks use `targetPostId` to open the matching community post detail route;
    - study and chat notification click behavior remains unchanged.
-40. Notice post management policy:
+41. Notice post management policy:
    - `NOTICE` post update/delete is restricted to members with `ADMIN` role;
    - any ADMIN can update/delete NOTICE posts, even if another ADMIN originally wrote the notice;
    - non-notice post update/delete remains author-only;
    - frontend shows notice edit/delete actions to ADMIN users and keeps regular post actions based on ownership;
    - authorization was checked in the service layer against DB member roles, not only client-side state or JWT UI flags.
-41. Admin email bootstrap and community navigation polish:
+42. Admin email bootstrap and community navigation polish:
    - backend supports `app.admin.emails` / `APP_ADMIN_EMAILS` as the configured ADMIN allow-list;
    - configured ACTIVE members receive `ADMIN` on OAuth login and existing matching members are bootstrapped at application startup;
    - local PostgreSQL granted ADMIN to the currently used `ahwnsk94@gmail.com` ACTIVE rows for immediate notice-admin testing;
-   - `GET /api/v1/posts` now accepts non-breaking `page` and `size` query parameters while preserving list response compatibility;
+   - `GET /api/v1/posts` accepts `page` and `size` query parameters for community list pagination;
    - frontend community detail routes use `/community/{board}/{postId}` and list routes use `/community/{board}`;
    - frontend community list requests 20 posts per page and exposes previous/next controls;
    - requester-owned comment/reply deletion now opens an in-app confirmation modal before calling delete.
-42. My Page past study history cleanup:
+43. My Page past study history cleanup:
    - Flyway V15 adds `study_members.history_hidden_at`;
    - authenticated `DELETE /api/v1/studies/me/history/{studyId}` hides a past study from the requester’s My Page history only;
    - authenticated `DELETE /api/v1/studies/me/history` hides all requester-visible past study history;
@@ -285,6 +285,10 @@ Completed and merged into `develop`:
    - hidden history does not delete the study itself and does not affect other members’ history;
    - frontend past study rows show a small `X` history cleanup action, plus a compact `전체 삭제` action in the past-study header;
    - frontend history cleanup and destructive study delete confirmations use the in-app confirmation modal instead of browser `window.confirm`.
+44. Post page response contract:
+   - `GET /api/v1/posts` now returns a page object with `content`, `page`, `size`, `totalElements`, `totalPages`, `hasNext`, and `hasPrevious`;
+   - existing post item fields inside `content` remain unchanged;
+   - frontend community list uses backend `hasNext` and `totalElements` instead of inferring pagination from returned item count.
 
 Active feature work in progress:
 

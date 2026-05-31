@@ -5,14 +5,15 @@ import com.studywithme.post.domain.PostBoardType;
 import com.studywithme.post.domain.PostStatus;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
-	List<Post> findAllByStatusOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
+	Page<Post> findAllByStatusOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 
-	List<Post> findAllByBoardTypeAndStatusOrderByCreatedAtDesc(
+	Page<Post> findAllByBoardTypeAndStatusOrderByCreatedAtDesc(
 		PostBoardType boardType,
 		PostStatus status,
 		Pageable pageable

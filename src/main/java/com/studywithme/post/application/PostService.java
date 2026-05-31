@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,14 +68,29 @@ public class PostService {
 
 	@Transactional(readOnly = true)
 	public List<PostResult> findAll(PostBoardType boardType, Long requesterMemberId, int page, int size) {
+		return findPage(boardType, requesterMemberId, page, size).content();
+	}
+
+	@Transactional(readOnly = true)
+	public PostPageResult findPage(PostBoardType boardType, Long requesterMemberId, int page, int size) {
 		PageRequest pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
-		List<Post> posts = boardType == null
+		Page<Post> postPage = boardType == null
 			? postRepository.findAllByStatusOrderByCreatedAtDesc(PostStatus.PUBLISHED, pageable)
 			: postRepository.findAllByBoardTypeAndStatusOrderByCreatedAtDesc(boardType, PostStatus.PUBLISHED, pageable);
+		List<Post> posts = postPage.getContent();
 		Map<Long, Member> authors = findAuthors(posts);
-		return posts.stream()
+		List<PostResult> content = posts.stream()
 			.map(post -> toResult(post, authors.get(post.getAuthorMemberId()), requesterMemberId))
 			.toList();
+		return new PostPageResult(
+			content,
+			postPage.getNumber(),
+			postPage.getSize(),
+			postPage.getTotalElements(),
+			postPage.getTotalPages(),
+			postPage.hasNext(),
+			postPage.hasPrevious()
+		);
 	}
 
 	private int normalizePage(int page) {

@@ -9,7 +9,6 @@ import com.studywithme.post.application.PostService;
 import com.studywithme.post.application.PostUpdateCommand;
 import com.studywithme.post.domain.PostBoardType;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,16 +47,16 @@ public class PostController {
 	}
 
 	@GetMapping
-	public ApiResponse<List<PostResponse>> findAll(
+	public ApiResponse<PostPageResponse> findAll(
 		@RequestParam(required = false) PostBoardType boardType,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "50") int size,
 		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
 	) {
 		Long requesterMemberId = principal == null ? null : principal.memberId();
-		return ApiResponse.success(postService.findAll(boardType, requesterMemberId, page, size).stream()
-			.map(PostResponse::from)
-			.toList());
+		return ApiResponse.success(PostPageResponse.from(
+			postService.findPage(boardType, requesterMemberId, page, size)
+		));
 	}
 
 	@GetMapping("/{postId}")
