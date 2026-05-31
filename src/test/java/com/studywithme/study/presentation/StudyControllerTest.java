@@ -344,6 +344,40 @@ class StudyControllerTest {
 	}
 
 	@Test
+	@DisplayName("공개 스터디 목록은 검색어로 조회할 수 있다")
+	void listStudiesByKeyword() throws Exception {
+		Member owner = saveMember("owner");
+		studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("React 집중 스터디", "매주 과제를 진행합니다.")
+		);
+		studyService.create(
+			owner.getId(),
+			new StudyCreateCommand(
+				"프론트엔드 스터디",
+				null,
+				"React 과제를 함께 풉니다.",
+				"입문자",
+				"인증 필수",
+				6,
+				"매주 화요일"
+			)
+		);
+		studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("Java 스터디", "백엔드 기초")
+		);
+
+		mockMvc.perform(get("/api/v1/studies")
+				.param("keyword", "react"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(2))
+			.andExpect(jsonPath("$.data[0].title").value("프론트엔드 스터디"))
+			.andExpect(jsonPath("$.data[1].title").value("React 집중 스터디"));
+	}
+
+	@Test
 	@DisplayName("공개 스터디 목록은 탈퇴한 모집장의 스터디를 제외한다")
 	void listStudiesExcludesWithdrawnOwnerStudies() throws Exception {
 		Member activeOwner = saveMember("active-owner");

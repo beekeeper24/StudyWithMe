@@ -84,8 +84,18 @@ public class StudyService {
 
 	@Transactional(readOnly = true)
 	public List<StudyResult> findAll(Long requesterMemberId) {
-		List<Study> studies = studyRepository.findAllByStatusOrderByCreatedAtDesc(
+		return findAll(null, requesterMemberId);
+	}
+
+	@Transactional(readOnly = true)
+	public List<StudyResult> findAll(String keyword, Long requesterMemberId) {
+		String normalizedKeyword = normalizeKeyword(keyword);
+		List<Study> studies = normalizedKeyword == null ? studyRepository.findAllByStatusOrderByCreatedAtDesc(
 			StudyStatus.RECRUITING,
+			PageRequest.of(0, STUDY_LIST_LIMIT)
+		) : studyRepository.searchAllByStatus(
+			StudyStatus.RECRUITING,
+			normalizedKeyword,
 			PageRequest.of(0, STUDY_LIST_LIMIT)
 		);
 		Map<Long, Member> owners = findOwners(studies);
@@ -103,6 +113,13 @@ public class StudyService {
 				pendingStudyIds.contains(study.getId())
 			))
 			.toList();
+	}
+
+	private String normalizeKeyword(String keyword) {
+		if (keyword == null || keyword.isBlank()) {
+			return null;
+		}
+		return keyword.trim();
 	}
 
 	@Transactional(readOnly = true)
