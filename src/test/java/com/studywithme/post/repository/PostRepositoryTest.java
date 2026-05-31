@@ -6,6 +6,7 @@ import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.post.domain.Post;
+import com.studywithme.post.domain.PostBoardType;
 import com.studywithme.post.domain.PostStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,28 @@ class PostRepositoryTest {
 
 		assertThat(posts.getContent()).extracting(Post::getId)
 			.containsExactly(newPost.getId(), oldPost.getId());
+	}
+
+	@Test
+	@DisplayName("공개 게시글 검색은 삭제 글을 제외하고 게시판과 키워드를 함께 적용한다")
+	void searchPublishedPostsByBoardTypeAndKeyword() {
+		Member author = saveMember("author");
+		Post freePost = postRepository.save(Post.create("React 질문", "내용", author.getId()));
+		Post reviewPost = postRepository.save(Post.create(PostBoardType.REVIEW, "React 후기", "내용", author.getId()));
+		Post deletedPost = postRepository.save(Post.create(PostBoardType.REVIEW, "React 삭제", "내용", author.getId()));
+		deletedPost.delete(author.getId());
+		postRepository.flush();
+
+		Page<Post> posts = postRepository.searchPublishedPosts(
+			PostBoardType.REVIEW,
+			PostStatus.PUBLISHED,
+			"react",
+			PageRequest.of(0, 50)
+		);
+
+		assertThat(posts.getContent()).extracting(Post::getId)
+			.containsExactly(reviewPost.getId())
+			.doesNotContain(freePost.getId(), deletedPost.getId());
 	}
 
 	private Member saveMember(String name) {
