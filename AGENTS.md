@@ -15,7 +15,8 @@ Use the main Codex flow by default. Add harnesses only when they clearly reduce 
 - Use Superpowers `test-driven-development` for complex logic, authentication, authorization, data migration, concurrency, or high-risk behavior changes.
 - Use Superpowers `systematic-debugging` when the bug cause is unclear.
 - Use Superpowers `verification-before-completion` before completing non-trivial work.
-- For security review, explicitly use gstack `cso` / `/cso`. Do not substitute a general review workflow when the task calls for security review.
+- gstack is limited to security review only: explicitly use gstack `cso` / `/cso` when the task calls for security review.
+- Do not invoke other gstack workflows or browser tools for ordinary implementation, UI QA, runtime checks, or review unless the user explicitly changes this rule.
 - Use Compound Engineering only when there is an important learning, or when the same mistake/pattern has repeated at least three times. Keep these notes separate from human-facing work logs.
 
 ## Harness Composition
@@ -52,6 +53,7 @@ Use harnesses together only when they cover genuinely different parts of the wor
 - Security-sensitive change:
   - Use the appropriate implementation harness first.
   - Then run gstack `cso` / `/cso` for focused security review.
+  - Do not replace `/cso` with gstack browse, gstack QA, generic review, or unrelated gstack workflows.
   - Applies to OAuth2, JWT, refresh tokens, secrets, deployment security, data exposure, chat access control, notifications, and WebSocket security.
 - Meaningful completed work:
   - Use Superpowers `verification-before-completion` before claiming completion.
@@ -87,7 +89,7 @@ For meaningful work, use this loop:
 
 1. Route the task through the lightest suitable harness.
 2. Implement or investigate.
-3. Verify with tests, build, lint, or focused runtime checks as appropriate.
+3. Verify with tests, build, lint, curl/HTTP checks, or local runtime checks as appropriate.
 4. Run gstack `cso` / `/cso` when the change affects OAuth2, authentication, authorization, secrets, deployment security, data exposure, chat access control, notification fan-out, or WebSocket security.
 5. Capture what should make the next similar task easier.
 
@@ -118,6 +120,8 @@ Learning notes split:
 - `develop` is the integration branch. Merge into `develop` only after a coherent issue, feature, domain, infrastructure, or MVP slice is locally verified and PR-ready.
 - Create work branches from `develop` for each GitHub issue or coherent implementation slice.
 - A work branch represents one reviewable deliverable, such as OAuth login, chat access control, notification flow, infrastructure setup, or a domain feature. Do not open and merge a PR merely because one intermediate task ended.
+- Group related small fixes, UI polish, docs, and copy changes by user-visible flow or reviewable intent instead of opening a PR for every tiny edit.
+- Use a separate small PR immediately only for a real hotfix, failing CI/runtime breakage, or a change that must land before the broader feature can continue.
 - Keep incremental checkpoint commits on the same work branch while that deliverable is still in progress.
 - Split a large feature into multiple PRs only when each PR leaves `develop` coherent, runnable, and understandable on its own.
 - Use branch prefixes: `feature/...`, `fix/...`, `test/...`, `refactor/...`, `chore/...`, `docs/...`, `release/...`, and `hotfix/...`.
