@@ -763,3 +763,9 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - Post list/detail responses include `commentCount`.
 - Comment counts are batch-loaded for list responses and exclude deleted comments plus replies hidden under deleted parent comments.
 - Frontend community rows show the comment count beside the title only when the count is greater than zero.
+
+### 52. Study list search
+
+- `GET /api/v1/studies` accepts optional `keyword`.
+- Recruiting study search matches title, description, progress method, target audience, and schedule.
+- Frontend study list has a search field; recruiting search is server-backed and active-study search filters the already loaded active list locally.
