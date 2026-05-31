@@ -67,6 +67,31 @@ class CommentRepositoryTest {
 			.containsExactly(first.getId(), second.getId());
 	}
 
+	@Test
+	@DisplayName("게시글별 공개 댓글 수는 삭제 댓글과 삭제 부모 아래 답글을 제외한다")
+	void countVisibleCommentsByPostIds() {
+		Member author = saveMember("author");
+		Post post = savePost(author);
+		Comment parent = commentRepository.save(Comment.create(post.getId(), author.getId(), null, "댓글"));
+		commentRepository.save(Comment.create(post.getId(), author.getId(), parent.getId(), "답글"));
+		Comment deleted = commentRepository.save(Comment.create(post.getId(), author.getId(), null, "삭제 댓글"));
+		Comment deletedParent = commentRepository.save(Comment.create(post.getId(), author.getId(), null, "삭제 부모"));
+		Comment hiddenReply = commentRepository.save(Comment.create(post.getId(), author.getId(), deletedParent.getId(), "숨김 답글"));
+		deleted.delete(author.getId());
+		deletedParent.delete(author.getId());
+		commentRepository.flush();
+
+		List<CommentCountView> counts = commentRepository.countVisibleCommentsByPostIds(
+			List.of(post.getId()),
+			CommentStatus.PUBLISHED
+		);
+
+		assertThat(counts).hasSize(1);
+		assertThat(counts.getFirst().getPostId()).isEqualTo(post.getId());
+		assertThat(counts.getFirst().getCommentCount()).isEqualTo(2);
+		assertThat(hiddenReply.getStatus()).isEqualTo(CommentStatus.PUBLISHED);
+	}
+
 	private Member saveMember(String name) {
 		return memberRepository.saveAndFlush(Member.createOAuthMember(
 			name + "@example.com",

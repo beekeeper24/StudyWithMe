@@ -1,5 +1,8 @@
 package com.studywithme.post.application;
 
+import com.studywithme.comment.domain.CommentStatus;
+import com.studywithme.comment.repository.CommentCountView;
+import com.studywithme.comment.repository.CommentRepository;
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.MemberRole;
@@ -26,10 +29,16 @@ public class PostService {
 	private static final int POST_LIST_DEFAULT_PAGE = 0;
 
 	private final PostRepository postRepository;
+	private final CommentRepository commentRepository;
 	private final MemberRepository memberRepository;
 
-	public PostService(PostRepository postRepository, MemberRepository memberRepository) {
+	public PostService(
+		PostRepository postRepository,
+		CommentRepository commentRepository,
+		MemberRepository memberRepository
+	) {
 		this.postRepository = postRepository;
+		this.commentRepository = commentRepository;
 		this.memberRepository = memberRepository;
 	}
 
@@ -106,11 +115,17 @@ public class PostService {
 				normalizedSearchScope.includesContent(),
 				normalizedSearchScope.includesAuthor(),
 				pageable
-			);
+		);
 		List<Post> posts = postPage.getContent();
 		Map<Long, Member> authors = findAuthors(posts);
+		Map<Long, Long> commentCounts = findVisibleCommentCounts(posts);
 		List<PostResult> content = posts.stream()
-			.map(post -> toResult(post, authors.get(post.getAuthorMemberId()), requesterMemberId))
+			.map(post -> toResult(
+				post,
+				authors.get(post.getAuthorMemberId()),
+				requesterMemberId,
+				commentCounts.getOrDefault(post.getId(), 0L)
+			))
 			.toList();
 		return new PostPageResult(
 			content,
@@ -167,7 +182,9 @@ public class PostService {
 
 	@Transactional(readOnly = true)
 	public PostResult findById(Long postId, Long requesterMemberId) {
-		return toResult(getPublishedPost(postId), requesterMemberId);
+		Post post = getPublishedPost(postId);
+		Member author = memberRepository.findById(post.getAuthorMemberId()).orElse(null);
+		return toResult(post, author, requesterMemberId, findVisibleCommentCount(post.getId()));
 	}
 
 	@Transactional
@@ -218,12 +235,32 @@ public class PostService {
 			.collect(Collectors.toMap(Member::getId, Function.identity()));
 	}
 
-	private PostResult toResult(Post post, Long requesterMemberId) {
-		Member author = memberRepository.findById(post.getAuthorMemberId()).orElse(null);
-		return toResult(post, author, requesterMemberId);
+	private Map<Long, Long> findVisibleCommentCounts(List<Post> posts) {
+		List<Long> postIds = posts.stream()
+			.map(Post::getId)
+			.toList();
+		if (postIds.isEmpty()) {
+			return Map.of();
+		}
+		return commentRepository.countVisibleCommentsByPostIds(postIds, CommentStatus.PUBLISHED)
+			.stream()
+			.collect(Collectors.toMap(CommentCountView::getPostId, CommentCountView::getCommentCount));
 	}
 
-	private PostResult toResult(Post post, Member author, Long requesterMemberId) {
-		return PostResult.from(post, author, requesterMemberId);
+	private long findVisibleCommentCount(Long postId) {
+		return commentRepository.countVisibleCommentsByPostIds(List.of(postId), CommentStatus.PUBLISHED)
+			.stream()
+			.findFirst()
+			.map(CommentCountView::getCommentCount)
+			.orElse(0L);
+	}
+
+	private PostResult toResult(Post post, Long requesterMemberId) {
+		Member author = memberRepository.findById(post.getAuthorMemberId()).orElse(null);
+		return toResult(post, author, requesterMemberId, findVisibleCommentCount(post.getId()));
+	}
+
+	private PostResult toResult(Post post, Member author, Long requesterMemberId, long commentCount) {
+		return PostResult.from(post, author, requesterMemberId, commentCount);
 	}
 }

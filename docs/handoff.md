@@ -757,3 +757,9 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - Backend post list search now accepts `sortOrder` with `LATEST` and `OLDEST`.
 - Sorting uses `createdAt` plus `id` as a tie-breaker to keep pagination stable when timestamps are close.
 - Frontend community list exposes the sort dropdown as `최신순` and `오래된순`.
+
+### 51. Community post comment counts
+
+- Post list/detail responses include `commentCount`.
+- Comment counts are batch-loaded for list responses and exclude deleted comments plus replies hidden under deleted parent comments.
+- Frontend community rows show the comment count beside the title only when the count is greater than zero.
