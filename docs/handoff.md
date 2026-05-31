@@ -289,6 +289,10 @@ Completed and merged into `develop`:
    - `GET /api/v1/posts` now returns a page object with `content`, `page`, `size`, `totalElements`, `totalPages`, `hasNext`, and `hasPrevious`;
    - existing post item fields inside `content` remain unchanged;
    - frontend community list uses backend `hasNext` and `totalElements` instead of inferring pagination from returned item count.
+45. Community post server-side search:
+   - `GET /api/v1/posts` accepts optional `keyword` together with `boardType`, `page`, and `size`;
+   - keyword search applies to published post title/content and preserves board filtering plus page metadata;
+   - frontend community search sends the keyword to the backend instead of filtering only the currently loaded page.
 
 Active feature work in progress:
 

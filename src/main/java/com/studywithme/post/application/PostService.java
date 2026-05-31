@@ -73,10 +73,24 @@ public class PostService {
 
 	@Transactional(readOnly = true)
 	public PostPageResult findPage(PostBoardType boardType, Long requesterMemberId, int page, int size) {
+		return findPage(boardType, null, requesterMemberId, page, size);
+	}
+
+	@Transactional(readOnly = true)
+	public PostPageResult findPage(
+		PostBoardType boardType,
+		String keyword,
+		Long requesterMemberId,
+		int page,
+		int size
+	) {
 		PageRequest pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
-		Page<Post> postPage = boardType == null
-			? postRepository.findAllByStatusOrderByCreatedAtDesc(PostStatus.PUBLISHED, pageable)
-			: postRepository.findAllByBoardTypeAndStatusOrderByCreatedAtDesc(boardType, PostStatus.PUBLISHED, pageable);
+		Page<Post> postPage = postRepository.searchPublishedPosts(
+			boardType,
+			PostStatus.PUBLISHED,
+			normalizeKeyword(keyword),
+			pageable
+		);
 		List<Post> posts = postPage.getContent();
 		Map<Long, Member> authors = findAuthors(posts);
 		List<PostResult> content = posts.stream()
@@ -102,6 +116,13 @@ public class PostService {
 			return POST_LIST_LIMIT;
 		}
 		return Math.min(size, POST_LIST_LIMIT);
+	}
+
+	private String normalizeKeyword(String keyword) {
+		if (keyword == null || keyword.isBlank()) {
+			return null;
+		}
+		return keyword.trim();
 	}
 
 	@Transactional(readOnly = true)

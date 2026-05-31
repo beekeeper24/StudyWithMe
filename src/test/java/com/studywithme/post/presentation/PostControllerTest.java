@@ -130,6 +130,41 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("게시글 목록은 제목과 본문 키워드로 검색할 수 있다")
+	void listPostsByKeyword() throws Exception {
+		Member author = saveMember("author");
+		postService.create(author.getId(), new PostCreateCommand("React 집중 스터디 후기", "좋았습니다."));
+		postService.create(author.getId(), new PostCreateCommand("일반 글", "Spring 질문을 정리합니다."));
+		postService.create(author.getId(), new PostCreateCommand("잡담", "오늘 점심 이야기"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("keyword", "spring"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(1))
+			.andExpect(jsonPath("$.data.content[0].title").value("일반 글"));
+	}
+
+	@Test
+	@DisplayName("게시글 검색은 게시판 종류와 함께 적용된다")
+	void listPostsByBoardTypeAndKeyword() throws Exception {
+		Member author = saveMember("author");
+		postService.create(author.getId(), new PostCreateCommand("React 질문", "내용"));
+		postService.create(author.getId(), new PostCreateCommand(PostBoardType.REVIEW, "React 후기", "내용"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("boardType", "REVIEW")
+				.param("keyword", "React"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(1))
+			.andExpect(jsonPath("$.data.content[0].boardType").value("REVIEW"))
+			.andExpect(jsonPath("$.data.content[0].title").value("React 후기"));
+	}
+
+	@Test
 	@DisplayName("게시글 목록은 페이지와 크기를 지정해 조회할 수 있다")
 	void listPostsWithPagination() throws Exception {
 		Member author = saveMember("author");

@@ -49,13 +49,14 @@ public class PostController {
 	@GetMapping
 	public ApiResponse<PostPageResponse> findAll(
 		@RequestParam(required = false) PostBoardType boardType,
+		@RequestParam(required = false) String keyword,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "50") int size,
 		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
 	) {
 		Long requesterMemberId = principal == null ? null : principal.memberId();
 		return ApiResponse.success(PostPageResponse.from(
-			postService.findPage(boardType, requesterMemberId, page, size)
+			postService.findPage(boardType, keyword, requesterMemberId, page, size)
 		));
 	}
 
