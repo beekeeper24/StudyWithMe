@@ -147,6 +147,24 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("게시글 목록은 작성자 닉네임으로 검색할 수 있다")
+	void listPostsByAuthorNicknameKeyword() throws Exception {
+		Member reactAuthor = saveMember("react-author", "리액트장인", null);
+		Member springAuthor = saveMember("spring-author", "스프링장인", null);
+		postService.create(reactAuthor.getId(), new PostCreateCommand("일반 후기", "내용"));
+		postService.create(springAuthor.getId(), new PostCreateCommand("다른 후기", "내용"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("keyword", "리액트"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(1))
+			.andExpect(jsonPath("$.data.content[0].authorNickname").value("리액트장인"))
+			.andExpect(jsonPath("$.data.content[0].title").value("일반 후기"));
+	}
+
+	@Test
 	@DisplayName("게시글 검색은 게시판 종류와 함께 적용된다")
 	void listPostsByBoardTypeAndKeyword() throws Exception {
 		Member author = saveMember("author");

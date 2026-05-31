@@ -297,6 +297,10 @@ Completed and merged into `develop`:
    - community search input shows a compact clear action when a keyword is present;
    - post list loading state is shown while server search/page requests are in flight;
    - frontend ignores stale post-list responses so slower previous searches do not overwrite the latest result.
+47. Community post author search:
+   - `GET /api/v1/posts?keyword=...` now searches published post title, content, and author nickname;
+   - author nickname search keeps the existing board filter and page response metadata;
+   - frontend search placeholder reflects title/content/author search scope.
 
 Active feature work in progress:
 

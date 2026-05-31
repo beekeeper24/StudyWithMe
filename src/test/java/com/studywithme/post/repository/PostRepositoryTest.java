@@ -81,6 +81,27 @@ class PostRepositoryTest {
 			.doesNotContain(freePost.getId(), deletedPost.getId());
 	}
 
+	@Test
+	@DisplayName("공개 게시글 검색은 작성자 닉네임도 적용한다")
+	void searchPublishedPostsByAuthorNickname() {
+		Member reactAuthor = saveMember("react-master");
+		Member springAuthor = saveMember("spring-master");
+		Post matchedPost = postRepository.save(Post.create("일반 글", "내용", reactAuthor.getId()));
+		Post otherPost = postRepository.save(Post.create("다른 글", "내용", springAuthor.getId()));
+		postRepository.flush();
+
+		Page<Post> posts = postRepository.searchPublishedPosts(
+			null,
+			PostStatus.PUBLISHED,
+			"react",
+			PageRequest.of(0, 50)
+		);
+
+		assertThat(posts.getContent()).extracting(Post::getId)
+			.containsExactly(matchedPost.getId())
+			.doesNotContain(otherPost.getId());
+	}
+
 	private Member saveMember(String name) {
 		return memberRepository.saveAndFlush(Member.createOAuthMember(
 			name + "@example.com",
