@@ -73,6 +73,9 @@ class PostRepositoryTest {
 			PostBoardType.REVIEW,
 			PostStatus.PUBLISHED,
 			"react",
+			true,
+			true,
+			true,
 			PageRequest.of(0, 50)
 		);
 
@@ -94,12 +97,50 @@ class PostRepositoryTest {
 			null,
 			PostStatus.PUBLISHED,
 			"react",
+			true,
+			true,
+			true,
 			PageRequest.of(0, 50)
 		);
 
 		assertThat(posts.getContent()).extracting(Post::getId)
 			.containsExactly(matchedPost.getId())
 			.doesNotContain(otherPost.getId());
+	}
+
+	@Test
+	@DisplayName("공개 게시글 검색은 선택한 검색 범위만 적용한다")
+	void searchPublishedPostsBySelectedScope() {
+		Member author = saveMember("react-master");
+		Post titlePost = postRepository.save(Post.create("React 제목", "일반 내용", author.getId()));
+		Post contentPost = postRepository.save(Post.create("일반 제목", "React 본문", author.getId()));
+		Post authorPost = postRepository.save(Post.create("일반 글", "일반 내용", author.getId()));
+		postRepository.flush();
+
+		Page<Post> titleOnlyPosts = postRepository.searchPublishedPosts(
+			null,
+			PostStatus.PUBLISHED,
+			"react",
+			true,
+			false,
+			false,
+			PageRequest.of(0, 50)
+		);
+		Page<Post> authorOnlyPosts = postRepository.searchPublishedPosts(
+			null,
+			PostStatus.PUBLISHED,
+			"react",
+			false,
+			false,
+			true,
+			PageRequest.of(0, 50)
+		);
+
+		assertThat(titleOnlyPosts.getContent()).extracting(Post::getId)
+			.containsExactly(titlePost.getId())
+			.doesNotContain(contentPost.getId(), authorPost.getId());
+		assertThat(authorOnlyPosts.getContent()).extracting(Post::getId)
+			.containsExactly(authorPost.getId(), contentPost.getId(), titlePost.getId());
 	}
 
 	private Member saveMember(String name) {

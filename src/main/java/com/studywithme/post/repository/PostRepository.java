@@ -27,16 +27,15 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 		WHERE p.status = :status
 			AND (:boardType IS NULL OR p.boardType = :boardType)
 			AND (
-				:keyword IS NULL
-				OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR EXISTS (
+				(:searchTitle = TRUE AND LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+				OR (:searchContent = TRUE AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+				OR (:searchAuthor = TRUE AND EXISTS (
 					SELECT 1
 					FROM Member m
 					WHERE m.id = p.authorMemberId
 						AND m.nickname IS NOT NULL
 						AND LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				)
+				))
 			)
 		ORDER BY p.createdAt DESC
 		""")
@@ -44,6 +43,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 		@Param("boardType") PostBoardType boardType,
 		@Param("status") PostStatus status,
 		@Param("keyword") String keyword,
+		@Param("searchTitle") boolean searchTitle,
+		@Param("searchContent") boolean searchContent,
+		@Param("searchAuthor") boolean searchAuthor,
 		Pageable pageable
 	);
 

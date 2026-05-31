@@ -147,6 +147,42 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("게시글 목록은 제목만 검색할 수 있다")
+	void listPostsByTitleSearchScope() throws Exception {
+		Member author = saveMember("author");
+		postService.create(author.getId(), new PostCreateCommand("React 제목", "일반 내용"));
+		postService.create(author.getId(), new PostCreateCommand("일반 제목", "React 본문"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("keyword", "React")
+				.param("searchScope", "TITLE"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(1))
+			.andExpect(jsonPath("$.data.content[0].title").value("React 제목"));
+	}
+
+	@Test
+	@DisplayName("게시글 목록은 제목과 본문만 검색할 수 있다")
+	void listPostsByTitleContentSearchScope() throws Exception {
+		Member reactAuthor = saveMember("react-author", "리액트장인", null);
+		Member otherAuthor = saveMember("other-author", "다른장인", null);
+		postService.create(reactAuthor.getId(), new PostCreateCommand("일반 제목", "일반 내용"));
+		postService.create(otherAuthor.getId(), new PostCreateCommand("일반 제목", "React 본문"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("keyword", "React")
+				.param("searchScope", "TITLE_CONTENT"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(1))
+			.andExpect(jsonPath("$.data.content[0].title").value("일반 제목"))
+			.andExpect(jsonPath("$.data.content[0].authorNickname").value("다른장인"));
+	}
+
+	@Test
 	@DisplayName("게시글 목록은 작성자 닉네임으로 검색할 수 있다")
 	void listPostsByAuthorNicknameKeyword() throws Exception {
 		Member reactAuthor = saveMember("react-author", "리액트장인", null);
@@ -162,6 +198,25 @@ class PostControllerTest {
 			.andExpect(jsonPath("$.data.totalElements").value(1))
 			.andExpect(jsonPath("$.data.content[0].authorNickname").value("리액트장인"))
 			.andExpect(jsonPath("$.data.content[0].title").value("일반 후기"));
+	}
+
+	@Test
+	@DisplayName("게시글 목록은 작성자만 검색할 수 있다")
+	void listPostsByAuthorSearchScope() throws Exception {
+		Member reactAuthor = saveMember("react-author", "리액트장인", null);
+		Member otherAuthor = saveMember("other-author", "다른장인", null);
+		postService.create(reactAuthor.getId(), new PostCreateCommand("일반 제목", "일반 내용"));
+		postService.create(otherAuthor.getId(), new PostCreateCommand("React 제목", "React 본문"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("keyword", "리액트")
+				.param("searchScope", "AUTHOR"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(1))
+			.andExpect(jsonPath("$.data.content[0].authorNickname").value("리액트장인"))
+			.andExpect(jsonPath("$.data.content[0].title").value("일반 제목"));
 	}
 
 	@Test
