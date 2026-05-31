@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.studywithme.comment.application.CommentCreateCommand;
+import com.studywithme.comment.application.CommentService;
+import com.studywithme.comment.repository.CommentRepository;
 import com.studywithme.auth.token.JwtTokenProvider;
 import com.studywithme.auth.token.RefreshTokenRepository;
 import com.studywithme.member.domain.Member;
@@ -41,16 +44,23 @@ class PostControllerTest {
 	private PostRepository postRepository;
 
 	@Autowired
+	private CommentRepository commentRepository;
+
+	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
 
 	@Autowired
 	private PostService postService;
 
 	@Autowired
+	private CommentService commentService;
+
+	@Autowired
 	private JwtTokenProvider jwtTokenProvider;
 
 	@AfterEach
 	void tearDown() {
+		commentRepository.deleteAll();
 		postRepository.deleteAll();
 		refreshTokenRepository.deleteAll();
 		memberRepository.deleteAll();
@@ -295,6 +305,21 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("게시글 목록은 공개 댓글 수를 내려준다")
+	void listPostsWithCommentCount() throws Exception {
+		Member author = saveMember("author");
+		Member commenter = saveMember("commenter");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
+		commentService.create(post.id(), commenter.getId(), new CommentCreateCommand("댓글"));
+
+		mockMvc.perform(get("/api/v1/posts"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content[0].id").value(post.id()))
+			.andExpect(jsonPath("$.data.content[0].commentCount").value(1));
+	}
+
+	@Test
 	@DisplayName("게시글 목록을 비회원으로 조회하면 요청자 소유 여부는 false다")
 	void listPostsPubliclyWithFalseOwnership() throws Exception {
 		Member author = saveMember("author", "작가", null);
@@ -318,6 +343,21 @@ class PostControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.id").value(post.id()))
 			.andExpect(jsonPath("$.data.title").value("첫 게시글"));
+	}
+
+	@Test
+	@DisplayName("게시글 상세는 공개 댓글 수를 내려준다")
+	void getPostWithCommentCount() throws Exception {
+		Member author = saveMember("author");
+		Member commenter = saveMember("commenter");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
+		commentService.create(post.id(), commenter.getId(), new CommentCreateCommand("댓글"));
+
+		mockMvc.perform(get("/api/v1/posts/{postId}", post.id()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.id").value(post.id()))
+			.andExpect(jsonPath("$.data.commentCount").value(1));
 	}
 
 	@Test
