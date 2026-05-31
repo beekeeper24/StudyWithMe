@@ -261,6 +261,24 @@ class PostControllerTest {
 	}
 
 	@Test
+	@DisplayName("게시글 목록은 오래된순으로 정렬할 수 있다")
+	void listPostsByOldestSortOrder() throws Exception {
+		Member author = saveMember("author");
+		postService.create(author.getId(), new PostCreateCommand("첫 번째", "내용"));
+		postService.create(author.getId(), new PostCreateCommand("두 번째", "내용"));
+		postService.create(author.getId(), new PostCreateCommand("세 번째", "내용"));
+
+		mockMvc.perform(get("/api/v1/posts")
+				.param("sortOrder", "OLDEST"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(3))
+			.andExpect(jsonPath("$.data.content[0].title").value("첫 번째"))
+			.andExpect(jsonPath("$.data.content[1].title").value("두 번째"))
+			.andExpect(jsonPath("$.data.content[2].title").value("세 번째"));
+	}
+
+	@Test
 	@DisplayName("게시글 목록은 작성자 표시 정보와 요청자 소유 여부를 내려준다")
 	void listPostsWithAuthorDisplayAndOwnership() throws Exception {
 		Member author = saveMember("author", "작가", "https://example.com/author.png");

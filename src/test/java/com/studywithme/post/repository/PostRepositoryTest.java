@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @DataJpaTest
 class PostRepositoryTest {
@@ -50,9 +51,9 @@ class PostRepositoryTest {
 		deletedPost.delete(author.getId());
 		postRepository.flush();
 
-		Page<Post> posts = postRepository.findAllByStatusOrderByCreatedAtDesc(
+		Page<Post> posts = postRepository.findAllByStatus(
 			PostStatus.PUBLISHED,
-			PageRequest.of(0, 50)
+			latestPageRequest()
 		);
 
 		assertThat(posts.getContent()).extracting(Post::getId)
@@ -76,7 +77,7 @@ class PostRepositoryTest {
 			true,
 			true,
 			true,
-			PageRequest.of(0, 50)
+			latestPageRequest()
 		);
 
 		assertThat(posts.getContent()).extracting(Post::getId)
@@ -100,7 +101,7 @@ class PostRepositoryTest {
 			true,
 			true,
 			true,
-			PageRequest.of(0, 50)
+			latestPageRequest()
 		);
 
 		assertThat(posts.getContent()).extracting(Post::getId)
@@ -124,7 +125,7 @@ class PostRepositoryTest {
 			true,
 			false,
 			false,
-			PageRequest.of(0, 50)
+			latestPageRequest()
 		);
 		Page<Post> authorOnlyPosts = postRepository.searchPublishedPosts(
 			null,
@@ -133,7 +134,7 @@ class PostRepositoryTest {
 			false,
 			false,
 			true,
-			PageRequest.of(0, 50)
+			latestPageRequest()
 		);
 
 		assertThat(titleOnlyPosts.getContent()).extracting(Post::getId)
@@ -141,6 +142,15 @@ class PostRepositoryTest {
 			.doesNotContain(contentPost.getId(), authorPost.getId());
 		assertThat(authorOnlyPosts.getContent()).extracting(Post::getId)
 			.containsExactly(authorPost.getId(), contentPost.getId(), titlePost.getId());
+	}
+
+	private PageRequest latestPageRequest() {
+		return PageRequest.of(
+			0,
+			50,
+			Sort.by(Sort.Direction.DESC, "createdAt")
+				.and(Sort.by(Sort.Direction.DESC, "id"))
+		);
 	}
 
 	private Member saveMember(String name) {

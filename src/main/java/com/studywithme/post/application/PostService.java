@@ -15,6 +15,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,7 +74,7 @@ public class PostService {
 
 	@Transactional(readOnly = true)
 	public PostPageResult findPage(PostBoardType boardType, Long requesterMemberId, int page, int size) {
-		return findPage(boardType, null, PostSearchScope.ALL, requesterMemberId, page, size);
+		return findPage(boardType, null, PostSearchScope.ALL, PostSortOrder.LATEST, requesterMemberId, page, size);
 	}
 
 	@Transactional(readOnly = true)
@@ -81,11 +82,18 @@ public class PostService {
 		PostBoardType boardType,
 		String keyword,
 		PostSearchScope searchScope,
+		PostSortOrder sortOrder,
 		Long requesterMemberId,
 		int page,
 		int size
 	) {
-		PageRequest pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
+		PostSortOrder normalizedSortOrder = normalizeSortOrder(sortOrder);
+		PageRequest pageable = PageRequest.of(
+			normalizePage(page),
+			normalizeSize(size),
+			Sort.by(normalizedSortOrder.direction(), "createdAt")
+				.and(Sort.by(normalizedSortOrder.direction(), "id"))
+		);
 		String normalizedKeyword = normalizeKeyword(keyword);
 		PostSearchScope normalizedSearchScope = normalizeSearchScope(searchScope);
 		Page<Post> postPage = normalizedKeyword == null
@@ -117,9 +125,9 @@ public class PostService {
 
 	private Page<Post> findPublishedPosts(PostBoardType boardType, PageRequest pageable) {
 		if (boardType == null) {
-			return postRepository.findAllByStatusOrderByCreatedAtDesc(PostStatus.PUBLISHED, pageable);
+			return postRepository.findAllByStatus(PostStatus.PUBLISHED, pageable);
 		}
-		return postRepository.findAllByBoardTypeAndStatusOrderByCreatedAtDesc(
+		return postRepository.findAllByBoardTypeAndStatus(
 			boardType,
 			PostStatus.PUBLISHED,
 			pageable
@@ -146,6 +154,10 @@ public class PostService {
 
 	private PostSearchScope normalizeSearchScope(PostSearchScope searchScope) {
 		return searchScope == null ? PostSearchScope.ALL : searchScope;
+	}
+
+	private PostSortOrder normalizeSortOrder(PostSortOrder sortOrder) {
+		return sortOrder == null ? PostSortOrder.LATEST : sortOrder;
 	}
 
 	@Transactional(readOnly = true)

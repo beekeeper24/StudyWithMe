@@ -751,3 +751,9 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - `keyword` omitted or blank still uses the normal published-list query path instead of the search query.
 - Frontend community search removes the page/count text beside the search box and uses a dropdown to choose the search scope.
 - The frontend requests 20 posts per page (`postPageSize = 20`); pagination "next" is only testable after a board has at least 21 matching posts.
+
+### 50. Community post sorting
+
+- Backend post list search now accepts `sortOrder` with `LATEST` and `OLDEST`.
+- Sorting uses `createdAt` plus `id` as a tie-breaker to keep pagination stable when timestamps are close.
+- Frontend community list exposes the sort dropdown as `최신순` and `오래된순`.

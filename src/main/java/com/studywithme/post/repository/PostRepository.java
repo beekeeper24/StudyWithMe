@@ -13,9 +13,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
-	Page<Post> findAllByStatusOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
+	Page<Post> findAllByStatus(PostStatus status, Pageable pageable);
 
-	Page<Post> findAllByBoardTypeAndStatusOrderByCreatedAtDesc(
+	Page<Post> findAllByBoardTypeAndStatus(
 		PostBoardType boardType,
 		PostStatus status,
 		Pageable pageable
@@ -37,7 +37,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 						AND LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%'))
 				))
 			)
-		ORDER BY p.createdAt DESC
 		""")
 	Page<Post> searchPublishedPosts(
 		@Param("boardType") PostBoardType boardType,
