@@ -468,6 +468,64 @@ class StudyControllerTest {
 	}
 
 	@Test
+	@DisplayName("내 참여 중 스터디는 페이지와 검색어로 조회할 수 있다")
+	void findMyActiveStudiesByPageAndKeyword() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		studyService.create(owner.getId(), new StudyCreateCommand("미참여 React 스터디", "제외"));
+		StudyResult first = studyService.create(owner.getId(), new StudyCreateCommand("React 기초 스터디", "진행 중"));
+		studyService.join(first.id(), participant.getId());
+		StudyResult second = studyService.create(owner.getId(), new StudyCreateCommand("Java 스터디", "React 과제"));
+		studyService.join(second.id(), participant.getId());
+
+		mockMvc.perform(get("/api/v1/studies/me")
+				.param("scope", "active")
+				.param("keyword", "react")
+				.param("page", "0")
+				.param("size", "1")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.content[0].id").value(second.id()))
+			.andExpect(jsonPath("$.data.page").value(0))
+			.andExpect(jsonPath("$.data.size").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(2))
+			.andExpect(jsonPath("$.data.totalPages").value(2))
+			.andExpect(jsonPath("$.data.hasNext").value(true))
+			.andExpect(jsonPath("$.data.hasPrevious").value(false));
+	}
+
+	@Test
+	@DisplayName("내 지난 스터디는 페이지와 검색어로 조회할 수 있다")
+	void findMyPastStudiesByPageAndKeyword() throws Exception {
+		Member owner = saveMember("owner");
+		Member participant = saveMember("participant");
+		StudyResult ended = studyService.create(owner.getId(), new StudyCreateCommand("React 완료 스터디", "완료"));
+		studyService.join(ended.id(), participant.getId());
+		studyService.end(ended.id(), owner.getId());
+		StudyResult left = studyService.create(owner.getId(), new StudyCreateCommand("Java 스터디", "React 복습"));
+		studyService.join(left.id(), participant.getId());
+		studyService.leave(left.id(), participant.getId());
+		StudyResult active = studyService.create(owner.getId(), new StudyCreateCommand("React 진행 스터디", "진행 중"));
+		studyService.join(active.id(), participant.getId());
+
+		mockMvc.perform(get("/api/v1/studies/me")
+				.param("scope", "past")
+				.param("keyword", "react")
+				.param("page", "0")
+				.param("size", "2")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(2))
+			.andExpect(jsonPath("$.data.content[0].id").value(left.id()))
+			.andExpect(jsonPath("$.data.content[1].id").value(ended.id()))
+			.andExpect(jsonPath("$.data.totalElements").value(2))
+			.andExpect(jsonPath("$.data.hasNext").value(false));
+	}
+
+	@Test
 	@DisplayName("삭제된 스터디는 공개 상세에서 숨기고 내 지난 스터디에는 남긴다")
 	void keepDeletedStudyInMyPastStudies() throws Exception {
 		Member owner = saveMember("owner");
