@@ -7,11 +7,11 @@ import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.post.domain.Post;
 import com.studywithme.post.domain.PostStatus;
-import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
 @DataJpaTest
@@ -49,12 +49,12 @@ class PostRepositoryTest {
 		deletedPost.delete(author.getId());
 		postRepository.flush();
 
-		List<Post> posts = postRepository.findAllByStatusOrderByCreatedAtDesc(
+		Page<Post> posts = postRepository.findAllByStatusOrderByCreatedAtDesc(
 			PostStatus.PUBLISHED,
 			PageRequest.of(0, 50)
 		);
 
-		assertThat(posts).extracting(Post::getId)
+		assertThat(posts.getContent()).extracting(Post::getId)
 			.containsExactly(newPost.getId(), oldPost.getId());
 	}
 

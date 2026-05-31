@@ -106,7 +106,10 @@ class PostControllerTest {
 		mockMvc.perform(get("/api/v1/posts"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data[0].title").value("첫 게시글"));
+			.andExpect(jsonPath("$.data.content[0].title").value("첫 게시글"))
+			.andExpect(jsonPath("$.data.page").value(0))
+			.andExpect(jsonPath("$.data.totalElements").value(1))
+			.andExpect(jsonPath("$.data.hasNext").value(false));
 	}
 
 	@Test
@@ -120,9 +123,10 @@ class PostControllerTest {
 				.param("boardType", "QUESTION"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.length()").value(1))
-			.andExpect(jsonPath("$.data[0].boardType").value("QUESTION"))
-			.andExpect(jsonPath("$.data[0].title").value("질문 글"));
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(1))
+			.andExpect(jsonPath("$.data.content[0].boardType").value("QUESTION"))
+			.andExpect(jsonPath("$.data.content[0].title").value("질문 글"));
 	}
 
 	@Test
@@ -138,8 +142,14 @@ class PostControllerTest {
 				.param("size", "2"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.length()").value(1))
-			.andExpect(jsonPath("$.data[0].title").value("첫 번째"));
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.content[0].title").value("첫 번째"))
+			.andExpect(jsonPath("$.data.page").value(1))
+			.andExpect(jsonPath("$.data.size").value(2))
+			.andExpect(jsonPath("$.data.totalElements").value(3))
+			.andExpect(jsonPath("$.data.totalPages").value(2))
+			.andExpect(jsonPath("$.data.hasNext").value(false))
+			.andExpect(jsonPath("$.data.hasPrevious").value(true));
 	}
 
 	@Test
@@ -152,10 +162,10 @@ class PostControllerTest {
 				.header("Authorization", "Bearer " + accessToken(author)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data[0].authorMemberId").value(author.getId()))
-			.andExpect(jsonPath("$.data[0].authorNickname").value("작가"))
-			.andExpect(jsonPath("$.data[0].authorProfileImageUrl").value("https://example.com/author.png"))
-			.andExpect(jsonPath("$.data[0].ownedByRequester").value(true));
+			.andExpect(jsonPath("$.data.content[0].authorMemberId").value(author.getId()))
+			.andExpect(jsonPath("$.data.content[0].authorNickname").value("작가"))
+			.andExpect(jsonPath("$.data.content[0].authorProfileImageUrl").value("https://example.com/author.png"))
+			.andExpect(jsonPath("$.data.content[0].ownedByRequester").value(true));
 	}
 
 	@Test
@@ -167,8 +177,8 @@ class PostControllerTest {
 		mockMvc.perform(get("/api/v1/posts"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data[0].authorNickname").value("작가"))
-			.andExpect(jsonPath("$.data[0].ownedByRequester").value(false));
+			.andExpect(jsonPath("$.data.content[0].authorNickname").value("작가"))
+			.andExpect(jsonPath("$.data.content[0].ownedByRequester").value(false));
 	}
 
 	@Test
