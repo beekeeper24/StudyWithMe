@@ -3,17 +3,18 @@ package com.studywithme.study.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.study.domain.Study;
 import com.studywithme.study.domain.StudyMember;
 import com.studywithme.study.domain.StudyMemberRole;
 import com.studywithme.study.domain.StudyStatus;
-import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
 @DataJpaTest
@@ -85,13 +86,14 @@ class StudyRepositoryTest {
 		));
 		studyRepository.flush();
 
-		List<Study> studies = studyRepository.searchAllByStatus(
+		Page<Study> studies = studyRepository.searchVisibleStudiesByStatus(
 			StudyStatus.RECRUITING,
+			MemberStatus.ACTIVE,
 			"react",
 			PageRequest.of(0, 50)
 		);
 
-		assertThat(studies).extracting(Study::getId)
+		assertThat(studies.getContent()).extracting(Study::getId)
 			.containsExactly(matchedByProgress.getId(), matchedByTitle.getId())
 			.doesNotContain(other.getId());
 	}

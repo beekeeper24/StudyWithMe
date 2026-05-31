@@ -571,7 +571,7 @@ class AuthControllerTest {
 		mockMvc.perform(get("/api/v1/studies")
 				.header("Authorization", "Bearer " + participantAccessToken))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.data.length()").value(0));
+			.andExpect(jsonPath("$.data.content.length()").value(0));
 		mockMvc.perform(get("/api/v1/studies/me")
 				.header("Authorization", "Bearer " + participantAccessToken))
 			.andExpect(status().isOk())

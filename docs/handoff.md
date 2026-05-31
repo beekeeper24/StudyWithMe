@@ -769,3 +769,10 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - `GET /api/v1/studies` accepts optional `keyword`.
 - Recruiting study search matches title, description, progress method, target audience, and schedule.
 - Frontend study list has a search field; recruiting search is server-backed and active-study search filters the already loaded active list locally.
+
+### 53. Study list pagination
+
+- `GET /api/v1/studies` now returns a page response with `content`, `page`, `size`, `totalElements`, `totalPages`, `hasNext`, and `hasPrevious`.
+- Public study list remains limited to recruiting studies owned by active members.
+- Public study list accepts `keyword`, `page`, and `size`; size is capped at 50.
+- Frontend study menu uses previous/next pagination; recruiting pages are server-backed and active-study pages are sliced from the loaded member history.

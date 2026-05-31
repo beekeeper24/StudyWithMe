@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,22 +90,28 @@ public class StudyService {
 
 	@Transactional(readOnly = true)
 	public List<StudyResult> findAll(String keyword, Long requesterMemberId) {
+		return findPage(keyword, requesterMemberId, 0, STUDY_LIST_LIMIT).content();
+	}
+
+	@Transactional(readOnly = true)
+	public StudyPageResult findPage(String keyword, Long requesterMemberId, int page, int size) {
 		String normalizedKeyword = normalizeKeyword(keyword);
-		List<Study> studies = normalizedKeyword == null ? studyRepository.findAllByStatusOrderByCreatedAtDesc(
-			StudyStatus.RECRUITING,
-			PageRequest.of(0, STUDY_LIST_LIMIT)
-		) : studyRepository.searchAllByStatus(
-			StudyStatus.RECRUITING,
-			normalizedKeyword,
-			PageRequest.of(0, STUDY_LIST_LIMIT)
-		);
+		PageRequest pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
+		Page<Study> studyPage = normalizedKeyword == null
+			? studyRepository.findVisibleStudiesByStatus(StudyStatus.RECRUITING, MemberStatus.ACTIVE, pageable)
+			: studyRepository.searchVisibleStudiesByStatus(
+				StudyStatus.RECRUITING,
+				MemberStatus.ACTIVE,
+				normalizedKeyword,
+				pageable
+			);
+		List<Study> studies = studyPage.getContent();
 		Map<Long, Member> owners = findOwners(studies);
 		Set<Long> joinedStudyIds = findJoinedStudyIds(requesterMemberId);
 		Set<Long> pendingStudyIds = findPendingStudyIds(requesterMemberId);
 
-		return studies
+		List<StudyResult> content = studies
 			.stream()
-			.filter(study -> isActiveOwner(owners.get(study.getOwnerMemberId())))
 			.map(study -> toResult(
 				study,
 				owners.get(study.getOwnerMemberId()),
@@ -113,6 +120,15 @@ public class StudyService {
 				pendingStudyIds.contains(study.getId())
 			))
 			.toList();
+		return new StudyPageResult(
+			content,
+			studyPage.getNumber(),
+			studyPage.getSize(),
+			studyPage.getTotalElements(),
+			studyPage.getTotalPages(),
+			studyPage.hasNext(),
+			studyPage.hasPrevious()
+		);
 	}
 
 	private String normalizeKeyword(String keyword) {
@@ -120,6 +136,17 @@ public class StudyService {
 			return null;
 		}
 		return keyword.trim();
+	}
+
+	private int normalizePage(int page) {
+		return Math.max(page, 0);
+	}
+
+	private int normalizeSize(int size) {
+		if (size <= 0) {
+			return STUDY_LIST_LIMIT;
+		}
+		return Math.min(size, STUDY_LIST_LIMIT);
 	}
 
 	@Transactional(readOnly = true)
