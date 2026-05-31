@@ -316,10 +316,10 @@ class StudyControllerTest {
 		mockMvc.perform(get("/api/v1/studies"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data[0].ownerNickname").value("owner"))
-			.andExpect(jsonPath("$.data[0].ownerProfileImageUrl").doesNotExist())
-			.andExpect(jsonPath("$.data[0].joinedByRequester").value(false))
-			.andExpect(jsonPath("$.data[0].ownedByRequester").value(false));
+			.andExpect(jsonPath("$.data.content[0].ownerNickname").value("owner"))
+			.andExpect(jsonPath("$.data.content[0].ownerProfileImageUrl").doesNotExist())
+			.andExpect(jsonPath("$.data.content[0].joinedByRequester").value(false))
+			.andExpect(jsonPath("$.data.content[0].ownedByRequester").value(false));
 	}
 
 	@Test
@@ -339,8 +339,8 @@ class StudyControllerTest {
 		mockMvc.perform(get("/api/v1/studies"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.length()").value(1))
-			.andExpect(jsonPath("$.data[0].id").value(recruiting.id()));
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.content[0].id").value(recruiting.id()));
 	}
 
 	@Test
@@ -372,9 +372,33 @@ class StudyControllerTest {
 				.param("keyword", "react"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.length()").value(2))
-			.andExpect(jsonPath("$.data[0].title").value("프론트엔드 스터디"))
-			.andExpect(jsonPath("$.data[1].title").value("React 집중 스터디"));
+			.andExpect(jsonPath("$.data.content.length()").value(2))
+			.andExpect(jsonPath("$.data.content[0].title").value("프론트엔드 스터디"))
+			.andExpect(jsonPath("$.data.content[1].title").value("React 집중 스터디"));
+	}
+
+	@Test
+	@DisplayName("공개 스터디 목록은 페이지 단위로 조회한다")
+	void listStudiesByPage() throws Exception {
+		Member owner = saveMember("owner");
+		studyService.create(owner.getId(), new StudyCreateCommand("첫 번째 스터디", "진행 중"));
+		StudyResult second = studyService.create(owner.getId(), new StudyCreateCommand("두 번째 스터디", "진행 중"));
+		StudyResult third = studyService.create(owner.getId(), new StudyCreateCommand("세 번째 스터디", "진행 중"));
+
+		mockMvc.perform(get("/api/v1/studies")
+				.param("page", "0")
+				.param("size", "2"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(2))
+			.andExpect(jsonPath("$.data.content[0].id").value(third.id()))
+			.andExpect(jsonPath("$.data.content[1].id").value(second.id()))
+			.andExpect(jsonPath("$.data.page").value(0))
+			.andExpect(jsonPath("$.data.size").value(2))
+			.andExpect(jsonPath("$.data.totalElements").value(3))
+			.andExpect(jsonPath("$.data.totalPages").value(2))
+			.andExpect(jsonPath("$.data.hasNext").value(true))
+			.andExpect(jsonPath("$.data.hasPrevious").value(false));
 	}
 
 	@Test
@@ -396,8 +420,8 @@ class StudyControllerTest {
 		mockMvc.perform(get("/api/v1/studies"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.length()").value(1))
-			.andExpect(jsonPath("$.data[0].id").value(visible.id()));
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.content[0].id").value(visible.id()));
 	}
 
 	@Test
@@ -572,8 +596,8 @@ class StudyControllerTest {
 				.header("Authorization", "Bearer " + accessToken(participant)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data[0].joinedByRequester").value(true))
-			.andExpect(jsonPath("$.data[0].ownedByRequester").value(false));
+			.andExpect(jsonPath("$.data.content[0].joinedByRequester").value(true))
+			.andExpect(jsonPath("$.data.content[0].ownedByRequester").value(false));
 	}
 
 	@Test
@@ -749,7 +773,7 @@ class StudyControllerTest {
 		mockMvc.perform(get("/api/v1/studies"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.length()").value(0));
+			.andExpect(jsonPath("$.data.content.length()").value(0));
 	}
 
 	@Test
@@ -807,7 +831,7 @@ class StudyControllerTest {
 		mockMvc.perform(get("/api/v1/studies"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.length()").value(0));
+			.andExpect(jsonPath("$.data.content.length()").value(0));
 	}
 
 	@Test

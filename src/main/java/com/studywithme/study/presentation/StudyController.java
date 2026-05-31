@@ -71,14 +71,16 @@ public class StudyController {
 	}
 
 	@GetMapping
-	public ApiResponse<List<StudyResponse>> findAll(
+	public ApiResponse<StudyPageResponse> findAll(
 		@RequestParam(required = false) String keyword,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "50") int size,
 		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
 	) {
 		Long requesterMemberId = principal == null ? null : principal.memberId();
-		return ApiResponse.success(studyService.findAll(keyword, requesterMemberId).stream()
-			.map(StudyResponse::from)
-			.toList());
+		return ApiResponse.success(StudyPageResponse.from(
+			studyService.findPage(keyword, requesterMemberId, page, size)
+		));
 	}
 
 	@GetMapping("/me")
