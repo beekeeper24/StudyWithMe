@@ -5,6 +5,7 @@ import com.studywithme.global.common.ApiResponse;
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import com.studywithme.study.application.StudyCreateCommand;
+import com.studywithme.study.application.StudyHistoryScope;
 import com.studywithme.study.application.StudyService;
 import com.studywithme.study.application.StudyUpdateCommand;
 import jakarta.validation.Valid;
@@ -84,10 +85,20 @@ public class StudyController {
 	}
 
 	@GetMapping("/me")
-	public ApiResponse<MyStudyHistoryResponse> findMyStudies(
+	public ApiResponse<?> findMyStudies(
+		@RequestParam(required = false) String scope,
+		@RequestParam(required = false) String keyword,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "50") int size,
 		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
 	) {
 		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		StudyHistoryScope historyScope = StudyHistoryScope.from(scope);
+		if (historyScope != null) {
+			return ApiResponse.success(StudyPageResponse.from(
+				studyService.findMyStudyPage(authenticatedPrincipal.memberId(), historyScope, keyword, page, size)
+			));
+		}
 		return ApiResponse.success(MyStudyHistoryResponse.from(
 			studyService.findMyStudies(authenticatedPrincipal.memberId())
 		));

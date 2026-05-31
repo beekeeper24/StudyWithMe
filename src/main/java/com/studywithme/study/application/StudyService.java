@@ -218,6 +218,84 @@ public class StudyService {
 		return new MyStudyHistoryResult(activeStudies, pastStudies);
 	}
 
+	@Transactional(readOnly = true)
+	public StudyPageResult findMyStudyPage(
+		Long requesterMemberId,
+		StudyHistoryScope scope,
+		String keyword,
+		int page,
+		int size
+	) {
+		String normalizedKeyword = normalizeKeyword(keyword);
+		PageRequest pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
+		Page<Study> studyPage = findMyStudiesByScope(requesterMemberId, scope, normalizedKeyword, pageable);
+		List<Study> studies = studyPage.getContent();
+		Map<Long, Member> owners = findOwners(studies);
+		List<StudyResult> content = studies.stream()
+			.map(study -> toResult(
+				study,
+				owners.get(study.getOwnerMemberId()),
+				requesterMemberId,
+				studyMemberRepository.existsByStudyIdAndMemberIdAndStatus(
+					study.getId(),
+					requesterMemberId,
+					StudyMemberStatus.JOINED
+				),
+				false
+			))
+			.toList();
+		return new StudyPageResult(
+			content,
+			studyPage.getNumber(),
+			studyPage.getSize(),
+			studyPage.getTotalElements(),
+			studyPage.getTotalPages(),
+			studyPage.hasNext(),
+			studyPage.hasPrevious()
+		);
+	}
+
+	private Page<Study> findMyStudiesByScope(
+		Long requesterMemberId,
+		StudyHistoryScope scope,
+		String keyword,
+		PageRequest pageable
+	) {
+		if (scope == StudyHistoryScope.ACTIVE) {
+			List<StudyStatus> excludedStatuses = List.of(StudyStatus.ENDED, StudyStatus.DELETED);
+			return keyword == null
+				? studyRepository.findActiveMemberStudies(
+					requesterMemberId,
+					StudyMemberStatus.JOINED,
+					excludedStatuses,
+					pageable
+				)
+				: studyRepository.searchActiveMemberStudies(
+					requesterMemberId,
+					StudyMemberStatus.JOINED,
+					excludedStatuses,
+					keyword,
+					pageable
+				);
+		}
+
+		List<StudyStatus> pastStatuses = List.of(StudyStatus.ENDED, StudyStatus.DELETED);
+		return keyword == null
+			? studyRepository.findPastMemberStudies(
+				requesterMemberId,
+				StudyMemberStatus.LEFT,
+				pastStatuses,
+				pageable
+			)
+			: studyRepository.searchPastMemberStudies(
+				requesterMemberId,
+				StudyMemberStatus.LEFT,
+				pastStatuses,
+				keyword,
+				pageable
+			);
+	}
+
 	@Transactional
 	public void hideMyStudyHistory(Long studyId, Long requesterMemberId) {
 		Study study = getStudy(studyId);

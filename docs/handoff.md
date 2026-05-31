@@ -782,3 +782,11 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - Study responses include `joinedMemberCount`, counting current `JOINED` study members including the owner.
 - Frontend study cards and detail modal show current participants against capacity.
 - Study detail modal also shows remaining seats, using `마감` when the capacity has been reached.
+
+### 55. My study history pagination
+
+- Existing `GET /api/v1/studies/me` without `scope` still returns the full active/past history response for compatibility.
+- `GET /api/v1/studies/me?scope=active|past&keyword=&page=&size=` returns a `StudyPageResponse`.
+- Active history includes joined studies that are not `ENDED` or `DELETED`.
+- Past history includes hidden-filtered records where the membership is `LEFT` or the study is `ENDED`/`DELETED`.
+- Frontend My Page uses server-backed search and previous/next pagination for active and past study sections.
