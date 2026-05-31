@@ -301,6 +301,9 @@ Completed and merged into `develop`:
    - `GET /api/v1/posts?keyword=...` now searches published post title, content, and author nickname;
    - author nickname search keeps the existing board filter and page response metadata;
    - frontend search placeholder reflects title/content/author search scope.
+48. Post search null keyword runtime fix:
+   - when `keyword` is blank or omitted, `PostService` uses the existing published-list repository methods instead of the keyword JPQL query;
+   - this avoids PostgreSQL treating nullable keyword expressions as `bytea` in `LOWER(...)` and returning `GLOBAL-500` for the default community list.
 
 Active feature work in progress:
 

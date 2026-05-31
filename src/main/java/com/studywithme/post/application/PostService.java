@@ -85,12 +85,15 @@ public class PostService {
 		int size
 	) {
 		PageRequest pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
-		Page<Post> postPage = postRepository.searchPublishedPosts(
-			boardType,
-			PostStatus.PUBLISHED,
-			normalizeKeyword(keyword),
-			pageable
-		);
+		String normalizedKeyword = normalizeKeyword(keyword);
+		Page<Post> postPage = normalizedKeyword == null
+			? findPublishedPosts(boardType, pageable)
+			: postRepository.searchPublishedPosts(
+				boardType,
+				PostStatus.PUBLISHED,
+				normalizedKeyword,
+				pageable
+			);
 		List<Post> posts = postPage.getContent();
 		Map<Long, Member> authors = findAuthors(posts);
 		List<PostResult> content = posts.stream()
@@ -104,6 +107,17 @@ public class PostService {
 			postPage.getTotalPages(),
 			postPage.hasNext(),
 			postPage.hasPrevious()
+		);
+	}
+
+	private Page<Post> findPublishedPosts(PostBoardType boardType, PageRequest pageable) {
+		if (boardType == null) {
+			return postRepository.findAllByStatusOrderByCreatedAtDesc(PostStatus.PUBLISHED, pageable);
+		}
+		return postRepository.findAllByBoardTypeAndStatusOrderByCreatedAtDesc(
+			boardType,
+			PostStatus.PUBLISHED,
+			pageable
 		);
 	}
 
