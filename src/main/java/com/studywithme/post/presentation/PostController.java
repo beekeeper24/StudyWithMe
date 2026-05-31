@@ -7,6 +7,7 @@ import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import com.studywithme.post.application.PostCreateCommand;
 import com.studywithme.post.application.PostSearchScope;
 import com.studywithme.post.application.PostService;
+import com.studywithme.post.application.PostSortOrder;
 import com.studywithme.post.application.PostUpdateCommand;
 import com.studywithme.post.domain.PostBoardType;
 import jakarta.validation.Valid;
@@ -52,13 +53,14 @@ public class PostController {
 		@RequestParam(required = false) PostBoardType boardType,
 		@RequestParam(required = false) String keyword,
 		@RequestParam(defaultValue = "ALL") PostSearchScope searchScope,
+		@RequestParam(defaultValue = "LATEST") PostSortOrder sortOrder,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "50") int size,
 		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
 	) {
 		Long requesterMemberId = principal == null ? null : principal.memberId();
 		return ApiResponse.success(PostPageResponse.from(
-			postService.findPage(boardType, keyword, searchScope, requesterMemberId, page, size)
+			postService.findPage(boardType, keyword, searchScope, sortOrder, requesterMemberId, page, size)
 		));
 	}
 
