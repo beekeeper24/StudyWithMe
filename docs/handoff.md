@@ -293,6 +293,10 @@ Completed and merged into `develop`:
    - `GET /api/v1/posts` accepts optional `keyword` together with `boardType`, `page`, and `size`;
    - keyword search applies to published post title/content and preserves board filtering plus page metadata;
    - frontend community search sends the keyword to the backend instead of filtering only the currently loaded page.
+46. Community search UX cleanup:
+   - community search input shows a compact clear action when a keyword is present;
+   - post list loading state is shown while server search/page requests are in flight;
+   - frontend ignores stale post-list responses so slower previous searches do not overwrite the latest result.
 
 Active feature work in progress:
 
