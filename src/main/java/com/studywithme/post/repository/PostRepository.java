@@ -30,6 +30,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 				:keyword IS NULL
 				OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
 				OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%'))
+				OR EXISTS (
+					SELECT 1
+					FROM Member m
+					WHERE m.id = p.authorMemberId
+						AND m.nickname IS NOT NULL
+						AND LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%'))
+				)
 			)
 		ORDER BY p.createdAt DESC
 		""")
