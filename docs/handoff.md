@@ -790,3 +790,9 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - Active history includes joined studies that are not `ENDED` or `DELETED`.
 - Past history includes hidden-filtered records where the membership is `LEFT` or the study is `ENDED`/`DELETED`.
 - Frontend My Page uses server-backed search and previous/next pagination for active and past study sections.
+
+### 56. Study search fields
+
+- Study search now matches title, owner nickname, and schedule only.
+- Description, progress method, and target audience are no longer search targets.
+- Frontend local active-study filtering uses the same title/owner/schedule criteria.

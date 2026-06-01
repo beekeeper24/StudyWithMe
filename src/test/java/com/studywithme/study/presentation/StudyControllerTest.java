@@ -346,7 +346,7 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("공개 스터디 목록은 검색어로 조회할 수 있다")
+	@DisplayName("공개 스터디 목록은 제목, 모집장 이름, 일정으로 검색할 수 있다")
 	void listStudiesByKeyword() throws Exception {
 		Member owner = saveMember("owner");
 		studyService.create(
@@ -358,11 +358,11 @@ class StudyControllerTest {
 			new StudyCreateCommand(
 				"프론트엔드 스터디",
 				null,
-				"React 과제를 함께 풉니다.",
+				"과제를 함께 풉니다.",
 				"입문자",
 				"인증 필수",
 				6,
-				"매주 화요일"
+				"매주 React요일"
 			)
 		);
 		studyService.create(
@@ -475,7 +475,10 @@ class StudyControllerTest {
 		studyService.create(owner.getId(), new StudyCreateCommand("미참여 React 스터디", "제외"));
 		StudyResult first = studyService.create(owner.getId(), new StudyCreateCommand("React 기초 스터디", "진행 중"));
 		studyService.join(first.id(), participant.getId());
-		StudyResult second = studyService.create(owner.getId(), new StudyCreateCommand("Java 스터디", "React 과제"));
+		StudyResult second = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("Java 스터디", null, "과제", "입문자", "인증", 6, "React요일")
+		);
 		studyService.join(second.id(), participant.getId());
 
 		mockMvc.perform(get("/api/v1/studies/me")
@@ -504,7 +507,10 @@ class StudyControllerTest {
 		StudyResult ended = studyService.create(owner.getId(), new StudyCreateCommand("React 완료 스터디", "완료"));
 		studyService.join(ended.id(), participant.getId());
 		studyService.end(ended.id(), owner.getId());
-		StudyResult left = studyService.create(owner.getId(), new StudyCreateCommand("Java 스터디", "React 복습"));
+		StudyResult left = studyService.create(
+			owner.getId(),
+			new StudyCreateCommand("Java 스터디", null, "복습", "입문자", "인증", 6, "React요일")
+		);
 		studyService.join(left.id(), participant.getId());
 		studyService.leave(left.id(), participant.getId());
 		StudyResult active = studyService.create(owner.getId(), new StudyCreateCommand("React 진행 스터디", "진행 중"));

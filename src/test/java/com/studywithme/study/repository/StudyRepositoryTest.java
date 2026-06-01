@@ -55,7 +55,7 @@ class StudyRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("모집 중인 스터디는 제목과 진행 정보로 검색할 수 있다")
+	@DisplayName("모집 중인 스터디는 제목, 모집장 이름, 일정으로 검색할 수 있다")
 	void searchRecruitingStudies() {
 		Member owner = memberRepository.saveAndFlush(Member.createOAuthMember(
 			"owner@example.com",
@@ -64,20 +64,32 @@ class StudyRepositoryTest {
 			"google-owner",
 			null
 		));
+		Member matchedOwner = memberRepository.saveAndFlush(Member.createOAuthMember(
+			"react-owner@example.com",
+			"react-owner",
+			OAuthProvider.GOOGLE,
+			"google-react-owner",
+			null
+		));
 		Study matchedByTitle = studyRepository.save(Study.create(
 			"React 집중 스터디",
 			"매주 과제를 진행합니다.",
 			owner.getId()
 		));
-		Study matchedByProgress = studyRepository.save(Study.create(
+		Study matchedBySchedule = studyRepository.save(Study.create(
 			"프론트엔드 스터디",
 			"화면 구현",
-			"React 과제를 함께 풉니다.",
+			"과제를 함께 풉니다.",
 			"입문자",
 			"인증 필수",
 			6,
-			"매주 화요일",
+			"매주 React요일",
 			owner.getId()
+		));
+		Study matchedByOwner = studyRepository.save(Study.create(
+			"Java 입문 스터디",
+			"백엔드 기초",
+			matchedOwner.getId()
 		));
 		Study other = studyRepository.save(Study.create(
 			"Java 스터디",
@@ -94,7 +106,7 @@ class StudyRepositoryTest {
 		);
 
 		assertThat(studies.getContent()).extracting(Study::getId)
-			.containsExactly(matchedByProgress.getId(), matchedByTitle.getId())
+			.containsExactly(matchedByOwner.getId(), matchedBySchedule.getId(), matchedByTitle.getId())
 			.doesNotContain(other.getId());
 	}
 }
