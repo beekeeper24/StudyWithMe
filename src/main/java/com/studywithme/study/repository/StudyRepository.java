@@ -43,9 +43,7 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
 			AND m.status = :ownerStatus
 			AND (
 				LOWER(s.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR LOWER(s.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR (s.progressMethod IS NOT NULL AND LOWER(s.progressMethod) LIKE LOWER(CONCAT('%', :keyword, '%')))
-				OR (s.targetAudience IS NOT NULL AND LOWER(s.targetAudience) LIKE LOWER(CONCAT('%', :keyword, '%')))
+				OR (m.nickname IS NOT NULL AND LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%')))
 				OR (s.schedule IS NOT NULL AND LOWER(s.schedule) LIKE LOWER(CONCAT('%', :keyword, '%')))
 			)
 		ORDER BY s.createdAt DESC, s.id DESC
@@ -78,15 +76,14 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
 		SELECT s
 		FROM StudyMember sm
 		JOIN Study s ON s.id = sm.studyId
+		JOIN Member m ON m.id = s.ownerMemberId
 		WHERE sm.memberId = :memberId
 			AND sm.historyHiddenAt IS NULL
 			AND sm.status = :memberStatus
 			AND s.status NOT IN :excludedStatuses
 			AND (
 				LOWER(s.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR LOWER(s.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR (s.progressMethod IS NOT NULL AND LOWER(s.progressMethod) LIKE LOWER(CONCAT('%', :keyword, '%')))
-				OR (s.targetAudience IS NOT NULL AND LOWER(s.targetAudience) LIKE LOWER(CONCAT('%', :keyword, '%')))
+				OR (m.nickname IS NOT NULL AND LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%')))
 				OR (s.schedule IS NOT NULL AND LOWER(s.schedule) LIKE LOWER(CONCAT('%', :keyword, '%')))
 			)
 		ORDER BY s.createdAt DESC, s.id DESC
@@ -119,14 +116,13 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
 		SELECT s
 		FROM StudyMember sm
 		JOIN Study s ON s.id = sm.studyId
+		JOIN Member m ON m.id = s.ownerMemberId
 		WHERE sm.memberId = :memberId
 			AND sm.historyHiddenAt IS NULL
 			AND (sm.status = :leftStatus OR s.status IN :pastStatuses)
 			AND (
 				LOWER(s.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR LOWER(s.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR (s.progressMethod IS NOT NULL AND LOWER(s.progressMethod) LIKE LOWER(CONCAT('%', :keyword, '%')))
-				OR (s.targetAudience IS NOT NULL AND LOWER(s.targetAudience) LIKE LOWER(CONCAT('%', :keyword, '%')))
+				OR (m.nickname IS NOT NULL AND LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%')))
 				OR (s.schedule IS NOT NULL AND LOWER(s.schedule) LIKE LOWER(CONCAT('%', :keyword, '%')))
 			)
 		ORDER BY s.createdAt DESC, s.id DESC
