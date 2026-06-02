@@ -1,0 +1,4 @@
+app:
+  auth:
+    refresh-token-cookie:
+      secure: ${REFRESH_TOKEN_COOKIE_SECURE:true}
