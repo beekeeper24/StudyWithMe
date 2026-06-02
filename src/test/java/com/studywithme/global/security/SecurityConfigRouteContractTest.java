@@ -1,6 +1,5 @@
 package com.studywithme.global.security;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,23 +31,12 @@ class SecurityConfigRouteContractTest {
 	private MockMvc mockMvc;
 
 	@ParameterizedTest
-	@MethodSource("publicReadRoutes")
-	@DisplayName("공개 조회 API는 인증 없이도 보안 필터에서 차단하지 않는다")
-	void allowPublicReadRoutesWithoutAuthentication(String path) throws Exception {
-		int status = mockMvc.perform(get(path))
-			.andReturn()
-			.getResponse()
-			.getStatus();
-
-		assertThat(status).isNotIn(401, 403);
-	}
-
-	@ParameterizedTest
 	@MethodSource("authenticatedRoutes")
-	@DisplayName("보호 API는 인증 없이 접근하면 AUTH-003 응답을 반환한다")
+	@DisplayName("사이트 기능 API는 인증 없이 접근하면 AUTH-003 응답을 반환한다")
 	void rejectAuthenticatedRoutesWithoutAuthentication(HttpMethod method, String path) throws Exception {
 		mockMvc.perform(request(method, path))
-			.andExpect(status().isUnauthorized());
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
 	}
 
 	@ParameterizedTest
@@ -60,21 +48,16 @@ class SecurityConfigRouteContractTest {
 			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
 	}
 
-	private static Arguments[] publicReadRoutes() {
-		return new Arguments[] {
-			Arguments.of("/api/v1/studies"),
-			Arguments.of("/api/v1/studies/1"),
-			Arguments.of("/api/v1/posts"),
-			Arguments.of("/api/v1/posts/1"),
-			Arguments.of("/api/v1/posts/1/comments"),
-		};
-	}
-
 	private static Arguments[] authenticatedRoutes() {
 		return new Arguments[] {
 			Arguments.of(HttpMethod.GET, "/api/v1/auth/me"),
 			Arguments.of(HttpMethod.GET, "/api/v1/studies/me"),
+			Arguments.of(HttpMethod.GET, "/api/v1/studies"),
+			Arguments.of(HttpMethod.GET, "/api/v1/studies/1"),
 			Arguments.of(HttpMethod.GET, "/api/v1/studies/1/join-requests"),
+			Arguments.of(HttpMethod.GET, "/api/v1/posts"),
+			Arguments.of(HttpMethod.GET, "/api/v1/posts/1"),
+			Arguments.of(HttpMethod.GET, "/api/v1/posts/1/comments"),
 			Arguments.of(HttpMethod.GET, "/api/v1/notifications"),
 			Arguments.of(HttpMethod.GET, "/api/v1/chat/rooms"),
 			Arguments.of(HttpMethod.POST, "/api/v1/studies"),

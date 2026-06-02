@@ -29,6 +29,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -125,13 +126,13 @@ class CommentControllerTest {
 	}
 
 	@Test
-	@DisplayName("게시글 댓글 목록은 공개 조회할 수 있다")
+	@DisplayName("게시글 댓글 목록은 로그인 후 조회할 수 있다")
 	void listCommentsPublicly() throws Exception {
 		Member author = saveMember("author");
 		PostResult post = savePost(author);
 		commentService.create(post.id(), author.getId(), new CommentCreateCommand("첫 댓글입니다."));
 
-		mockMvc.perform(get("/api/v1/posts/{postId}/comments", post.id()))
+		mockMvc.perform(authenticatedGet("/api/v1/posts/{postId}/comments", author, post.id()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data[0].content").value("첫 댓글입니다."));
@@ -155,13 +156,14 @@ class CommentControllerTest {
 	}
 
 	@Test
-	@DisplayName("댓글 목록을 비회원으로 조회하면 요청자 소유 여부는 false다")
+	@DisplayName("댓글 목록을 다른 로그인 회원이 조회하면 요청자 소유 여부는 false다")
 	void listCommentsPubliclyWithFalseOwnership() throws Exception {
 		Member author = saveMember("author", "댓글러", null);
+		Member viewer = saveMember("viewer", "독자", null);
 		PostResult post = savePost(author);
 		commentService.create(post.id(), author.getId(), new CommentCreateCommand("첫 댓글입니다."));
 
-		mockMvc.perform(get("/api/v1/posts/{postId}/comments", post.id()))
+		mockMvc.perform(authenticatedGet("/api/v1/posts/{postId}/comments", viewer, post.id()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data[0].authorNickname").value("댓글러"))
@@ -303,5 +305,10 @@ class CommentControllerTest {
 
 	private String accessToken(Member member) {
 		return jwtTokenProvider.createAccessToken(member).token();
+	}
+
+	private MockHttpServletRequestBuilder authenticatedGet(String urlTemplate, Member member, Object... uriVariables) {
+		return get(urlTemplate, uriVariables)
+			.header("Authorization", "Bearer " + accessToken(member));
 	}
 }

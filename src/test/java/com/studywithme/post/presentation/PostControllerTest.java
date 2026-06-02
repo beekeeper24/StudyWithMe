@@ -29,6 +29,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -108,12 +109,12 @@ class PostControllerTest {
 	}
 
 	@Test
-	@DisplayName("게시글 목록은 공개 조회할 수 있다")
+	@DisplayName("게시글 목록은 로그인 후 조회할 수 있다")
 	void listPostsPublicly() throws Exception {
 		Member author = saveMember("author");
 		postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
 
-		mockMvc.perform(get("/api/v1/posts"))
+		mockMvc.perform(authenticatedGet("/api/v1/posts", author))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content[0].title").value("첫 게시글"))
@@ -129,7 +130,7 @@ class PostControllerTest {
 		postService.create(author.getId(), new PostCreateCommand("자유 글", "내용"));
 		postService.create(author.getId(), new PostCreateCommand(PostBoardType.QUESTION, "질문 글", "내용"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", author)
 				.param("boardType", "QUESTION"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
@@ -147,7 +148,7 @@ class PostControllerTest {
 		postService.create(author.getId(), new PostCreateCommand("일반 글", "Spring 질문을 정리합니다."));
 		postService.create(author.getId(), new PostCreateCommand("잡담", "오늘 점심 이야기"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", author)
 				.param("keyword", "spring"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
@@ -163,7 +164,7 @@ class PostControllerTest {
 		postService.create(author.getId(), new PostCreateCommand("React 제목", "일반 내용"));
 		postService.create(author.getId(), new PostCreateCommand("일반 제목", "React 본문"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", author)
 				.param("keyword", "React")
 				.param("searchScope", "TITLE"))
 			.andExpect(status().isOk())
@@ -181,7 +182,7 @@ class PostControllerTest {
 		postService.create(reactAuthor.getId(), new PostCreateCommand("일반 제목", "일반 내용"));
 		postService.create(otherAuthor.getId(), new PostCreateCommand("일반 제목", "React 본문"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", reactAuthor)
 				.param("keyword", "React")
 				.param("searchScope", "TITLE_CONTENT"))
 			.andExpect(status().isOk())
@@ -200,7 +201,7 @@ class PostControllerTest {
 		postService.create(reactAuthor.getId(), new PostCreateCommand("일반 후기", "내용"));
 		postService.create(springAuthor.getId(), new PostCreateCommand("다른 후기", "내용"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", reactAuthor)
 				.param("keyword", "리액트"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
@@ -218,7 +219,7 @@ class PostControllerTest {
 		postService.create(reactAuthor.getId(), new PostCreateCommand("일반 제목", "일반 내용"));
 		postService.create(otherAuthor.getId(), new PostCreateCommand("React 제목", "React 본문"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", reactAuthor)
 				.param("keyword", "리액트")
 				.param("searchScope", "AUTHOR"))
 			.andExpect(status().isOk())
@@ -236,7 +237,7 @@ class PostControllerTest {
 		postService.create(author.getId(), new PostCreateCommand("React 질문", "내용"));
 		postService.create(author.getId(), new PostCreateCommand(PostBoardType.REVIEW, "React 후기", "내용"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", author)
 				.param("boardType", "REVIEW")
 				.param("keyword", "React"))
 			.andExpect(status().isOk())
@@ -255,7 +256,7 @@ class PostControllerTest {
 		postService.create(author.getId(), new PostCreateCommand("두 번째", "내용"));
 		postService.create(author.getId(), new PostCreateCommand("세 번째", "내용"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", author)
 				.param("page", "1")
 				.param("size", "2"))
 			.andExpect(status().isOk())
@@ -278,7 +279,7 @@ class PostControllerTest {
 		postService.create(author.getId(), new PostCreateCommand("두 번째", "내용"));
 		postService.create(author.getId(), new PostCreateCommand("세 번째", "내용"));
 
-		mockMvc.perform(get("/api/v1/posts")
+		mockMvc.perform(authenticatedGet("/api/v1/posts", author)
 				.param("sortOrder", "OLDEST"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
@@ -305,14 +306,14 @@ class PostControllerTest {
 	}
 
 	@Test
-	@DisplayName("게시글 목록은 공개 댓글 수를 내려준다")
+	@DisplayName("게시글 목록은 댓글 수를 내려준다")
 	void listPostsWithCommentCount() throws Exception {
 		Member author = saveMember("author");
 		Member commenter = saveMember("commenter");
 		PostResult post = postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
 		commentService.create(post.id(), commenter.getId(), new CommentCreateCommand("댓글"));
 
-		mockMvc.perform(get("/api/v1/posts"))
+		mockMvc.perform(authenticatedGet("/api/v1/posts", author))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content[0].id").value(post.id()))
@@ -320,12 +321,13 @@ class PostControllerTest {
 	}
 
 	@Test
-	@DisplayName("게시글 목록을 비회원으로 조회하면 요청자 소유 여부는 false다")
+	@DisplayName("게시글 목록을 다른 로그인 회원이 조회하면 요청자 소유 여부는 false다")
 	void listPostsPubliclyWithFalseOwnership() throws Exception {
 		Member author = saveMember("author", "작가", null);
+		Member viewer = saveMember("viewer", "독자", null);
 		postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
 
-		mockMvc.perform(get("/api/v1/posts"))
+		mockMvc.perform(authenticatedGet("/api/v1/posts", viewer))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content[0].authorNickname").value("작가"))
@@ -333,12 +335,12 @@ class PostControllerTest {
 	}
 
 	@Test
-	@DisplayName("게시글 상세는 공개 조회할 수 있다")
+	@DisplayName("게시글 상세는 로그인 후 조회할 수 있다")
 	void getPostPublicly() throws Exception {
 		Member author = saveMember("author");
 		PostResult post = postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
 
-		mockMvc.perform(get("/api/v1/posts/{postId}", post.id()))
+		mockMvc.perform(authenticatedGet("/api/v1/posts/{postId}", author, post.id()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.id").value(post.id()))
@@ -346,14 +348,14 @@ class PostControllerTest {
 	}
 
 	@Test
-	@DisplayName("게시글 상세는 공개 댓글 수를 내려준다")
+	@DisplayName("게시글 상세는 댓글 수를 내려준다")
 	void getPostWithCommentCount() throws Exception {
 		Member author = saveMember("author");
 		Member commenter = saveMember("commenter");
 		PostResult post = postService.create(author.getId(), new PostCreateCommand("첫 게시글", "반갑습니다."));
 		commentService.create(post.id(), commenter.getId(), new CommentCreateCommand("댓글"));
 
-		mockMvc.perform(get("/api/v1/posts/{postId}", post.id()))
+		mockMvc.perform(authenticatedGet("/api/v1/posts/{postId}", author, post.id()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.id").value(post.id()))
@@ -617,5 +619,10 @@ class PostControllerTest {
 
 	private String accessToken(Member member) {
 		return jwtTokenProvider.createAccessToken(member).token();
+	}
+
+	private MockHttpServletRequestBuilder authenticatedGet(String urlTemplate, Member member, Object... uriVariables) {
+		return get(urlTemplate, uriVariables)
+			.header("Authorization", "Bearer " + accessToken(member));
 	}
 }
