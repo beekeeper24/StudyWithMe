@@ -1,0 +1,120 @@
+package com.studywithme.global.security;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpMethod;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.RequestBuilder;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(SecurityConfigRouteContractTest.UnlistedApiController.class)
+class SecurityConfigRouteContractTest {
+
+	@Autowired
+	private MockMvc mockMvc;
+
+	@ParameterizedTest
+	@MethodSource("publicReadRoutes")
+	@DisplayName("공개 조회 API는 인증 없이도 보안 필터에서 차단하지 않는다")
+	void allowPublicReadRoutesWithoutAuthentication(String path) throws Exception {
+		int status = mockMvc.perform(get(path))
+			.andReturn()
+			.getResponse()
+			.getStatus();
+
+		assertThat(status).isNotIn(401, 403);
+	}
+
+	@ParameterizedTest
+	@MethodSource("authenticatedRoutes")
+	@DisplayName("보호 API는 인증 없이 접근하면 AUTH-003 응답을 반환한다")
+	void rejectAuthenticatedRoutesWithoutAuthentication(HttpMethod method, String path) throws Exception {
+		mockMvc.perform(request(method, path))
+			.andExpect(status().isUnauthorized());
+	}
+
+	@ParameterizedTest
+	@MethodSource("unlistedRoutes")
+	@DisplayName("명시되지 않은 API는 기본 공개 경로로 취급하지 않고 인증을 요구한다")
+	void denyUnlistedRoutes(String path) throws Exception {
+		mockMvc.perform(get(path))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.error.code").value("AUTH-003"));
+	}
+
+	private static Arguments[] publicReadRoutes() {
+		return new Arguments[] {
+			Arguments.of("/api/v1/studies"),
+			Arguments.of("/api/v1/studies/1"),
+			Arguments.of("/api/v1/posts"),
+			Arguments.of("/api/v1/posts/1"),
+			Arguments.of("/api/v1/posts/1/comments"),
+		};
+	}
+
+	private static Arguments[] authenticatedRoutes() {
+		return new Arguments[] {
+			Arguments.of(HttpMethod.GET, "/api/v1/auth/me"),
+			Arguments.of(HttpMethod.GET, "/api/v1/studies/me"),
+			Arguments.of(HttpMethod.GET, "/api/v1/studies/1/join-requests"),
+			Arguments.of(HttpMethod.GET, "/api/v1/notifications"),
+			Arguments.of(HttpMethod.GET, "/api/v1/chat/rooms"),
+			Arguments.of(HttpMethod.POST, "/api/v1/studies"),
+			Arguments.of(HttpMethod.POST, "/api/v1/posts"),
+			Arguments.of(HttpMethod.POST, "/api/v1/posts/1/comments"),
+			Arguments.of(HttpMethod.PUT, "/api/v1/posts/1"),
+			Arguments.of(HttpMethod.DELETE, "/api/v1/posts/1"),
+			Arguments.of(HttpMethod.DELETE, "/api/v1/chat/rooms/1"),
+		};
+	}
+
+	private static Arguments[] unlistedRoutes() {
+		return new Arguments[] {
+			Arguments.of("/api/v1/future-public-route"),
+			Arguments.of("/api/v1/studies/1/unknown-public-view"),
+			Arguments.of("/api/v1/posts/1/unknown-public-view"),
+		};
+	}
+
+	private static RequestBuilder request(HttpMethod method, String path) {
+		MockHttpServletRequestBuilder builder = switch (method.name()) {
+			case "GET" -> get(path);
+			case "POST" -> post(path);
+			case "PUT" -> put(path);
+			case "DELETE" -> delete(path);
+			default -> throw new IllegalArgumentException("Unsupported method: " + method);
+		};
+		return builder;
+	}
+
+	@RestController
+	static class UnlistedApiController {
+
+		@GetMapping({
+			"/api/v1/future-public-route",
+			"/api/v1/studies/1/unknown-public-view",
+			"/api/v1/posts/1/unknown-public-view"
+		})
+		String ok() {
+			return "ok";
+		}
+	}
+}
