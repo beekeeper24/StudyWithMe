@@ -1,4 +1,8 @@
 app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
   auth:
+    oauth-success:
+      frontend-redirect-uri: ${OAUTH_SUCCESS_FRONTEND_REDIRECT_URI}
     refresh-token-cookie:
       secure: ${REFRESH_TOKEN_COOKIE_SECURE:true}

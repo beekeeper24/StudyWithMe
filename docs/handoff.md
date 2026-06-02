@@ -648,8 +648,7 @@ Next implementation tasks:
 
 1. Add authenticated frontend route guards and friendlier error states for failed create/join/comment/chat actions.
 2. Add notification reconnect/polling catch-up polish beyond the current login/connect-time sync.
-3. Set `APP_CORS_ALLOWED_ORIGINS` and `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` to the real frontend origin in production.
-4. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+3. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
 
 Frontend community screen verification already completed:
 
@@ -802,3 +801,10 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - The local/default profile still keeps `${REFRESH_TOKEN_COOKIE_SECURE:false}` so local HTTP OAuth testing remains usable.
 - Production HTTPS deployments should run with the `prod` profile so refresh-token cookies are Secure by default.
 - Focused auth tests cover the local and prod refresh-token cookie Secure defaults.
+
+### 58. Production frontend origin configuration
+
+- `application-prod.yml` requires `APP_CORS_ALLOWED_ORIGINS` for production CORS allowed origins.
+- `application-prod.yml` requires `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` for the OAuth success callback.
+- The local/default profile still keeps localhost `5173` and `5174` defaults for local browser testing.
+- Production profile property tests prevent localhost CORS/OAuth callback defaults from silently leaking into production.
