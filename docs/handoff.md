@@ -808,3 +808,20 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - `application-prod.yml` requires `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` for the OAuth success callback.
 - The local/default profile still keeps localhost `5173` and `5174` defaults for local browser testing.
 - Production profile property tests prevent localhost CORS/OAuth callback defaults from silently leaking into production.
+
+### 59. PR granularity gate
+
+- Recent production config work was split too narrowly: refresh cookie Secure default and production frontend origin config should have been one "production deployment config hardening" deliverable.
+- The root cause was treating "verified small task" as "PR ready" instead of checking whether the broader reviewable slice was complete.
+- Backend and frontend `AGENTS.md` now require a PR readiness gate before opening a PR.
+- If the gate fails, keep the branch open and use checkpoint commits instead of opening and merging a tiny PR.
+- When the user does not name a milestone, infer and state a reasonable milestone before coding instead of defaulting to the next tiny TODO.
+- Ask one or two direct questions only when the milestone, priority, or acceptance criteria would be risky to infer.
+- Use `deep-interview` or planning skills only when direct questions are not enough for broad or ambiguous work; do not make heavy planning the default.
+
+### 60. Frontend auth action guard polish
+
+- Frontend user actions that require authentication now use a shared `requireAuthenticated` guard instead of silently returning on missing access token.
+- Study chat/private chat, study mutations, post create/update/delete, comment/reply create/update/delete, chat room load/delete/connect, and message send surface a normal login-required toast when authentication is missing.
+- Post save, comment submit, comment edit save, and chat composer controls include `canConnect` in their disabled state.
+- This is a frontend UX guard only; backend authorization remains the source of truth for protected API access.
