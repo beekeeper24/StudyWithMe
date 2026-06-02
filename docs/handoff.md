@@ -825,3 +825,10 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - Study chat/private chat, study mutations, post create/update/delete, comment/reply create/update/delete, chat room load/delete/connect, and message send surface a normal login-required toast when authentication is missing.
 - Post save, comment submit, comment edit save, and chat composer controls include `canConnect` in their disabled state.
 - This is a frontend UX guard only; backend authorization remains the source of truth for protected API access.
+
+### 61. Security route contract test
+
+- `SecurityConfigRouteContractTest` documents the backend route security contract.
+- Public read APIs (`GET /api/v1/studies`, study detail, post list/detail, comment list) must not be blocked by authentication filters.
+- Protected APIs such as `GET /api/v1/studies/me`, join request lists, notifications, chat rooms, and write mutations must return `401 AUTH-003` without authentication.
+- Test-only unlisted API endpoints prove that newly added API routes are not accidentally public by default; future public APIs must be explicitly added to `SecurityConfig`.
