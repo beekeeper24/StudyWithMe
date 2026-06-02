@@ -31,6 +31,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -309,12 +310,13 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("스터디 목록은 공개 조회할 수 있다")
+	@DisplayName("스터디 목록은 로그인 후 조회할 수 있다")
 	void listStudiesPublicly() throws Exception {
 		Member owner = saveMember("owner");
+		Member viewer = saveMember("viewer");
 		studyService.create(owner.getId(), new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다."));
 
-		mockMvc.perform(get("/api/v1/studies"))
+		mockMvc.perform(authenticatedGet("/api/v1/studies", viewer))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content[0].ownerNickname").value("owner"))
@@ -325,7 +327,7 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("공개 스터디 목록은 모집 중인 스터디만 조회한다")
+	@DisplayName("스터디 목록은 모집 중인 스터디만 조회한다")
 	void listStudiesPubliclyOnlyRecruiting() throws Exception {
 		Member owner = saveMember("owner");
 		StudyResult recruiting = studyService.create(
@@ -338,7 +340,7 @@ class StudyControllerTest {
 		);
 		studyService.close(closed.id(), owner.getId());
 
-		mockMvc.perform(get("/api/v1/studies"))
+		mockMvc.perform(authenticatedGet("/api/v1/studies", owner))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content.length()").value(1))
@@ -346,7 +348,7 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("공개 스터디 목록은 제목, 모집장 이름, 일정으로 검색할 수 있다")
+	@DisplayName("스터디 목록은 제목, 모집장 이름, 일정으로 검색할 수 있다")
 	void listStudiesByKeyword() throws Exception {
 		Member owner = saveMember("owner");
 		studyService.create(
@@ -370,7 +372,7 @@ class StudyControllerTest {
 			new StudyCreateCommand("Java 스터디", "백엔드 기초")
 		);
 
-		mockMvc.perform(get("/api/v1/studies")
+		mockMvc.perform(authenticatedGet("/api/v1/studies", owner)
 				.param("keyword", "react"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
@@ -380,14 +382,14 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("공개 스터디 목록은 페이지 단위로 조회한다")
+	@DisplayName("스터디 목록은 페이지 단위로 조회한다")
 	void listStudiesByPage() throws Exception {
 		Member owner = saveMember("owner");
 		studyService.create(owner.getId(), new StudyCreateCommand("첫 번째 스터디", "진행 중"));
 		StudyResult second = studyService.create(owner.getId(), new StudyCreateCommand("두 번째 스터디", "진행 중"));
 		StudyResult third = studyService.create(owner.getId(), new StudyCreateCommand("세 번째 스터디", "진행 중"));
 
-		mockMvc.perform(get("/api/v1/studies")
+		mockMvc.perform(authenticatedGet("/api/v1/studies", owner)
 				.param("page", "0")
 				.param("size", "2"))
 			.andExpect(status().isOk())
@@ -404,7 +406,7 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("공개 스터디 목록은 탈퇴한 모집장의 스터디를 제외한다")
+	@DisplayName("스터디 목록은 탈퇴한 모집장의 스터디를 제외한다")
 	void listStudiesExcludesWithdrawnOwnerStudies() throws Exception {
 		Member activeOwner = saveMember("active-owner");
 		Member withdrawnOwner = saveMember("withdrawn-owner");
@@ -419,7 +421,7 @@ class StudyControllerTest {
 		withdrawnOwner.withdraw();
 		memberRepository.saveAndFlush(withdrawnOwner);
 
-		mockMvc.perform(get("/api/v1/studies"))
+		mockMvc.perform(authenticatedGet("/api/v1/studies", activeOwner))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content.length()").value(1))
@@ -667,17 +669,18 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("스터디 상세는 공개 조회할 수 있다")
+	@DisplayName("스터디 상세는 로그인 후 조회할 수 있다")
 	void getStudyPublicly() throws Exception {
 		Member owner = saveMember("owner");
 		Member participant = saveMember("participant");
+		Member viewer = saveMember("viewer");
 		StudyResult study = studyService.create(
 			owner.getId(),
 			new StudyCreateCommand("알고리즘 스터디", "매주 알고리즘 문제를 풉니다.")
 		);
 		studyService.join(study.id(), participant.getId());
 
-		mockMvc.perform(get("/api/v1/studies/{studyId}", study.id()))
+		mockMvc.perform(authenticatedGet("/api/v1/studies/{studyId}", viewer, study.id()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.id").value(study.id()))
@@ -839,7 +842,7 @@ class StudyControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.status").value("CLOSED"));
 
-		mockMvc.perform(get("/api/v1/studies"))
+		mockMvc.perform(authenticatedGet("/api/v1/studies", owner))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content.length()").value(0));
@@ -873,7 +876,7 @@ class StudyControllerTest {
 	}
 
 	@Test
-	@DisplayName("정원 마감 후 참여자가 탈퇴해도 스터디는 공개 목록에 다시 나타나지 않는다")
+	@DisplayName("정원 마감 후 참여자가 탈퇴해도 스터디는 모집 목록에 다시 나타나지 않는다")
 	void leaveAfterCapacityClosedStudyKeepsStudyHiddenFromPublicList() throws Exception {
 		Member owner = saveMember("owner");
 		Member participant = saveMember("participant");
@@ -897,7 +900,7 @@ class StudyControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.status").value("CLOSED"));
 
-		mockMvc.perform(get("/api/v1/studies"))
+		mockMvc.perform(authenticatedGet("/api/v1/studies", owner))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content.length()").value(0));
@@ -1052,5 +1055,10 @@ class StudyControllerTest {
 
 	private String accessToken(Member member) {
 		return jwtTokenProvider.createAccessToken(member).token();
+	}
+
+	private MockHttpServletRequestBuilder authenticatedGet(String urlTemplate, Member member, Object... uriVariables) {
+		return get(urlTemplate, uriVariables)
+			.header("Authorization", "Bearer " + accessToken(member));
 	}
 }

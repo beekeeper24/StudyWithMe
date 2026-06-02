@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-06-02
+Last updated: 2026-06-03
 
 ## Read This First
 
@@ -70,17 +70,17 @@ Completed and merged into `develop`:
 8. Local OAuth `.env` helper and actual Google/Kakao browser login verification.
 9. Study recruitment baseline:
    - authenticated create/join/leave/close;
-   - public list/detail;
+   - login-required list/detail;
    - pessimistic write lock for join/leave/close decisions;
    - owner/member role tracking.
 10. Free-board post baseline:
    - authenticated create/update/delete;
-   - public list/detail;
+   - login-required list/detail;
    - author-only update/delete;
    - soft delete with `DELETED` status.
 11. Comment/reply baseline:
    - authenticated comment/reply create;
-   - public comment list by post;
+   - login-required comment list by post;
    - author-only update/delete;
    - one-level replies only;
    - soft delete with deleted-parent reply hiding.
@@ -157,7 +157,7 @@ Completed and merged into `develop`:
    - authenticated chat room members can query `GET /api/v1/chat/rooms/{roomId}/members`;
    - chat member list access is still guarded by room membership validation.
 25. My Page study history and chat room hiding:
-   - public study list shows recruiting studies only;
+   - login-required study list shows recruiting studies only;
    - authenticated `GET /api/v1/studies/me` returns active and past study history;
    - study leave preserves `study_members` history with `LEFT` and `left_at`;
    - chat room delete hides the room per requester with `chat_room_members.hidden_at`;
@@ -204,8 +204,8 @@ Completed and merged into `develop`:
 31. Community author display contract:
    - post list/detail responses include author nickname, author profile image, and `ownedByRequester`;
    - comment/reply list responses include author nickname, author profile image, and `ownedByRequester`;
-   - public list/detail/comment APIs still work without authentication and return requester ownership as false;
-   - frontend passes the access token to community reads when available, shows author avatars/nicknames instead of raw member ids, and hides post edit/delete actions from non-owners;
+   - post list/detail/comment APIs require authentication; requester ownership is calculated from the authenticated member;
+   - frontend passes the access token to community reads, shows author avatars/nicknames instead of raw member ids, and hides post edit/delete actions from non-owners;
    - `WebSocketStompIntegrationTest` was stabilized by waiting for the user queue subscription registration and cleaning notification/outbox data around each test.
 32. Study structured recruitment fields:
    - Flyway V12 adds `progress_method`, `target_audience`, `rules`, `capacity`, and `schedule` to `studies`;
@@ -224,7 +224,7 @@ Completed and merged into `develop`:
    - study capacity counts the owner and all `JOINED` members;
    - joining into the final available seat automatically changes the study status to `CLOSED`;
    - additional joins for a full study return `STUDY-007`;
-   - closed studies stay hidden from the public study list even if a participant later leaves;
+   - closed studies stay hidden from the recruiting study list even if a participant later leaves;
    - there is no reopen API or reopen UI; closed studies remain only as My Page history records.
 35. Study join request and owner approval flow:
    - study participation is no longer immediate membership;
@@ -234,11 +234,11 @@ Completed and merged into `develop`:
    - pre-join users can open a 1:1 private chat with the study owner from recruiting study detail;
    - accepted members can use the study group chat, while the owner-chat shortcut is hidden after participation.
 36. Study lifecycle and history behavior:
-   - public study list shows recruiting studies only;
+   - login-required study list shows recruiting studies only;
    - closed or ended studies remain visible to participants through My Page history instead of disappearing entirely;
    - owners can end a joined/closed study so it moves to past study history;
    - owner deletion is available for ended/deleted-history cleanup flows, but the UI should not show misleading delete actions for already deleted studies;
-   - withdrawing an owner removes their active recruiting studies from the public recruiting list.
+   - withdrawing an owner removes their active recruiting studies from the recruiting list.
 37. Notification interaction baseline:
    - notification popup uses unread/read visual state;
    - notification items support per-item read, all-read, delete, and click-to-read behavior;
@@ -575,8 +575,8 @@ Security filter chain:
 - Invalid or missing credentials for protected endpoints return the existing error envelope with `AUTH-003`.
 - API authentication is intentionally JWT-only. OAuth may use an HTTP session temporarily for provider state, but Spring Security does not persist the authenticated security context into the session.
 - Routes not explicitly permitted are denied by default, so new endpoints must be intentionally added to the security rules.
-- Study and post public reads are explicitly permitted; mutating routes require JWT authentication.
-- Comment public list is explicitly permitted; comment/reply create/update/delete require JWT authentication.
+- Login is required for the website's functional API surface. Study list/detail, post list/detail, and comment list all require JWT authentication.
+- Study/post/comment mutating routes also require JWT authentication and then enforce domain ownership or membership rules.
 - Notification list/read routes require JWT authentication and only expose the authenticated member's notifications.
 - Chat room list/create and message list/create routes require JWT authentication; message list/create also require room membership inside `ChatService`.
 - `/ws` handshake is permitAll, but STOMP `CONNECT` requires a bearer access token and STOMP `SUBSCRIBE`/`SEND` require chat room membership.
@@ -648,7 +648,7 @@ Next implementation tasks:
 
 1. Add authenticated frontend route guards and friendlier error states for failed create/join/comment/chat actions.
 2. Add notification reconnect/polling catch-up polish beyond the current login/connect-time sync.
-3. Add future public API routes to `SecurityConfig` explicitly instead of relying on defaults.
+3. Keep backend route contracts aligned with the login-wall product policy when adding new API routes.
 
 Frontend community screen verification already completed:
 
@@ -656,7 +656,7 @@ Frontend community screen verification already completed:
 - `npm run lint`;
 - `npm run build`;
 - `git diff --check`;
-- public API smoke for `GET /api/v1/studies` and `GET /api/v1/posts`;
+- authenticated API smoke for `GET /api/v1/studies` and `GET /api/v1/posts`;
 - Playwright desktop/mobile screenshots against `http://localhost:5174/`.
 
 WSL Playwright Korean screenshots require Korean fonts. See `docs/learnings/0023-frontend-playwright-korean-fonts.md`.
@@ -829,6 +829,12 @@ StudyWithMe 프로젝트 이어서 작업하자.
 ### 61. Security route contract test
 
 - `SecurityConfigRouteContractTest` documents the backend route security contract.
-- Public read APIs (`GET /api/v1/studies`, study detail, post list/detail, comment list) must not be blocked by authentication filters.
-- Protected APIs such as `GET /api/v1/studies/me`, join request lists, notifications, chat rooms, and write mutations must return `401 AUTH-003` without authentication.
-- Test-only unlisted API endpoints prove that newly added API routes are not accidentally public by default; future public APIs must be explicitly added to `SecurityConfig`.
+- Site functional APIs such as `GET /api/v1/studies`, study detail, post list/detail, comment list, `GET /api/v1/studies/me`, join request lists, notifications, chat rooms, and write mutations must return `401 AUTH-003` without authentication.
+- Only OAuth entrypoints, auth refresh/logout, health/info, `/ws` handshake, and `/error` are explicitly permitAll at the HTTP route level.
+- Test-only unlisted API endpoints prove that newly added API routes are not accidentally exposed by default.
+
+### 62. Login-wall security policy alignment
+
+- The product policy is that users must log in before accessing StudyWithMe website features.
+- Backend route security now matches the frontend login wall: study list/detail, community post list/detail, and comment list require JWT authentication instead of being public reads.
+- Controller tests were updated so successful study/community/comment read flows use a bearer access token, while unauthenticated access is covered by `SecurityConfigRouteContractTest`.
