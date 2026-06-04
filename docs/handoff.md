@@ -406,7 +406,8 @@ Chat REST MVP details:
 - Chat room list responses include `title`; private room titles use the other member nickname, study room titles use the study title.
 - Chat room member responses expose member id, nickname, profile image URL, and joined time only to room members.
 - Chat room list unread counts and last-message summary are implemented.
-- Per-message read receipts, chat notifications, moderation, and retention policy are not implemented yet.
+- Per-message read-count receipts are implemented for message list responses.
+- Chat notifications, moderation, and retention policy are not implemented yet.
 
 Member nickname onboarding details:
 
@@ -453,7 +454,8 @@ Chat WebSocket delivery details:
   - server validates room membership before allowing the subscription frame.
 - Current broker is Spring's in-memory simple broker. Multi-instance deployment will need broker relay or an external fan-out strategy.
 - Chat room list unread counts and last-message summary are implemented.
-- Per-message read receipts, chat notifications, moderation, and retention policy are still not implemented.
+- Per-message read-count receipts are implemented for message list responses.
+- Chat notifications, moderation, and retention policy are still not implemented.
 
 Comment baseline details:
 
@@ -861,7 +863,16 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - `ChatService.findMessages` marks the requester’s room read position up to the latest returned message after membership validation.
 - Unread count excludes messages sent by the requester.
 - Frontend chat room list shows recent-message preview plus a compact unread badge, and reloads rooms after opening a chat room so the badge clears.
-- This is room-level unread state only; per-message read receipts are still not implemented.
+- This added room-level unread state. Message-level read-count receipts were added later in the chat message read receipt flow.
+
+### 66. Chat message read receipt flow
+
+- `GET /api/v1/chat/rooms/{roomId}/messages` response items include `readMemberCount`.
+- `readMemberCount` counts current usable room members, excluding the message sender, whose `last_read_message_id` is at least the message id.
+- Message list lookup still validates room membership before reading messages or updating the requester read position.
+- WebSocket send responses include `readMemberCount`, defaulting to `0` for newly sent messages.
+- Frontend chat messages show a small read state only for messages sent by the current user: `읽지 않음` or `읽음 n`.
+- This is a read-count receipt only; detailed per-member read lists are not implemented.
 
 ### 60. Frontend auth action guard polish
 

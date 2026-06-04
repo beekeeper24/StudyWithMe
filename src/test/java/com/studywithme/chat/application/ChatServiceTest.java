@@ -217,6 +217,29 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("내가 보낸 메시지는 다른 참여자가 읽은 수를 포함한다")
+	void findMessagesWithReadMemberCount() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		ChatMessageResult sent = chatService.sendMessage(
+			room.id(),
+			requester.getId(),
+			new ChatMessageCreateCommand("확인 부탁드립니다")
+		);
+		assertThat(chatService.findMessages(room.id(), requester.getId())).singleElement()
+			.extracting(ChatMessageResult::readMemberCount)
+			.isEqualTo(0L);
+
+		chatService.findMessages(room.id(), target.getId());
+
+		assertThat(chatService.findMessages(room.id(), requester.getId())).singleElement().satisfies(message -> {
+			assertThat(message.id()).isEqualTo(sent.id());
+			assertThat(message.readMemberCount()).isEqualTo(1L);
+		});
+	}
+
+	@Test
 	@DisplayName("모집이 마감된 스터디 채팅방에도 참여자는 메시지를 작성할 수 있다")
 	void sendMessageToRecruitmentClosedStudyRoom() {
 		Member owner = saveMember("owner");

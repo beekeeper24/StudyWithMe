@@ -8,7 +8,8 @@ public record ChatMessageResponse(
 	Long roomId,
 	Long senderMemberId,
 	String content,
-	LocalDateTime createdAt
+	LocalDateTime createdAt,
+	long readMemberCount
 ) {
 
 	public static ChatMessageResponse from(ChatMessageResult result) {
@@ -17,7 +18,8 @@ public record ChatMessageResponse(
 			result.roomId(),
 			result.senderMemberId(),
 			result.content(),
-			result.createdAt()
+			result.createdAt(),
+			result.readMemberCount()
 		);
 	}
 }
