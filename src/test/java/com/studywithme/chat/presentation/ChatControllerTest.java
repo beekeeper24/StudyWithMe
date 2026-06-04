@@ -233,7 +233,8 @@ class ChatControllerTest {
 				.header("Authorization", "Bearer " + accessToken(target)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data[0].content").value("안녕하세요"));
+			.andExpect(jsonPath("$.data[0].content").value("안녕하세요"))
+			.andExpect(jsonPath("$.data[0].readMemberCount").value(1));
 	}
 
 	@Test

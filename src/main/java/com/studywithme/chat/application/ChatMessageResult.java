@@ -8,16 +8,22 @@ public record ChatMessageResult(
 	Long roomId,
 	Long senderMemberId,
 	String content,
-	LocalDateTime createdAt
+	LocalDateTime createdAt,
+	long readMemberCount
 ) {
 
 	public static ChatMessageResult from(ChatMessage message) {
+		return from(message, 0);
+	}
+
+	public static ChatMessageResult from(ChatMessage message, long readMemberCount) {
 		return new ChatMessageResult(
 			message.getId(),
 			message.getRoomId(),
 			message.getSenderMemberId(),
 			message.getContent(),
-			message.getCreatedAt()
+			message.getCreatedAt(),
+			readMemberCount
 		);
 	}
 }

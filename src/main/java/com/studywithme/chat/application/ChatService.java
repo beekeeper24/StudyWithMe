@@ -174,14 +174,13 @@ public class ChatService {
 		validateRoomMember(room, requesterMemberId);
 		ChatRoomMember roomMember = findRoomMember(room.getId(), requesterMemberId);
 
-		List<ChatMessageResult> messages = chatMessageRepository.findAllByRoomIdOrderByCreatedAtAscIdAsc(room.getId())
-			.stream()
-			.map(ChatMessageResult::from)
-			.toList();
+		List<ChatMessage> messages = chatMessageRepository.findAllByRoomIdOrderByCreatedAtAscIdAsc(room.getId());
 		if (!messages.isEmpty()) {
-			roomMember.markReadUpTo(messages.getLast().id());
+			roomMember.markReadUpTo(messages.getLast().getId());
 		}
-		return messages;
+		return messages.stream()
+			.map(message -> ChatMessageResult.from(message, countReadMembers(room, message)))
+			.toList();
 	}
 
 	public void validateRoomMembership(Long roomId, Long memberId) {
@@ -276,6 +275,17 @@ public class ChatService {
 			requesterMemberId,
 			lastReadMessageId
 		);
+	}
+
+	private long countReadMembers(ChatRoom room, ChatMessage message) {
+		return chatRoomMemberRepository.findAllByRoomId(room.getId())
+			.stream()
+			.filter(roomMember -> !roomMember.getMemberId().equals(message.getSenderMemberId()))
+			.filter(roomMember -> roomMember.getHiddenAt() == null)
+			.filter(roomMember -> canUseRoom(room, roomMember.getMemberId()))
+			.filter(roomMember -> roomMember.getLastReadMessageId() != null)
+			.filter(roomMember -> roomMember.getLastReadMessageId() >= message.getId())
+			.count();
 	}
 
 	private static LocalDateTime roomListSortTime(ChatRoomResult result) {
