@@ -950,3 +950,11 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Full-suite verification showed this could fail when two matching studies were created close together.
 - The controller test now verifies that page 0 and page 1 contain exactly the two matching active studies, without depending on which one appears first.
 - The past-history page test also avoids coupling the controller-level search/pagination assertion to exact row order.
+
+### 73. Admin chat report history filters
+
+- Backend report list contract is now covered for omitted status, `PENDING`, and `RESOLVED` queries.
+- `GET /api/v1/admin/chat-message-reports` without `status` returns all report states for admin history review.
+- Frontend My Page admin report panel has `대기`, `처리 완료`, `기각`, and `전체` filters.
+- Only `PENDING` reports show handling actions; handled reports are displayed as read-only history with status and handled time.
+- Clicking a `CHAT_REPORT` notification still switches admins to the pending report filter because new notifications represent actionable reports.

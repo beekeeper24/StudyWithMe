@@ -469,6 +469,55 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("관리자는 전체 신고와 처리 상태별 신고를 조회할 수 있다")
+	void findReportsByStatusForAdmin() {
+		Member reporter = saveMember("history-reporter");
+		Member firstTarget = saveMember("history-first-target");
+		Member secondTarget = saveMember("history-second-target");
+		Member admin = saveAdmin("history-admin");
+		ChatRoomResult firstRoom = chatService.createPrivateRoom(reporter.getId(), firstTarget.getId());
+		ChatMessageResult firstMessage = chatService.sendMessage(
+			firstRoom.id(),
+			firstTarget.getId(),
+			new ChatMessageCreateCommand("처리된 신고 대상 메시지")
+		);
+		ChatMessageReportResult resolvedReport = chatService.reportMessage(
+			firstRoom.id(),
+			firstMessage.id(),
+			reporter.getId(),
+			"처리 대상입니다."
+		);
+		chatService.handleMessageReport(
+			resolvedReport.id(),
+			admin.getId(),
+			ChatMessageReportStatus.RESOLVED,
+			"확인 완료"
+		);
+		ChatRoomResult secondRoom = chatService.createPrivateRoom(reporter.getId(), secondTarget.getId());
+		ChatMessageResult secondMessage = chatService.sendMessage(
+			secondRoom.id(),
+			secondTarget.getId(),
+			new ChatMessageCreateCommand("대기 중 신고 대상 메시지")
+		);
+		ChatMessageReportResult pendingReport = chatService.reportMessage(
+			secondRoom.id(),
+			secondMessage.id(),
+			reporter.getId(),
+			"대기 대상입니다."
+		);
+
+		assertThat(chatService.findMessageReports(admin.getId(), null))
+			.extracting(ChatMessageReportResult::id)
+			.containsExactly(pendingReport.id(), resolvedReport.id());
+		assertThat(chatService.findMessageReports(admin.getId(), ChatMessageReportStatus.PENDING))
+			.extracting(ChatMessageReportResult::id)
+			.containsExactly(pendingReport.id());
+		assertThat(chatService.findMessageReports(admin.getId(), ChatMessageReportStatus.RESOLVED))
+			.extracting(ChatMessageReportResult::id)
+			.containsExactly(resolvedReport.id());
+	}
+
+	@Test
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	@DirtiesContext
 	@DisplayName("채팅 메시지 신고는 낙관적 락으로 동시에 두 번 처리될 수 없다")
