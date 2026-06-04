@@ -255,6 +255,52 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("내 채팅방 목록은 최근 메시지와 읽지 않은 메시지 수를 제공한다")
+	void findMyRoomsWithLastMessageAndUnreadCount() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			requester.getId(),
+			new ChatMessageCreateCommand("확인 부탁드립니다")
+		);
+
+		List<ChatRoomResult> rooms = chatService.findMyRooms(target.getId());
+
+		assertThat(rooms).singleElement().satisfies(result -> {
+			assertThat(result.id()).isEqualTo(room.id());
+			assertThat(result.lastMessageContent()).isEqualTo(message.content());
+			assertThat(result.lastMessageSenderMemberId()).isEqualTo(requester.getId());
+			assertThat(result.lastMessageCreatedAt()).isEqualTo(message.createdAt());
+			assertThat(result.unreadCount()).isEqualTo(1);
+		});
+	}
+
+	@Test
+	@DisplayName("채팅방 메시지를 조회하면 해당 방의 읽지 않은 메시지를 읽음 처리한다")
+	void findMessagesMarksRoomAsRead() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		chatService.sendMessage(
+			room.id(),
+			requester.getId(),
+			new ChatMessageCreateCommand("확인 부탁드립니다")
+		);
+		assertThat(chatService.findMyRooms(target.getId())).singleElement()
+			.extracting(ChatRoomResult::unreadCount)
+			.isEqualTo(1L);
+
+		chatService.findMessages(room.id(), target.getId());
+
+		assertThat(chatService.findMyRooms(target.getId())).singleElement()
+			.extracting(ChatRoomResult::unreadCount)
+			.isEqualTo(0L);
+	}
+
+	@Test
 	@DisplayName("채팅방을 삭제하면 내 채팅방 목록에서만 숨긴다")
 	void hideRoomFromMyRooms() {
 		Member requester = saveMember("requester");

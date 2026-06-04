@@ -405,7 +405,8 @@ Chat REST MVP details:
 - Study rooms use deterministic room keys by study id and sync current study members into `chat_room_members`.
 - Chat room list responses include `title`; private room titles use the other member nickname, study room titles use the study title.
 - Chat room member responses expose member id, nickname, profile image URL, and joined time only to room members.
-- Unread counts, read receipts, chat notifications, moderation, and retention policy are not implemented yet.
+- Chat room list unread counts and last-message summary are implemented.
+- Per-message read receipts, chat notifications, moderation, and retention policy are not implemented yet.
 
 Member nickname onboarding details:
 
@@ -451,7 +452,8 @@ Chat WebSocket delivery details:
   - client subscribes to `/topic/chat.rooms.{roomId}`
   - server validates room membership before allowing the subscription frame.
 - Current broker is Spring's in-memory simple broker. Multi-instance deployment will need broker relay or an external fan-out strategy.
-- Unread counts, read receipts, chat notifications, moderation, and retention policy are still not implemented.
+- Chat room list unread counts and last-message summary are implemented.
+- Per-message read receipts, chat notifications, moderation, and retention policy are still not implemented.
 
 Comment baseline details:
 
@@ -845,6 +847,16 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - `NotificationControllerTest` verifies that read-all changes only the requester’s notifications and does not mark another member’s notifications as read.
 - Frontend notification popup now uses the read-all API instead of sending one request per unread notification.
 - Failed individual read requests no longer fake a local read state; the UI keeps server state honest and surfaces the request error.
+
+### 65. Chat room read-state list flow
+
+- Flyway V16 adds `chat_room_members.last_read_message_id` for per-member room read position.
+- `GET /api/v1/chat/rooms` responses now include nullable `lastMessageContent`, `lastMessageSenderMemberId`, `lastMessageCreatedAt`, and numeric `unreadCount`.
+- `ChatService.findMyRooms` sorts rooms by latest message time, falling back to room creation time when a room has no messages.
+- `ChatService.findMessages` marks the requester’s room read position up to the latest returned message after membership validation.
+- Unread count excludes messages sent by the requester.
+- Frontend chat room list shows recent-message preview plus a compact unread badge, and reloads rooms after opening a chat room so the badge clears.
+- This is room-level unread state only; per-message read receipts are still not implemented.
 
 ### 60. Frontend auth action guard polish
 

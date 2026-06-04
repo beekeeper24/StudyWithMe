@@ -10,7 +10,11 @@ public record ChatRoomResponse(
 	String type,
 	Long studyId,
 	String title,
-	LocalDateTime createdAt
+	LocalDateTime createdAt,
+	String lastMessageContent,
+	Long lastMessageSenderMemberId,
+	LocalDateTime lastMessageCreatedAt,
+	long unreadCount
 ) {
 
 	public static ChatRoomResponse from(ChatRoomResult result) {
@@ -19,7 +23,11 @@ public record ChatRoomResponse(
 			result.type().name(),
 			result.studyId(),
 			result.title(),
-			result.createdAt()
+			result.createdAt(),
+			result.lastMessageContent(),
+			result.lastMessageSenderMemberId(),
+			result.lastMessageCreatedAt(),
+			result.unreadCount()
 		);
 	}
 }

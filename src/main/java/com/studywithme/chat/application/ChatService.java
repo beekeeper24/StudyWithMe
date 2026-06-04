@@ -18,6 +18,8 @@ import com.studywithme.study.domain.StudyStatus;
 import com.studywithme.study.exception.StudyErrorCode;
 import com.studywithme.study.repository.StudyMemberRepository;
 import com.studywithme.study.repository.StudyRepository;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -114,6 +116,9 @@ public class ChatService {
 			.stream()
 			.filter(room -> canUseRoom(room, memberId))
 			.map(room -> toRoomResult(room, memberId))
+			.sorted(Comparator.comparing(ChatService::roomListSortTime)
+				.thenComparing(ChatRoomResult::id)
+				.reversed())
 			.toList();
 	}
 
@@ -163,14 +168,20 @@ public class ChatService {
 		return ChatMessageResult.from(message);
 	}
 
+	@Transactional
 	public List<ChatMessageResult> findMessages(Long roomId, Long requesterMemberId) {
 		ChatRoom room = findRoom(roomId);
 		validateRoomMember(room, requesterMemberId);
+		ChatRoomMember roomMember = findRoomMember(room.getId(), requesterMemberId);
 
-		return chatMessageRepository.findAllByRoomIdOrderByCreatedAtAscIdAsc(room.getId())
+		List<ChatMessageResult> messages = chatMessageRepository.findAllByRoomIdOrderByCreatedAtAscIdAsc(room.getId())
 			.stream()
 			.map(ChatMessageResult::from)
 			.toList();
+		if (!messages.isEmpty()) {
+			roomMember.markReadUpTo(messages.getLast().id());
+		}
+		return messages;
 	}
 
 	public void validateRoomMembership(Long roomId, Long memberId) {
@@ -248,7 +259,27 @@ public class ChatService {
 	}
 
 	private ChatRoomResult toRoomResult(ChatRoom room, Long requesterMemberId) {
-		return ChatRoomResult.from(room, roomTitle(room, requesterMemberId));
+		ChatRoomMember roomMember = findRoomMember(room.getId(), requesterMemberId);
+		ChatMessageResult lastMessage = chatMessageRepository.findTopByRoomIdOrderByCreatedAtDescIdDesc(room.getId())
+			.map(ChatMessageResult::from)
+			.orElse(null);
+		long unreadCount = countUnreadMessages(room.getId(), requesterMemberId, roomMember.getLastReadMessageId());
+		return ChatRoomResult.from(room, roomTitle(room, requesterMemberId), lastMessage, unreadCount);
+	}
+
+	private long countUnreadMessages(Long roomId, Long requesterMemberId, Long lastReadMessageId) {
+		if (lastReadMessageId == null) {
+			return chatMessageRepository.countByRoomIdAndSenderMemberIdNot(roomId, requesterMemberId);
+		}
+		return chatMessageRepository.countByRoomIdAndSenderMemberIdNotAndIdGreaterThan(
+			roomId,
+			requesterMemberId,
+			lastReadMessageId
+		);
+	}
+
+	private static LocalDateTime roomListSortTime(ChatRoomResult result) {
+		return result.lastMessageCreatedAt() == null ? result.createdAt() : result.lastMessageCreatedAt();
 	}
 
 	private String roomTitle(ChatRoom room, Long requesterMemberId) {

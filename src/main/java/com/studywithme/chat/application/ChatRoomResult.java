@@ -9,20 +9,33 @@ public record ChatRoomResult(
 	ChatRoomType type,
 	Long studyId,
 	String title,
-	LocalDateTime createdAt
+	LocalDateTime createdAt,
+	String lastMessageContent,
+	Long lastMessageSenderMemberId,
+	LocalDateTime lastMessageCreatedAt,
+	long unreadCount
 ) {
 
 	public static ChatRoomResult from(ChatRoom room) {
-		return from(room, null);
+		return from(room, null, null, 0);
 	}
 
-	public static ChatRoomResult from(ChatRoom room, String title) {
+	public static ChatRoomResult from(
+		ChatRoom room,
+		String title,
+		ChatMessageResult lastMessage,
+		long unreadCount
+	) {
 		return new ChatRoomResult(
 			room.getId(),
 			room.getType(),
 			room.getStudyId(),
 			title,
-			room.getCreatedAt()
+			room.getCreatedAt(),
+			lastMessage == null ? null : lastMessage.content(),
+			lastMessage == null ? null : lastMessage.senderMemberId(),
+			lastMessage == null ? null : lastMessage.createdAt(),
+			unreadCount
 		);
 	}
 }
