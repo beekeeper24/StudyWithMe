@@ -38,6 +38,31 @@ public enum ChatErrorCode implements ErrorCode {
 		"CHAT-007",
 		"메시지 작성자만 삭제할 수 있습니다.",
 		HttpStatus.FORBIDDEN
+	),
+	CANNOT_REPORT_OWN_MESSAGE(
+		"CHAT-008",
+		"자신이 보낸 메시지는 신고할 수 없습니다.",
+		HttpStatus.CONFLICT
+	),
+	CHAT_MESSAGE_REPORT_DUPLICATED(
+		"CHAT-009",
+		"이미 신고한 메시지입니다.",
+		HttpStatus.CONFLICT
+	),
+	CHAT_REPORT_ADMIN_REQUIRED(
+		"CHAT-010",
+		"채팅 신고 관리는 관리자만 수행할 수 있습니다.",
+		HttpStatus.FORBIDDEN
+	),
+	DELETED_CHAT_MESSAGE_REPORT_NOT_ALLOWED(
+		"CHAT-011",
+		"삭제된 메시지는 신고할 수 없습니다.",
+		HttpStatus.CONFLICT
+	),
+	INVALID_CHAT_REPORT_STATUS(
+		"CHAT-012",
+		"신고 처리 상태가 올바르지 않습니다.",
+		HttpStatus.BAD_REQUEST
 	);
 
 	private final String code;

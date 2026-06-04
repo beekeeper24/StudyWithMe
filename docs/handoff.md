@@ -904,6 +904,17 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Frontend chat messages show a small delete icon only on the current user's non-deleted messages.
 - Frontend realtime handling merges incoming chat messages by id, so a delete event updates the existing message instead of appending a duplicate.
 
+### 70. Chat message report baseline
+
+- Flyway V18 adds `chat_message_reports` for per-message moderation reports with reporter, reported member, reason, status, handler, and timestamps.
+- A chat room member can report another member's non-deleted message through `POST /api/v1/chat/rooms/{roomId}/messages/{messageId}/reports`.
+- Report creation validates current usable room membership before saving, rejects own-message reports, rejects deleted-message reports, and prevents duplicate reports by the same reporter/message pair.
+- ADMIN users can list pending/all reports with `GET /api/v1/admin/chat-message-reports?status=PENDING` and handle a report with `POST /api/v1/admin/chat-message-reports/{reportId}/handle`.
+- ADMIN authorization is enforced in `ChatService`, not only in the frontend or controller, so non-HTTP internal callers still go through the same role check.
+- Report responses include the original message content for moderation review; this endpoint is authenticated and service-guarded to ADMIN for list/handle access.
+- Frontend chat rows show a small report action only for another user's non-deleted persisted messages.
+- Frontend My Page shows a lightweight ADMIN-only pending report panel where admins can resolve or reject reports; regular members never render this panel.
+
 ### 60. Frontend auth action guard polish
 
 - Frontend user actions that require authentication now use a shared `requireAuthenticated` guard instead of silently returning on missing access token.
