@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 
 @Entity
@@ -56,6 +57,10 @@ public class ChatMessageReport {
 
 	@Column(name = "handled_at")
 	private LocalDateTime handledAt;
+
+	@Version
+	@Column(nullable = false)
+	private Long version = 0L;
 
 	protected ChatMessageReport() {
 	}
@@ -135,5 +140,9 @@ public class ChatMessageReport {
 
 	public LocalDateTime getHandledAt() {
 		return handledAt;
+	}
+
+	public Long getVersion() {
+		return version;
 	}
 }

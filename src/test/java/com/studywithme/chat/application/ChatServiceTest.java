@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.studywithme.chat.domain.ChatRoomType;
+import com.studywithme.chat.domain.ChatMessageReport;
 import com.studywithme.chat.domain.ChatMessageReportStatus;
 import com.studywithme.chat.exception.ChatErrorCode;
 import com.studywithme.chat.repository.ChatMessageReportRepository;
@@ -24,10 +25,17 @@ import com.studywithme.study.application.StudyService;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @DataJpaTest
 @Import({
@@ -53,6 +61,9 @@ class ChatServiceTest {
 
 	@Autowired
 	private StudyService studyService;
+
+	@Autowired
+	private PlatformTransactionManager transactionManager;
 
 	@MockitoBean
 	private OutboxEventPublisher outboxEventPublisher;
@@ -313,6 +324,38 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("채팅 메시지를 신고하면 활성 관리자들에게 신고 알림 이벤트를 저장한다")
+	void reportMessagePublishesAdminNotificationEvent() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		Member firstAdmin = saveAdmin("first-admin");
+		Member secondAdmin = saveAdmin("second-admin");
+		Member withdrawnAdmin = saveAdmin("withdrawn-admin");
+		withdrawnAdmin.withdraw("withdrawn-admin@example.com", "withdrawn:admin");
+		memberRepository.saveAndFlush(withdrawnAdmin);
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("신고 대상 메시지")
+		);
+		clearInvocations(outboxEventPublisher);
+
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			requester.getId(),
+			"관리자 확인이 필요합니다."
+		);
+
+		verify(outboxEventPublisher).publishChatMessageReported(
+			report.id(),
+			requester.getId(),
+			List.of(firstAdmin.getId(), secondAdmin.getId())
+		);
+	}
+
+	@Test
 	@DisplayName("자신이 보낸 채팅 메시지는 신고할 수 없다")
 	void rejectReportOwnMessage() {
 		Member requester = saveMember("requester");
@@ -391,6 +434,79 @@ class ChatServiceTest {
 		assertThat(chatMessageReportRepository.findById(report.id())).get()
 			.extracting("status")
 			.isEqualTo(ChatMessageReportStatus.RESOLVED);
+	}
+
+	@Test
+	@DisplayName("이미 처리된 채팅 메시지 신고는 다시 처리할 수 없다")
+	void rejectAlreadyHandledReport() {
+		Member reporter = saveMember("reporter");
+		Member target = saveMember("target");
+		Member firstAdmin = saveAdmin("first-admin");
+		Member secondAdmin = saveAdmin("second-admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("신고 대상 메시지")
+		);
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			reporter.getId(),
+			"관리자 확인이 필요합니다."
+		);
+		chatService.handleMessageReport(report.id(), firstAdmin.getId(), ChatMessageReportStatus.RESOLVED, "확인 완료");
+
+		assertThatThrownBy(() -> chatService.handleMessageReport(
+			report.id(),
+			secondAdmin.getId(),
+			ChatMessageReportStatus.REJECTED,
+			"기각"
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.CHAT_REPORT_ALREADY_HANDLED);
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	@DirtiesContext
+	@DisplayName("채팅 메시지 신고는 낙관적 락으로 동시에 두 번 처리될 수 없다")
+	void rejectStaleReportVersionUpdate() {
+		Member reporter = saveMember("stale-reporter");
+		Member target = saveMember("stale-target");
+		Member firstAdmin = saveAdmin("stale-first-admin");
+		Member secondAdmin = saveAdmin("stale-second-admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("신고 대상 메시지")
+		);
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			reporter.getId(),
+			"관리자 확인이 필요합니다."
+		);
+		TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+		transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+		ChatMessageReport staleReport = transactionTemplate.execute(status ->
+			chatMessageReportRepository.findById(report.id()).orElseThrow()
+		);
+		ChatMessageReport currentReport = transactionTemplate.execute(status ->
+			chatMessageReportRepository.findById(report.id()).orElseThrow()
+		);
+		transactionTemplate.executeWithoutResult(status -> {
+			currentReport.handle(firstAdmin.getId(), ChatMessageReportStatus.RESOLVED, "확인 완료");
+			chatMessageReportRepository.saveAndFlush(currentReport);
+		});
+
+		assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(status -> {
+			staleReport.handle(secondAdmin.getId(), ChatMessageReportStatus.REJECTED, "기각");
+			chatMessageReportRepository.saveAndFlush(staleReport);
+		}))
+			.isInstanceOf(ObjectOptimisticLockingFailureException.class);
 	}
 
 	@Test

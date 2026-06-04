@@ -1,6 +1,7 @@
 package com.studywithme.member.repository;
 
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.domain.OAuthProvider;
 import java.util.Collection;
@@ -31,6 +32,19 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 		""")
 	List<Member> findAllByNormalizedEmailInAndStatus(
 		@Param("emails") Collection<String> emails,
+		@Param("status") MemberStatus status
+	);
+
+	@Query("""
+		select distinct m
+		from Member m
+			join m.roles role
+		where role = :role
+			and m.status = :status
+		order by m.id asc
+		""")
+	List<Member> findAllByRoleAndStatus(
+		@Param("role") MemberRole role,
 		@Param("status") MemberStatus status
 	);
 }

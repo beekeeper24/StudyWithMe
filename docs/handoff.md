@@ -1,6 +1,6 @@
 # StudyWithMe Handoff
 
-Last updated: 2026-06-03
+Last updated: 2026-06-05
 
 ## Read This First
 
@@ -934,3 +934,12 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - The product policy is that users must log in before accessing StudyWithMe website features.
 - Backend route security now matches the frontend login wall: study list/detail, community post list/detail, and comment list require JWT authentication instead of being public reads.
 - Controller tests were updated so successful study/community/comment read flows use a bearer access token, while unauthenticated access is covered by `SecurityConfigRouteContractTest`.
+
+### 71. Moderation product docs and report admin notification policy
+
+- Moderation policy now has a product document: `docs/product/moderation.md`.
+- Frontend moderation UI policy is tracked separately in `StudyWithMe-Front/docs/product/moderation.md`.
+- Handoff should keep only recent/session-critical moderation context; long-lived report policy belongs in the product docs.
+- Chat report admin notification MVP policy: when a report is created, active ADMIN members receive a `CHAT_REPORT` notification; existing self-notification suppression skips the reporter if they are also an admin.
+- This all-admin notification policy is temporary; future assignment should add `assignedAdminId` and notify only the assigned admin for follow-up work.
+- Chat report handling uses a `PENDING` status check plus JPA optimistic lock on `chat_message_reports.version` so two admins cannot successfully handle the same report at the same time.

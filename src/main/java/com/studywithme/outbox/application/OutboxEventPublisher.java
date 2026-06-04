@@ -13,6 +13,7 @@ public class OutboxEventPublisher {
 	private static final String AGGREGATE_TYPE_COMMENT = "COMMENT";
 	private static final String AGGREGATE_TYPE_STUDY = "STUDY";
 	private static final String AGGREGATE_TYPE_CHAT_ROOM = "CHAT_ROOM";
+	private static final String AGGREGATE_TYPE_CHAT_REPORT = "CHAT_REPORT";
 
 	private final ObjectMapper objectMapper;
 	private final OutboxEventRepository outboxEventRepository;
@@ -125,6 +126,17 @@ public class OutboxEventPublisher {
 		));
 	}
 
+	public void publishChatMessageReported(Long reportId, Long actorMemberId, List<Long> receiverMemberIds) {
+		if (receiverMemberIds == null || receiverMemberIds.isEmpty()) {
+			return;
+		}
+		save("CHAT_MESSAGE_REPORTED", AGGREGATE_TYPE_CHAT_REPORT, reportId, new ChatMessageReportedPayload(
+			reportId,
+			actorMemberId,
+			receiverMemberIds
+		));
+	}
+
 	private void publishStudyMultiReceiver(
 		String eventType,
 		Long studyId,
@@ -206,6 +218,13 @@ public class OutboxEventPublisher {
 		Long roomId,
 		Long receiverMemberId,
 		Long actorMemberId
+	) {
+	}
+
+	private record ChatMessageReportedPayload(
+		Long reportId,
+		Long actorMemberId,
+		List<Long> receiverMemberIds
 	) {
 	}
 }
