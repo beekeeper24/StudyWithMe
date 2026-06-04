@@ -36,6 +36,9 @@ public class ChatRoomMember {
 	@Column(name = "hidden_at")
 	private LocalDateTime hiddenAt;
 
+	@Column(name = "last_read_message_id")
+	private Long lastReadMessageId;
+
 	protected ChatRoomMember() {
 	}
 
@@ -54,6 +57,15 @@ public class ChatRoomMember {
 
 	public void restore() {
 		this.hiddenAt = null;
+	}
+
+	public void markReadUpTo(Long messageId) {
+		if (messageId == null) {
+			return;
+		}
+		if (lastReadMessageId == null || lastReadMessageId < messageId) {
+			lastReadMessageId = messageId;
+		}
 	}
 
 	@PrePersist
@@ -79,5 +91,9 @@ public class ChatRoomMember {
 
 	public LocalDateTime getHiddenAt() {
 		return hiddenAt;
+	}
+
+	public Long getLastReadMessageId() {
+		return lastReadMessageId;
 	}
 }

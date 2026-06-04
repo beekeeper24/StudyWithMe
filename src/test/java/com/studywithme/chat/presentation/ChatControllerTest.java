@@ -135,13 +135,22 @@ class ChatControllerTest {
 		Member outsider = saveMember("outsider");
 		ChatRoomResult myRoom = chatService.createPrivateRoom(requester.getId(), target.getId());
 		chatService.createPrivateRoom(target.getId(), outsider.getId());
+		chatService.sendMessage(
+			myRoom.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("새 메시지입니다")
+		);
 
 		mockMvc.perform(get("/api/v1/chat/rooms")
 				.header("Authorization", "Bearer " + accessToken(requester)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data[0].id").value(myRoom.id()))
-			.andExpect(jsonPath("$.data[0].title").value("target"));
+			.andExpect(jsonPath("$.data[0].title").value("target"))
+			.andExpect(jsonPath("$.data[0].lastMessageContent").value("새 메시지입니다"))
+			.andExpect(jsonPath("$.data[0].lastMessageSenderMemberId").value(target.getId()))
+			.andExpect(jsonPath("$.data[0].lastMessageCreatedAt").exists())
+			.andExpect(jsonPath("$.data[0].unreadCount").value(1));
 	}
 
 	@Test
