@@ -200,8 +200,8 @@ public class ChatService {
 	}
 
 	private void validateRoomMember(ChatRoom room, Long memberId) {
-		if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(room.getId(), memberId)
-			|| !canUseRoom(room, memberId)) {
+		ChatRoomMember roomMember = findRoomMember(room.getId(), memberId);
+		if (roomMember.getHiddenAt() != null || !canUseRoom(room, memberId)) {
 			throw new BusinessException(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
 		}
 	}

@@ -353,6 +353,57 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("삭제한 채팅방은 메시지 목록을 직접 조회할 수 없다")
+	void rejectFindMessagesFromHiddenRoomMember() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("이전 메시지")
+		);
+		chatService.hideRoom(room.id(), requester.getId());
+
+		assertThatThrownBy(() -> chatService.findMessages(room.id(), requester.getId()))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
+	}
+
+	@Test
+	@DisplayName("삭제한 채팅방에는 메시지를 직접 보낼 수 없다")
+	void rejectSendMessageFromHiddenRoomMember() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		chatService.hideRoom(room.id(), requester.getId());
+
+		assertThatThrownBy(() -> chatService.sendMessage(
+			room.id(),
+			requester.getId(),
+			new ChatMessageCreateCommand("숨긴 방 메시지")
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
+	}
+
+	@Test
+	@DisplayName("삭제한 채팅방은 참여자 목록을 직접 조회할 수 없다")
+	void rejectFindRoomMembersFromHiddenRoomMember() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		chatService.hideRoom(room.id(), requester.getId());
+
+		assertThatThrownBy(() -> chatService.findRoomMembers(room.id(), requester.getId()))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
+	}
+
+	@Test
 	@DisplayName("상대방이 삭제한 기존 1:1 채팅방을 다시 요청하면 상대방 목록에도 복구하고 알림을 보낸다")
 	void restoreTargetHiddenPrivateRoomWhenRequestingAgain() {
 		Member requester = saveMember("requester");
