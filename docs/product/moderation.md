@@ -23,6 +23,7 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 
 - Only one admin should be able to handle a report.
 - The service rejects any report handling request when the report is no longer `PENDING`.
+- Admin handling notes are optional and limited to 500 characters.
 - `chat_message_reports.version` is used as a JPA optimistic lock.
 - If two admins submit handling requests at nearly the same time, the first successful commit wins and the later stale update fails with the already-handled report error.
 

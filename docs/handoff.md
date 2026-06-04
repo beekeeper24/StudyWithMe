@@ -967,3 +967,11 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Frontend My Page admin report rows now show 신고자, 피신고자, 처리자, original message, and report reason as separate operator-facing blocks.
 - Pending reports still show handling actions; resolved/rejected reports remain read-only history.
 - Missing nicknames are rendered as `탈퇴한 회원` on the frontend so numeric ids are not the primary admin label.
+
+### 75. Admin chat report handling note flow
+
+- Backend controller tests now cover the existing 500-character limit for chat report handling notes.
+- Frontend admin report handling actions open a modal instead of immediately resolving or rejecting the report.
+- The modal shows reporter, reported member, original message, and report reason before the admin submits the decision.
+- Admin handling notes are optional and are sent to the existing `handlingNote` request field.
+- Handled report history displays the handling note when one exists.
