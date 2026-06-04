@@ -338,7 +338,8 @@ Active feature work in progress:
   - `REPLY_ON_COMMENT`
 - In-app notification API:
   - authenticated `GET /api/v1/notifications`;
-  - authenticated `POST /api/v1/notifications/{notificationId}/read`.
+  - authenticated `POST /api/v1/notifications/{notificationId}/read`;
+  - authenticated `POST /api/v1/notifications/read-all`.
 - `NotificationOutboxProcessor` handles at-least-once processing.
 - `NotificationOutboxWorker` is disabled by default and enabled with `app.notification.outbox.worker-enabled=true`.
 - Flyway V7 Kafka relay schema adds:
@@ -836,6 +837,14 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Correct future grouping: create one branch such as `feature/frontend-route-restoration` and keep related routing work as checkpoint commits until the whole route-restoration slice is complete.
 - Before opening future PRs, explicitly answer: "Is the next likely task part of the same user-visible flow or reviewable deliverable?" If yes, do not open a PR yet.
 - Apply this same correction to other frontend UX families: notification UX, chat UX, my-page UX, community board UX, and study recruitment UX should be grouped by user flow, not by each small screen or helper.
+
+### 64. Notification all-read flow polish
+
+- Backend `POST /api/v1/notifications/read-all` marks all notifications owned by the authenticated member as read and returns the refreshed notification list.
+- The route is explicitly authenticated in `SecurityConfig` and covered by `SecurityConfigRouteContractTest`.
+- `NotificationControllerTest` verifies that read-all changes only the requester’s notifications and does not mark another member’s notifications as read.
+- Frontend notification popup now uses the read-all API instead of sending one request per unread notification.
+- Failed individual read requests no longer fake a local read state; the UI keeps server state honest and surfaces the request error.
 
 ### 60. Frontend auth action guard polish
 

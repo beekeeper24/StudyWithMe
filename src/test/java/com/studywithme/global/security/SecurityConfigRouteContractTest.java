@@ -63,6 +63,7 @@ class SecurityConfigRouteContractTest {
 			Arguments.of(HttpMethod.POST, "/api/v1/studies"),
 			Arguments.of(HttpMethod.POST, "/api/v1/posts"),
 			Arguments.of(HttpMethod.POST, "/api/v1/posts/1/comments"),
+			Arguments.of(HttpMethod.POST, "/api/v1/notifications/read-all"),
 			Arguments.of(HttpMethod.PUT, "/api/v1/posts/1"),
 			Arguments.of(HttpMethod.DELETE, "/api/v1/posts/1"),
 			Arguments.of(HttpMethod.DELETE, "/api/v1/chat/rooms/1"),

@@ -131,6 +131,54 @@ class NotificationControllerTest {
 	}
 
 	@Test
+	@DisplayName("인증한 회원은 자신의 모든 읽지 않은 알림을 읽음 처리할 수 있다")
+	void readAllMyNotifications() throws Exception {
+		Member receiver = saveMember("receiver");
+		Member actor = saveMember("actor");
+		Member other = saveMember("other");
+		notificationRepository.save(Notification.create(
+			receiver.getId(),
+			actor.getId(),
+			NotificationType.COMMENT_ON_POST,
+			NotificationTargetType.COMMENT,
+			1L,
+			"event-1",
+			"새 댓글이 달렸습니다."
+		));
+		notificationRepository.save(Notification.create(
+			receiver.getId(),
+			actor.getId(),
+			NotificationType.REPLY_ON_COMMENT,
+			NotificationTargetType.COMMENT,
+			2L,
+			"event-2",
+			"새 답글이 달렸습니다."
+		));
+		notificationRepository.save(Notification.create(
+			other.getId(),
+			actor.getId(),
+			NotificationType.COMMENT_ON_POST,
+			NotificationTargetType.COMMENT,
+			3L,
+			"event-3",
+			"다른 회원의 알림입니다."
+		));
+
+		mockMvc.perform(post("/api/v1/notifications/read-all")
+				.header("Authorization", "Bearer " + accessToken(receiver)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(2))
+			.andExpect(jsonPath("$.data[0].read").value(true))
+			.andExpect(jsonPath("$.data[1].read").value(true));
+
+		mockMvc.perform(get("/api/v1/notifications")
+				.header("Authorization", "Bearer " + accessToken(other)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data[0].read").value(false));
+	}
+
+	@Test
 	@DisplayName("다른 회원의 알림은 읽음 처리할 수 없다")
 	void rejectReadOtherMemberNotification() throws Exception {
 		Member receiver = saveMember("receiver");
