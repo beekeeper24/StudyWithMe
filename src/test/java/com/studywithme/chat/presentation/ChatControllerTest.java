@@ -359,6 +359,62 @@ class ChatControllerTest {
 	}
 
 	@Test
+	@DisplayName("관리자는 채팅 메시지 신고를 전체와 처리 상태별로 조회할 수 있다")
+	void findReportsByStatusForAdmin() throws Exception {
+		Member reporter = saveMember("history-reporter");
+		Member firstTarget = saveMember("history-first-target");
+		Member secondTarget = saveMember("history-second-target");
+		Member admin = saveAdmin("history-admin");
+		ChatRoomResult firstRoom = chatService.createPrivateRoom(reporter.getId(), firstTarget.getId());
+		var firstMessage = chatService.sendMessage(
+			firstRoom.id(),
+			firstTarget.getId(),
+			new ChatMessageCreateCommand("처리된 신고 대상 메시지")
+		);
+		var resolvedReport = chatService.reportMessage(
+			firstRoom.id(),
+			firstMessage.id(),
+			reporter.getId(),
+			"처리 대상입니다."
+		);
+		chatService.handleMessageReport(
+			resolvedReport.id(),
+			admin.getId(),
+			ChatMessageReportStatus.RESOLVED,
+			"확인 완료"
+		);
+		ChatRoomResult secondRoom = chatService.createPrivateRoom(reporter.getId(), secondTarget.getId());
+		var secondMessage = chatService.sendMessage(
+			secondRoom.id(),
+			secondTarget.getId(),
+			new ChatMessageCreateCommand("대기 중 신고 대상 메시지")
+		);
+		var pendingReport = chatService.reportMessage(
+			secondRoom.id(),
+			secondMessage.id(),
+			reporter.getId(),
+			"대기 대상입니다."
+		);
+
+		mockMvc.perform(get("/api/v1/admin/chat-message-reports")
+				.header("Authorization", "Bearer " + accessToken(admin)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data[0].id").value(pendingReport.id()))
+			.andExpect(jsonPath("$.data[0].status").value("PENDING"))
+			.andExpect(jsonPath("$.data[1].id").value(resolvedReport.id()))
+			.andExpect(jsonPath("$.data[1].status").value("RESOLVED"));
+		mockMvc.perform(get("/api/v1/admin/chat-message-reports")
+				.param("status", ChatMessageReportStatus.RESOLVED.name())
+				.header("Authorization", "Bearer " + accessToken(admin)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.length()").value(1))
+			.andExpect(jsonPath("$.data[0].id").value(resolvedReport.id()))
+			.andExpect(jsonPath("$.data[0].status").value("RESOLVED"));
+	}
+
+	@Test
 	@DisplayName("채팅방 참여자가 아니면 메시지 목록을 조회할 수 없다")
 	void rejectReadMessagesByNonRoomMember() throws Exception {
 		Member requester = saveMember("requester");

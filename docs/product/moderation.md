@@ -26,6 +26,13 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - `chat_message_reports.version` is used as a JPA optimistic lock.
 - If two admins submit handling requests at nearly the same time, the first successful commit wins and the later stale update fails with the already-handled report error.
 
+## Admin Report History Policy
+
+- Admins can query all chat message reports by omitting the status filter.
+- Admins can query a specific report state with `PENDING`, `RESOLVED`, or `REJECTED`.
+- Pending reports are the actionable queue.
+- Resolved and rejected reports are read-only history for operational review.
+
 ## Future Assignment Policy
 
 When admin volume grows, replace the all-admin notification policy with assignment.
