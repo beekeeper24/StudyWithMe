@@ -183,6 +183,19 @@ public class ChatService {
 			.toList();
 	}
 
+	@Transactional
+	public ChatMessageResult deleteMessage(Long roomId, Long messageId, Long requesterMemberId) {
+		ChatRoom room = findRoom(roomId);
+		validateRoomMember(room, requesterMemberId);
+		ChatMessage message = chatMessageRepository.findByIdAndRoomId(messageId, room.getId())
+			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+		if (!message.getSenderMemberId().equals(requesterMemberId)) {
+			throw new BusinessException(ChatErrorCode.NOT_CHAT_MESSAGE_SENDER);
+		}
+		message.delete(requesterMemberId);
+		return ChatMessageResult.from(message, countReadMembers(room, message));
+	}
+
 	public void validateRoomMembership(Long roomId, Long memberId) {
 		ChatRoom room = findRoom(roomId);
 		validateRoomMember(room, memberId);

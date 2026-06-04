@@ -94,6 +94,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/comments/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/comments/*").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/api/v1/chat/rooms/*/messages/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/chat/rooms/*").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/v1/notifications").authenticated()
 				.requestMatchers(

@@ -28,6 +28,16 @@ public enum ChatErrorCode implements ErrorCode {
 		"CHAT-005",
 		"종료된 스터디 채팅방에는 메시지를 보낼 수 없습니다.",
 		HttpStatus.CONFLICT
+	),
+	CHAT_MESSAGE_NOT_FOUND(
+		"CHAT-006",
+		"채팅 메시지를 찾을 수 없습니다.",
+		HttpStatus.NOT_FOUND
+	),
+	NOT_CHAT_MESSAGE_SENDER(
+		"CHAT-007",
+		"메시지 작성자만 삭제할 수 있습니다.",
+		HttpStatus.FORBIDDEN
 	);
 
 	private final String code;

@@ -240,6 +240,47 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("메시지 작성자는 자신이 보낸 메시지를 삭제할 수 있다")
+	void deleteMessageBySender() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		ChatMessageResult sent = chatService.sendMessage(
+			room.id(),
+			requester.getId(),
+			new ChatMessageCreateCommand("삭제할 메시지")
+		);
+
+		ChatMessageResult deleted = chatService.deleteMessage(room.id(), sent.id(), requester.getId());
+
+		assertThat(deleted.deleted()).isTrue();
+		assertThat(deleted.content()).isEqualTo("삭제된 메시지입니다.");
+		assertThat(chatService.findMessages(room.id(), target.getId())).singleElement().satisfies(message -> {
+			assertThat(message.id()).isEqualTo(sent.id());
+			assertThat(message.deleted()).isTrue();
+			assertThat(message.content()).isEqualTo("삭제된 메시지입니다.");
+		});
+	}
+
+	@Test
+	@DisplayName("메시지 작성자가 아니면 메시지를 삭제할 수 없다")
+	void rejectDeleteMessageByNonSender() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		ChatMessageResult sent = chatService.sendMessage(
+			room.id(),
+			requester.getId(),
+			new ChatMessageCreateCommand("삭제할 메시지")
+		);
+
+		assertThatThrownBy(() -> chatService.deleteMessage(room.id(), sent.id(), target.getId()))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.NOT_CHAT_MESSAGE_SENDER);
+	}
+
+	@Test
 	@DisplayName("모집이 마감된 스터디 채팅방에도 참여자는 메시지를 작성할 수 있다")
 	void sendMessageToRecruitmentClosedStudyRoom() {
 		Member owner = saveMember("owner");

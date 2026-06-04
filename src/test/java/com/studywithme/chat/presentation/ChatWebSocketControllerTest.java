@@ -30,7 +30,7 @@ class ChatWebSocketControllerTest {
 	@DisplayName("WebSocket 채팅 메시지는 DB에 저장한 뒤 현재 방 참여자 user queue로 전달한다")
 	void sendMessageStoresAndPublishesToCurrentRoomMembers() {
 		AuthenticatedMemberPrincipal principal = new AuthenticatedMemberPrincipal(1L, Set.of("USER"));
-		ChatMessageResult saved = new ChatMessageResult(100L, 10L, principal.memberId(), "안녕하세요", LocalDateTime.now(), 0);
+		ChatMessageResult saved = new ChatMessageResult(100L, 10L, principal.memberId(), "안녕하세요", LocalDateTime.now(), 0, false);
 		LocalDateTime joinedAt = LocalDateTime.now();
 		when(chatService.sendMessage(eq(10L), eq(principal.memberId()), org.mockito.ArgumentMatchers.any()))
 			.thenReturn(saved);
