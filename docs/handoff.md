@@ -943,3 +943,10 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Chat report admin notification MVP policy: when a report is created, active ADMIN members receive a `CHAT_REPORT` notification; existing self-notification suppression skips the reporter if they are also an admin.
 - This all-admin notification policy is temporary; future assignment should add `assignedAdminId` and notify only the assigned admin for follow-up work.
 - Chat report handling uses a `PENDING` status check plus JPA optimistic lock on `chat_message_reports.version` so two admins cannot successfully handle the same report at the same time.
+
+### 72. Study history page test stability
+
+- `StudyControllerTest.findMyActiveStudiesByPageAndKeyword` previously assumed a specific first-page id while testing search and pagination.
+- Full-suite verification showed this could fail when two matching studies were created close together.
+- The controller test now verifies that page 0 and page 1 contain exactly the two matching active studies, without depending on which one appears first.
+- The past-history page test also avoids coupling the controller-level search/pagination assertion to exact row order.

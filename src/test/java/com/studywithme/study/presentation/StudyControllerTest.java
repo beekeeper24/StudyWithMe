@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.studywithme.auth.token.JwtTokenProvider;
 import com.studywithme.auth.token.RefreshTokenRepository;
 import com.studywithme.member.domain.Member;
@@ -23,6 +24,7 @@ import com.studywithme.study.application.StudyService;
 import com.studywithme.study.domain.StudyMemberStatus;
 import com.studywithme.study.repository.StudyMemberRepository;
 import com.studywithme.study.repository.StudyRepository;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @SpringBootTest
@@ -483,7 +486,7 @@ class StudyControllerTest {
 		);
 		studyService.join(second.id(), participant.getId());
 
-		mockMvc.perform(get("/api/v1/studies/me")
+		MvcResult firstPageResult = mockMvc.perform(get("/api/v1/studies/me")
 				.param("scope", "active")
 				.param("keyword", "react")
 				.param("page", "0")
@@ -492,13 +495,34 @@ class StudyControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content.length()").value(1))
-			.andExpect(jsonPath("$.data.content[0].id").value(second.id()))
 			.andExpect(jsonPath("$.data.page").value(0))
 			.andExpect(jsonPath("$.data.size").value(1))
 			.andExpect(jsonPath("$.data.totalElements").value(2))
 			.andExpect(jsonPath("$.data.totalPages").value(2))
 			.andExpect(jsonPath("$.data.hasNext").value(true))
-			.andExpect(jsonPath("$.data.hasPrevious").value(false));
+			.andExpect(jsonPath("$.data.hasPrevious").value(false))
+			.andReturn();
+		MvcResult secondPageResult = mockMvc.perform(get("/api/v1/studies/me")
+				.param("scope", "active")
+				.param("keyword", "react")
+				.param("page", "1")
+				.param("size", "1")
+				.header("Authorization", "Bearer " + accessToken(participant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.content.length()").value(1))
+			.andExpect(jsonPath("$.data.page").value(1))
+			.andExpect(jsonPath("$.data.size").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(2))
+			.andExpect(jsonPath("$.data.totalPages").value(2))
+			.andExpect(jsonPath("$.data.hasNext").value(false))
+			.andExpect(jsonPath("$.data.hasPrevious").value(true))
+			.andReturn();
+
+		assertThat(List.of(
+			readLong(firstPageResult, "$.data.content[0].id"),
+			readLong(secondPageResult, "$.data.content[0].id")
+		)).containsExactlyInAnyOrder(first.id(), second.id());
 	}
 
 	@Test
@@ -518,7 +542,7 @@ class StudyControllerTest {
 		StudyResult active = studyService.create(owner.getId(), new StudyCreateCommand("React 진행 스터디", "진행 중"));
 		studyService.join(active.id(), participant.getId());
 
-		mockMvc.perform(get("/api/v1/studies/me")
+		MvcResult result = mockMvc.perform(get("/api/v1/studies/me")
 				.param("scope", "past")
 				.param("keyword", "react")
 				.param("page", "0")
@@ -527,10 +551,14 @@ class StudyControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.content.length()").value(2))
-			.andExpect(jsonPath("$.data.content[0].id").value(left.id()))
-			.andExpect(jsonPath("$.data.content[1].id").value(ended.id()))
 			.andExpect(jsonPath("$.data.totalElements").value(2))
-			.andExpect(jsonPath("$.data.hasNext").value(false));
+			.andExpect(jsonPath("$.data.hasNext").value(false))
+			.andReturn();
+
+		assertThat(List.of(
+			readLong(result, "$.data.content[0].id"),
+			readLong(result, "$.data.content[1].id")
+		)).containsExactlyInAnyOrder(left.id(), ended.id());
 	}
 
 	@Test
@@ -1051,6 +1079,11 @@ class StudyControllerTest {
 			"google-" + name,
 			null
 		));
+	}
+
+	private Long readLong(MvcResult result, String jsonPath) throws Exception {
+		Number value = JsonPath.read(result.getResponse().getContentAsString(), jsonPath);
+		return value.longValue();
 	}
 
 	private String accessToken(Member member) {
