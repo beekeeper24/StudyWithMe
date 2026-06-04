@@ -36,7 +36,12 @@ public class ChatWebSocketController {
 			authenticatedPrincipal.memberId(),
 			new ChatMessageCreateCommand(request.content())
 		));
-		messagingTemplate.convertAndSend("/topic/chat.rooms." + roomId, response);
+		chatService.findRoomMembers(roomId, authenticatedPrincipal.memberId())
+			.forEach(member -> messagingTemplate.convertAndSendToUser(
+				member.memberId().toString(),
+				"/queue/chat.rooms." + roomId,
+				response
+			));
 		return response;
 	}
 

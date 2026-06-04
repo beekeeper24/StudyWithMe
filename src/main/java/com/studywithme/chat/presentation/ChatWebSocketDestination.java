@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 final class ChatWebSocketDestination {
 
-	private static final Pattern SUBSCRIBE_DESTINATION = Pattern.compile("^/topic/chat\\.rooms\\.(\\d+)$");
+	private static final Pattern SUBSCRIBE_DESTINATION = Pattern.compile("^/user/queue/chat\\.rooms\\.(\\d+)$");
 	private static final Pattern SEND_DESTINATION = Pattern.compile("^/app/chat\\.rooms\\.(\\d+)\\.messages$");
 
 	private ChatWebSocketDestination() {

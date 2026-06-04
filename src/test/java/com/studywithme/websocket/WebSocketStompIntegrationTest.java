@@ -121,7 +121,7 @@ class WebSocketStompIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("실제 STOMP 연결로 채팅 메시지를 보내고 room topic에서 수신한다")
+	@DisplayName("실제 STOMP 연결로 채팅 메시지를 보내고 user queue에서 수신한다")
 	void sendAndReceiveChatMessageOverStomp() throws Exception {
 		Member sender = saveMember("sender");
 		Member receiver = saveMember("receiver");
@@ -129,7 +129,7 @@ class WebSocketStompIntegrationTest {
 		StompSession session = connect(sender);
 		try {
 			BlockingQueue<Map<String, Object>> receivedMessages = new LinkedBlockingQueue<>();
-			session.subscribe("/topic/chat.rooms." + room.id(), mapFrameHandler(receivedMessages));
+			session.subscribe("/user/queue/chat.rooms." + room.id(), mapFrameHandler(receivedMessages));
 
 			session.send("/app/chat.rooms." + room.id() + ".messages", new ChatWebSocketMessageRequest("안녕하세요"));
 
