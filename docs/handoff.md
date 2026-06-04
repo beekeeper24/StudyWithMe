@@ -893,6 +893,17 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Frontend `createRealtimeClient` subscribes to the matching user queue destination.
 - The actual STOMP integration test now verifies chat receive through the user queue.
 
+### 69. Chat message delete flow
+
+- Chat messages use soft delete via `chat_messages.deleted_at`; physical message rows and original content remain in the database for future moderation/audit needs.
+- `DELETE /api/v1/chat/rooms/{roomId}/messages/{messageId}` allows only the message sender to delete their own message.
+- Message deletion still validates current room membership before author ownership, so hidden/left/deleted-study members cannot delete through stale ids.
+- Deleted message responses include `deleted=true` and return the display content `삭제된 메시지입니다.` instead of the original content.
+- Message list and last-message preview use the same display content mapping, so deleted messages stay in chronology without exposing original text.
+- The delete API publishes the deleted message response to current accessible room members through `/user/queue/chat.rooms.{roomId}`.
+- Frontend chat messages show a small delete icon only on the current user's non-deleted messages.
+- Frontend realtime handling merges incoming chat messages by id, so a delete event updates the existing message instead of appending a duplicate.
+
 ### 60. Frontend auth action guard polish
 
 - Frontend user actions that require authentication now use a shared `requireAuthenticated` guard instead of silently returning on missing access token.

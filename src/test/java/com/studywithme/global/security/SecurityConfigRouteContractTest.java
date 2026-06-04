@@ -67,6 +67,7 @@ class SecurityConfigRouteContractTest {
 			Arguments.of(HttpMethod.PUT, "/api/v1/posts/1"),
 			Arguments.of(HttpMethod.DELETE, "/api/v1/posts/1"),
 			Arguments.of(HttpMethod.DELETE, "/api/v1/chat/rooms/1"),
+			Arguments.of(HttpMethod.DELETE, "/api/v1/chat/rooms/1/messages/1"),
 		};
 	}
 

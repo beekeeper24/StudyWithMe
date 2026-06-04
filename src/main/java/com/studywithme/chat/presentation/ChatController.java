@@ -8,6 +8,7 @@ import com.studywithme.global.exception.BusinessException;
 import com.studywithme.global.security.AuthenticatedMemberPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChatController {
 
 	private final ChatService chatService;
+	private final SimpMessagingTemplate messagingTemplate;
 
-	public ChatController(ChatService chatService) {
+	public ChatController(ChatService chatService, SimpMessagingTemplate messagingTemplate) {
 		this.chatService = chatService;
+		this.messagingTemplate = messagingTemplate;
 	}
 
 	@PostMapping("/chat/private-rooms")
@@ -105,6 +108,29 @@ public class ChatController {
 		return ApiResponse.success(chatService.findMessages(roomId, authenticatedPrincipal.memberId()).stream()
 			.map(ChatMessageResponse::from)
 			.toList());
+	}
+
+	@DeleteMapping("/chat/rooms/{roomId}/messages/{messageId}")
+	public ApiResponse<ChatMessageResponse> deleteMessage(
+		@PathVariable Long roomId,
+		@PathVariable Long messageId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		ChatMessageResponse response = ChatMessageResponse.from(
+			chatService.deleteMessage(roomId, messageId, authenticatedPrincipal.memberId())
+		);
+		publishRoomMessage(roomId, authenticatedPrincipal.memberId(), response);
+		return ApiResponse.success(response);
+	}
+
+	private void publishRoomMessage(Long roomId, Long requesterMemberId, ChatMessageResponse response) {
+		chatService.findRoomMembers(roomId, requesterMemberId)
+			.forEach(member -> messagingTemplate.convertAndSendToUser(
+				member.memberId().toString(),
+				"/queue/chat.rooms." + roomId,
+				response
+			));
 	}
 
 	private AuthenticatedMemberPrincipal requirePrincipal(AuthenticatedMemberPrincipal principal) {

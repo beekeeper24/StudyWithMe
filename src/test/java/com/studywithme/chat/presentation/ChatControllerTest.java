@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studywithme.auth.token.JwtTokenProvider;
@@ -26,11 +28,13 @@ import com.studywithme.study.repository.StudyRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -71,6 +75,9 @@ class ChatControllerTest {
 
 	@Autowired
 	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private SimpMessagingTemplate messagingTemplate;
 
 	@AfterEach
 	void tearDown() {
@@ -235,6 +242,49 @@ class ChatControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data[0].content").value("안녕하세요"))
 			.andExpect(jsonPath("$.data[0].readMemberCount").value(1));
+	}
+
+	@Test
+	@DisplayName("메시지 작성자는 자신이 보낸 메시지를 삭제할 수 있다")
+	void deleteMessageBySender() throws Exception {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		var message = chatService.sendMessage(room.id(), requester.getId(), new ChatMessageCreateCommand("삭제할 메시지"));
+
+		mockMvc.perform(delete("/api/v1/chat/rooms/{roomId}/messages/{messageId}", room.id(), message.id())
+				.header("Authorization", "Bearer " + accessToken(requester)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.id").value(message.id()))
+			.andExpect(jsonPath("$.data.content").value("삭제된 메시지입니다."))
+			.andExpect(jsonPath("$.data.deleted").value(true));
+
+		verify(messagingTemplate).convertAndSendToUser(
+			eq(requester.getId().toString()),
+			eq("/queue/chat.rooms." + room.id()),
+			org.mockito.ArgumentMatchers.any(ChatMessageResponse.class)
+		);
+		verify(messagingTemplate).convertAndSendToUser(
+			eq(target.getId().toString()),
+			eq("/queue/chat.rooms." + room.id()),
+			org.mockito.ArgumentMatchers.any(ChatMessageResponse.class)
+		);
+	}
+
+	@Test
+	@DisplayName("메시지 작성자가 아니면 메시지를 삭제할 수 없다")
+	void rejectDeleteMessageByNonSender() throws Exception {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		var message = chatService.sendMessage(room.id(), requester.getId(), new ChatMessageCreateCommand("삭제할 메시지"));
+
+		mockMvc.perform(delete("/api/v1/chat/rooms/{roomId}/messages/{messageId}", room.id(), message.id())
+				.header("Authorization", "Bearer " + accessToken(target)))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("CHAT-007"));
 	}
 
 	@Test

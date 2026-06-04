@@ -29,6 +29,9 @@ public class ChatMessage {
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
+
 	protected ChatMessage() {
 	}
 
@@ -40,6 +43,19 @@ public class ChatMessage {
 
 	public static ChatMessage create(Long roomId, Long senderMemberId, String content) {
 		return new ChatMessage(roomId, senderMemberId, content);
+	}
+
+	public void delete(Long requesterMemberId) {
+		if (!senderMemberId.equals(requesterMemberId)) {
+			throw new IllegalArgumentException("Only sender can delete chat message.");
+		}
+		if (deletedAt == null) {
+			deletedAt = LocalDateTime.now();
+		}
+	}
+
+	public boolean isDeleted() {
+		return deletedAt != null;
 	}
 
 	@PrePersist
@@ -65,5 +81,9 @@ public class ChatMessage {
 
 	public LocalDateTime getCreatedAt() {
 		return createdAt;
+	}
+
+	public LocalDateTime getDeletedAt() {
+		return deletedAt;
 	}
 }
