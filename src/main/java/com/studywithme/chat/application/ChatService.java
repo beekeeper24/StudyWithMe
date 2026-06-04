@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -224,6 +225,7 @@ public class ChatService {
 			message.getSenderMemberId(),
 			reason
 		));
+		outboxEventPublisher.publishChatMessageReported(report.getId(), reporterMemberId, findActiveAdminIds());
 		return ChatMessageReportResult.from(report, message);
 	}
 
@@ -250,7 +252,15 @@ public class ChatService {
 		}
 		ChatMessageReport report = chatMessageReportRepository.findById(reportId)
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
-		report.handle(requesterMemberId, nextStatus, handlingNote);
+		if (report.getStatus() != ChatMessageReportStatus.PENDING) {
+			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_HANDLED);
+		}
+		try {
+			report.handle(requesterMemberId, nextStatus, handlingNote);
+			chatMessageReportRepository.flush();
+		} catch (ObjectOptimisticLockingFailureException exception) {
+			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_HANDLED);
+		}
 		return ChatMessageReportResult.from(report, findMessage(report.getRoomId(), report.getMessageId()));
 	}
 
@@ -282,6 +292,13 @@ public class ChatService {
 		if (!isAdmin) {
 			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ADMIN_REQUIRED);
 		}
+	}
+
+	private List<Long> findActiveAdminIds() {
+		return memberRepository.findAllByRoleAndStatus(MemberRole.ADMIN, MemberStatus.ACTIVE)
+			.stream()
+			.map(Member::getId)
+			.toList();
 	}
 
 	private void validateRoomMember(ChatRoom room, Long memberId) {

@@ -63,6 +63,11 @@ public enum ChatErrorCode implements ErrorCode {
 		"CHAT-012",
 		"신고 처리 상태가 올바르지 않습니다.",
 		HttpStatus.BAD_REQUEST
+	),
+	CHAT_REPORT_ALREADY_HANDLED(
+		"CHAT-013",
+		"이미 다른 관리자가 처리한 신고입니다.",
+		HttpStatus.CONFLICT
 	);
 
 	private final String code;

@@ -97,6 +97,8 @@ public class NotificationOutboxProcessor {
 			processStudyMultiReceiver(sourceEventId, payload, NotificationType.STUDY_DELETED, "스터디가 삭제되었습니다.");
 		} else if ("PRIVATE_CHAT_REQUESTED".equals(eventType)) {
 			processChatSingleReceiver(sourceEventId, payload, NotificationType.PRIVATE_CHAT_REQUESTED, "1:1 채팅 요청이 도착했습니다.");
+		} else if ("CHAT_MESSAGE_REPORTED".equals(eventType)) {
+			processChatReportMultiReceiver(sourceEventId, payload);
 		}
 	}
 
@@ -202,6 +204,23 @@ public class NotificationOutboxProcessor {
 			payload.required("roomId").asLong(),
 			message
 		);
+	}
+
+	private void processChatReportMultiReceiver(String sourceEventId, String eventPayload) throws Exception {
+		JsonNode payload = objectMapper.readTree(eventPayload);
+		Long actorMemberId = payload.required("actorMemberId").asLong();
+		Long reportId = payload.required("reportId").asLong();
+		for (Long receiverMemberId : readLongArray(payload.required("receiverMemberIds"))) {
+			createTargetNotificationIfNeeded(
+				sourceEventId,
+				receiverMemberId,
+				actorMemberId,
+				NotificationType.CHAT_MESSAGE_REPORTED,
+				NotificationTargetType.CHAT_REPORT,
+				reportId,
+				"채팅 메시지 신고가 접수되었습니다."
+			);
+		}
 	}
 
 	private boolean isReplacedByMention(Long commentId, Long receiverMemberId) throws Exception {

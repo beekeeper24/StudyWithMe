@@ -7,6 +7,7 @@ import com.studywithme.comment.application.CommentCreateCommand;
 import com.studywithme.comment.application.CommentResult;
 import com.studywithme.comment.application.CommentService;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.mention.application.MentionExtractor;
@@ -81,6 +82,34 @@ class NotificationOutboxProcessorTest {
 			assertThat(notification.getTargetType()).isEqualTo(NotificationTargetType.CHAT_ROOM);
 			assertThat(notification.getTargetId()).isEqualTo(roomId);
 			assertThat(notification.getMessage()).isEqualTo("1:1 채팅 요청이 도착했습니다.");
+		});
+	}
+
+	@Test
+	@DisplayName("CHAT_MESSAGE_REPORTED event를 처리하면 관리자들에게 신고 알림을 만든다")
+	void processChatMessageReportedCreatesNotificationsForAdmins() {
+		Member reporter = saveMember("reporter");
+		Member firstAdmin = saveAdmin("first-admin");
+		Member secondAdmin = saveAdmin("second-admin");
+		Long reportId = 501L;
+		outboxEventRepository.deleteAll();
+		notificationRepository.deleteAll();
+		OutboxEventPublisher publisher = new OutboxEventPublisher(new ObjectMapper(), outboxEventRepository);
+		publisher.publishChatMessageReported(reportId, reporter.getId(), List.of(firstAdmin.getId(), secondAdmin.getId()));
+
+		int processedCount = processor.processPending(10);
+
+		List<Notification> notifications = notificationRepository.findAll();
+		assertThat(processedCount).isEqualTo(1);
+		assertThat(notifications).hasSize(2);
+		assertThat(notifications).extracting(Notification::getReceiverMemberId)
+			.containsExactlyInAnyOrder(firstAdmin.getId(), secondAdmin.getId());
+		assertThat(notifications).allSatisfy(notification -> {
+			assertThat(notification.getActorMemberId()).isEqualTo(reporter.getId());
+			assertThat(notification.getType()).isEqualTo(NotificationType.CHAT_MESSAGE_REPORTED);
+			assertThat(notification.getTargetType()).isEqualTo(NotificationTargetType.CHAT_REPORT);
+			assertThat(notification.getTargetId()).isEqualTo(reportId);
+			assertThat(notification.getMessage()).isEqualTo("채팅 메시지 신고가 접수되었습니다.");
 		});
 	}
 
@@ -303,5 +332,17 @@ class NotificationOutboxProcessorTest {
 			"google-" + name,
 			null
 		));
+	}
+
+	private Member saveAdmin(String name) {
+		Member member = Member.createOAuthMember(
+			name + "@example.com",
+			name,
+			OAuthProvider.GOOGLE,
+			"google-" + name,
+			null
+		);
+		member.grantRole(MemberRole.ADMIN);
+		return memberRepository.saveAndFlush(member);
 	}
 }
