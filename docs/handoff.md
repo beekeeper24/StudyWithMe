@@ -725,7 +725,10 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - production HTTPS에서는 REFRESH_TOKEN_COOKIE_SECURE=true 설정
 
 작업 전에 git status와 현재 브랜치를 확인하고, gradlew 권한 변경이 있으면 사용자/환경 변경으로 보고 함부로 되돌리지 마.
-커밋 메시지는 한국어로 쓰고, PR은 develop 대상으로 만든 뒤 명시적 보류가 없으면 검증 후 develop에 머지한다.
+커밋 메시지는 한국어로 쓰고, PR을 열기 전에 반드시 AGENTS.md의 PR readiness gate를 먼저 적용한다.
+검증이 끝났다는 이유만으로 PR을 열지 말고, 같은 사용자 흐름이나 같은 reviewable deliverable에 속한 다음 작업이 남아 있으면 같은 feature 브랜치에 checkpoint commit만 쌓고 계속 진행한다.
+PR은 hotfix/CI breakage/security immediate fix/사용자 명시 요청이 아닌 이상 develop 대상으로 하나의 coherent issue, feature, domain, infrastructure, MVP slice가 끝났을 때만 연다.
+PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 없는 한 develop에 머지한다.
 ```
 
 ## Work Rules To Preserve
@@ -818,6 +821,21 @@ StudyWithMe 프로젝트 이어서 작업하자.
 - When the user does not name a milestone, infer and state a reasonable milestone before coding instead of defaulting to the next tiny TODO.
 - Ask one or two direct questions only when the milestone, priority, or acceptance criteria would be risky to infer.
 - Use `deep-interview` or planning skills only when direct questions are not enough for broad or ambiguous work; do not make heavy planning the default.
+- Do not let old handoff wording such as "검증 후 PR 머지" override the readiness gate. Verification is necessary, but not sufficient for opening a PR.
+- If several upcoming changes are all part of the same browser/user flow, keep them on one branch and use checkpoint commits until the full slice is ready.
+- Example: frontend route restoration should be one reviewable deliverable when it covers home/workspace routes, community detail/write/edit, study detail/new/edit, chat room detail, post-login return, and back/cancel/delete URL cleanup. Splitting those into separate PRs is too narrow unless one part is an urgent fix or the user explicitly asks for that narrow PR.
+
+### 63. Frontend route restoration PR granularity correction
+
+- Frontend PRs #64, #65, #66, and #67 were merged as separate small route-restoration PRs:
+  - #64 app workspace URL routing;
+  - #65 chat room detail URL restoration;
+  - #66 community write/edit URL routing;
+  - #67 study new/edit URL routing.
+- Those PRs were locally verified and CI-passing, but the granularity was too small under the current work rules.
+- Correct future grouping: create one branch such as `feature/frontend-route-restoration` and keep related routing work as checkpoint commits until the whole route-restoration slice is complete.
+- Before opening future PRs, explicitly answer: "Is the next likely task part of the same user-visible flow or reviewable deliverable?" If yes, do not open a PR yet.
+- Apply this same correction to other frontend UX families: notification UX, chat UX, my-page UX, community board UX, and study recruitment UX should be grouped by user flow, not by each small screen or helper.
 
 ### 60. Frontend auth action guard polish
 
