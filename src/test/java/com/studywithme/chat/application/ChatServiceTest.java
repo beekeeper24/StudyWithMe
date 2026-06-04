@@ -7,11 +7,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.studywithme.chat.domain.ChatRoomType;
+import com.studywithme.chat.domain.ChatMessageReportStatus;
 import com.studywithme.chat.exception.ChatErrorCode;
+import com.studywithme.chat.repository.ChatMessageReportRepository;
 import com.studywithme.chat.repository.ChatRoomMemberRepository;
 import com.studywithme.chat.repository.ChatRoomRepository;
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.outbox.application.OutboxEventPublisher;
@@ -38,6 +41,9 @@ class ChatServiceTest {
 
 	@Autowired
 	private ChatRoomRepository chatRoomRepository;
+
+	@Autowired
+	private ChatMessageReportRepository chatMessageReportRepository;
 
 	@Autowired
 	private ChatRoomMemberRepository chatRoomMemberRepository;
@@ -281,6 +287,124 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("채팅방 참여자는 다른 사람이 보낸 메시지를 신고할 수 있다")
+	void reportMessage() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("신고 대상 메시지")
+		);
+
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			requester.getId(),
+			"부적절한 표현이 포함되어 있습니다."
+		);
+
+		assertThat(report.messageId()).isEqualTo(message.id());
+		assertThat(report.reporterMemberId()).isEqualTo(requester.getId());
+		assertThat(report.reportedMemberId()).isEqualTo(target.getId());
+		assertThat(report.messageContent()).isEqualTo("신고 대상 메시지");
+		assertThat(report.status()).isEqualTo(ChatMessageReportStatus.PENDING);
+	}
+
+	@Test
+	@DisplayName("자신이 보낸 채팅 메시지는 신고할 수 없다")
+	void rejectReportOwnMessage() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			requester.getId(),
+			new ChatMessageCreateCommand("내 메시지")
+		);
+
+		assertThatThrownBy(() -> chatService.reportMessage(
+			room.id(),
+			message.id(),
+			requester.getId(),
+			"내 메시지 신고"
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.CANNOT_REPORT_OWN_MESSAGE);
+	}
+
+	@Test
+	@DisplayName("같은 메시지를 중복 신고할 수 없다")
+	void rejectDuplicateReport() {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("신고 대상 메시지")
+		);
+		chatService.reportMessage(room.id(), message.id(), requester.getId(), "첫 신고");
+
+		assertThatThrownBy(() -> chatService.reportMessage(room.id(), message.id(), requester.getId(), "중복 신고"))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.CHAT_MESSAGE_REPORT_DUPLICATED);
+	}
+
+	@Test
+	@DisplayName("관리자는 채팅 메시지 신고 목록을 조회하고 처리할 수 있다")
+	void findAndHandleReportsByAdmin() {
+		Member reporter = saveMember("reporter");
+		Member target = saveMember("target");
+		Member admin = saveAdmin("admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("신고 대상 메시지")
+		);
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			reporter.getId(),
+			"관리자 확인이 필요합니다."
+		);
+
+		assertThat(chatService.findMessageReports(admin.getId(), ChatMessageReportStatus.PENDING))
+			.extracting(ChatMessageReportResult::id)
+			.containsExactly(report.id());
+
+		ChatMessageReportResult handled = chatService.handleMessageReport(
+			report.id(),
+			admin.getId(),
+			ChatMessageReportStatus.RESOLVED,
+			"확인 완료"
+		);
+
+		assertThat(handled.status()).isEqualTo(ChatMessageReportStatus.RESOLVED);
+		assertThat(handled.handlerMemberId()).isEqualTo(admin.getId());
+		assertThat(handled.handlingNote()).isEqualTo("확인 완료");
+		assertThat(handled.handledAt()).isNotNull();
+		assertThat(chatMessageReportRepository.findById(report.id())).get()
+			.extracting("status")
+			.isEqualTo(ChatMessageReportStatus.RESOLVED);
+	}
+
+	@Test
+	@DisplayName("관리자가 아니면 채팅 메시지 신고 목록을 조회할 수 없다")
+	void rejectFindReportsByNonAdmin() {
+		Member requester = saveMember("requester");
+
+		assertThatThrownBy(() -> chatService.findMessageReports(requester.getId(), ChatMessageReportStatus.PENDING))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.CHAT_REPORT_ADMIN_REQUIRED);
+	}
+
+	@Test
 	@DisplayName("모집이 마감된 스터디 채팅방에도 참여자는 메시지를 작성할 수 있다")
 	void sendMessageToRecruitmentClosedStudyRoom() {
 		Member owner = saveMember("owner");
@@ -499,5 +623,17 @@ class ChatServiceTest {
 			"google-" + name,
 			null
 		));
+	}
+
+	private Member saveAdmin(String name) {
+		Member member = Member.createOAuthMember(
+			name + "@example.com",
+			name,
+			OAuthProvider.GOOGLE,
+			"google-" + name,
+			null
+		);
+		member.grantRole(MemberRole.ADMIN);
+		return memberRepository.saveAndFlush(member);
 	}
 }

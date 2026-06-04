@@ -14,10 +14,13 @@ import com.studywithme.auth.token.RefreshTokenRepository;
 import com.studywithme.chat.application.ChatMessageCreateCommand;
 import com.studywithme.chat.application.ChatRoomResult;
 import com.studywithme.chat.application.ChatService;
+import com.studywithme.chat.domain.ChatMessageReportStatus;
+import com.studywithme.chat.repository.ChatMessageReportRepository;
 import com.studywithme.chat.repository.ChatMessageRepository;
 import com.studywithme.chat.repository.ChatRoomMemberRepository;
 import com.studywithme.chat.repository.ChatRoomRepository;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.study.application.StudyCreateCommand;
@@ -59,6 +62,9 @@ class ChatControllerTest {
 	private ChatMessageRepository chatMessageRepository;
 
 	@Autowired
+	private ChatMessageReportRepository chatMessageReportRepository;
+
+	@Autowired
 	private StudyRepository studyRepository;
 
 	@Autowired
@@ -81,6 +87,7 @@ class ChatControllerTest {
 
 	@AfterEach
 	void tearDown() {
+		chatMessageReportRepository.deleteAll();
 		chatMessageRepository.deleteAll();
 		chatRoomMemberRepository.deleteAll();
 		chatRoomRepository.deleteAll();
@@ -288,6 +295,70 @@ class ChatControllerTest {
 	}
 
 	@Test
+	@DisplayName("채팅방 참여자는 다른 사람이 보낸 메시지를 신고할 수 있다")
+	void reportMessage() throws Exception {
+		Member requester = saveMember("requester");
+		Member target = saveMember("target");
+		ChatRoomResult room = chatService.createPrivateRoom(requester.getId(), target.getId());
+		var message = chatService.sendMessage(room.id(), target.getId(), new ChatMessageCreateCommand("신고 대상 메시지"));
+
+		mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/messages/{messageId}/reports", room.id(), message.id())
+				.header("Authorization", "Bearer " + accessToken(requester))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new ChatMessageReportRequest("부적절한 표현입니다."))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.messageId").value(message.id()))
+			.andExpect(jsonPath("$.data.reporterMemberId").value(requester.getId()))
+			.andExpect(jsonPath("$.data.reportedMemberId").value(target.getId()))
+			.andExpect(jsonPath("$.data.status").value("PENDING"));
+	}
+
+	@Test
+	@DisplayName("관리자는 채팅 메시지 신고 목록을 조회하고 처리할 수 있다")
+	void findAndHandleReportsByAdmin() throws Exception {
+		Member reporter = saveMember("reporter");
+		Member target = saveMember("target");
+		Member admin = saveAdmin("admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		var message = chatService.sendMessage(room.id(), target.getId(), new ChatMessageCreateCommand("신고 대상 메시지"));
+		var report = chatService.reportMessage(room.id(), message.id(), reporter.getId(), "관리자 확인이 필요합니다.");
+
+		mockMvc.perform(get("/api/v1/admin/chat-message-reports")
+				.param("status", ChatMessageReportStatus.PENDING.name())
+				.header("Authorization", "Bearer " + accessToken(admin)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data[0].id").value(report.id()))
+			.andExpect(jsonPath("$.data[0].messageContent").value("신고 대상 메시지"));
+
+		mockMvc.perform(post("/api/v1/admin/chat-message-reports/{reportId}/handle", report.id())
+				.header("Authorization", "Bearer " + accessToken(admin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new ChatMessageReportHandleRequest(
+					ChatMessageReportStatus.RESOLVED,
+					"확인 완료"
+				))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.status").value("RESOLVED"))
+			.andExpect(jsonPath("$.data.handlerMemberId").value(admin.getId()))
+			.andExpect(jsonPath("$.data.handlingNote").value("확인 완료"));
+	}
+
+	@Test
+	@DisplayName("관리자가 아니면 채팅 메시지 신고 목록을 조회할 수 없다")
+	void rejectFindReportsByNonAdmin() throws Exception {
+		Member requester = saveMember("requester");
+
+		mockMvc.perform(get("/api/v1/admin/chat-message-reports")
+				.header("Authorization", "Bearer " + accessToken(requester)))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("CHAT-010"));
+	}
+
+	@Test
 	@DisplayName("채팅방 참여자가 아니면 메시지 목록을 조회할 수 없다")
 	void rejectReadMessagesByNonRoomMember() throws Exception {
 		Member requester = saveMember("requester");
@@ -326,6 +397,18 @@ class ChatControllerTest {
 			"google-" + name,
 			null
 		));
+	}
+
+	private Member saveAdmin(String name) {
+		Member member = Member.createOAuthMember(
+			name + "@example.com",
+			name,
+			OAuthProvider.GOOGLE,
+			"google-" + name,
+			null
+		);
+		member.grantRole(MemberRole.ADMIN);
+		return memberRepository.saveAndFlush(member);
 	}
 
 	private String accessToken(Member member) {

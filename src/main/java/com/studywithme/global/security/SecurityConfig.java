@@ -86,7 +86,9 @@ public class SecurityConfig {
 					"/api/v1/posts/*/comments",
 					"/api/v1/comments/*/replies",
 					"/api/v1/chat/private-rooms",
-					"/api/v1/chat/rooms/*/messages"
+					"/api/v1/chat/rooms/*/messages",
+					"/api/v1/chat/rooms/*/messages/*/reports",
+					"/api/v1/admin/chat-message-reports/*/handle"
 				).authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/studies/me/history").authenticated()
@@ -101,7 +103,8 @@ public class SecurityConfig {
 					HttpMethod.GET,
 					"/api/v1/chat/rooms",
 					"/api/v1/chat/rooms/*/messages",
-					"/api/v1/chat/rooms/*/members"
+					"/api/v1/chat/rooms/*/members",
+					"/api/v1/admin/chat-message-reports"
 				).authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/read-all").authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/*/read").authenticated()

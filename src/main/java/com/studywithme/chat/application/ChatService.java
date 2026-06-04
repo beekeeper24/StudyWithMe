@@ -1,14 +1,18 @@
 package com.studywithme.chat.application;
 
 import com.studywithme.chat.domain.ChatMessage;
+import com.studywithme.chat.domain.ChatMessageReport;
+import com.studywithme.chat.domain.ChatMessageReportStatus;
 import com.studywithme.chat.domain.ChatRoom;
 import com.studywithme.chat.domain.ChatRoomMember;
 import com.studywithme.chat.exception.ChatErrorCode;
+import com.studywithme.chat.repository.ChatMessageReportRepository;
 import com.studywithme.chat.repository.ChatMessageRepository;
 import com.studywithme.chat.repository.ChatRoomMemberRepository;
 import com.studywithme.chat.repository.ChatRoomRepository;
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.outbox.application.OutboxEventPublisher;
@@ -34,6 +38,7 @@ public class ChatService {
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatRoomMemberRepository chatRoomMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
+	private final ChatMessageReportRepository chatMessageReportRepository;
 	private final MemberRepository memberRepository;
 	private final StudyRepository studyRepository;
 	private final StudyMemberRepository studyMemberRepository;
@@ -43,6 +48,7 @@ public class ChatService {
 		ChatRoomRepository chatRoomRepository,
 		ChatRoomMemberRepository chatRoomMemberRepository,
 		ChatMessageRepository chatMessageRepository,
+		ChatMessageReportRepository chatMessageReportRepository,
 		MemberRepository memberRepository,
 		StudyRepository studyRepository,
 		StudyMemberRepository studyMemberRepository,
@@ -51,6 +57,7 @@ public class ChatService {
 		this.chatRoomRepository = chatRoomRepository;
 		this.chatRoomMemberRepository = chatRoomMemberRepository;
 		this.chatMessageRepository = chatMessageRepository;
+		this.chatMessageReportRepository = chatMessageReportRepository;
 		this.memberRepository = memberRepository;
 		this.studyRepository = studyRepository;
 		this.studyMemberRepository = studyMemberRepository;
@@ -196,6 +203,57 @@ public class ChatService {
 		return ChatMessageResult.from(message, countReadMembers(room, message));
 	}
 
+	@Transactional
+	public ChatMessageReportResult reportMessage(Long roomId, Long messageId, Long reporterMemberId, String reason) {
+		ChatRoom room = findRoom(roomId);
+		validateRoomMember(room, reporterMemberId);
+		ChatMessage message = findMessage(room.getId(), messageId);
+		if (message.isDeleted()) {
+			throw new BusinessException(ChatErrorCode.DELETED_CHAT_MESSAGE_REPORT_NOT_ALLOWED);
+		}
+		if (message.getSenderMemberId().equals(reporterMemberId)) {
+			throw new BusinessException(ChatErrorCode.CANNOT_REPORT_OWN_MESSAGE);
+		}
+		if (chatMessageReportRepository.existsByMessageIdAndReporterMemberId(message.getId(), reporterMemberId)) {
+			throw new BusinessException(ChatErrorCode.CHAT_MESSAGE_REPORT_DUPLICATED);
+		}
+		ChatMessageReport report = chatMessageReportRepository.save(ChatMessageReport.create(
+			room.getId(),
+			message.getId(),
+			reporterMemberId,
+			message.getSenderMemberId(),
+			reason
+		));
+		return ChatMessageReportResult.from(report, message);
+	}
+
+	public List<ChatMessageReportResult> findMessageReports(Long requesterMemberId, ChatMessageReportStatus status) {
+		ensureAdmin(requesterMemberId);
+		List<ChatMessageReport> reports = status == null
+			? chatMessageReportRepository.findAllByOrderByCreatedAtDescIdDesc()
+			: chatMessageReportRepository.findAllByStatusOrderByCreatedAtDescIdDesc(status);
+		return reports.stream()
+			.map(report -> ChatMessageReportResult.from(report, findMessage(report.getRoomId(), report.getMessageId())))
+			.toList();
+	}
+
+	@Transactional
+	public ChatMessageReportResult handleMessageReport(
+		Long reportId,
+		Long requesterMemberId,
+		ChatMessageReportStatus nextStatus,
+		String handlingNote
+	) {
+		ensureAdmin(requesterMemberId);
+		if (nextStatus == ChatMessageReportStatus.PENDING) {
+			throw new BusinessException(ChatErrorCode.INVALID_CHAT_REPORT_STATUS);
+		}
+		ChatMessageReport report = chatMessageReportRepository.findById(reportId)
+			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+		report.handle(requesterMemberId, nextStatus, handlingNote);
+		return ChatMessageReportResult.from(report, findMessage(report.getRoomId(), report.getMessageId()));
+	}
+
 	public void validateRoomMembership(Long roomId, Long memberId) {
 		ChatRoom room = findRoom(roomId);
 		validateRoomMember(room, memberId);
@@ -210,6 +268,20 @@ public class ChatService {
 	private ChatRoom findRoom(Long roomId) {
 		return chatRoomRepository.findById(roomId)
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
+	}
+
+	private ChatMessage findMessage(Long roomId, Long messageId) {
+		return chatMessageRepository.findByIdAndRoomId(messageId, roomId)
+			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+	}
+
+	private void ensureAdmin(Long requesterMemberId) {
+		boolean isAdmin = memberRepository.findById(requesterMemberId)
+			.map(member -> member.getRoles().contains(MemberRole.ADMIN))
+			.orElse(false);
+		if (!isAdmin) {
+			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ADMIN_REQUIRED);
+		}
 	}
 
 	private void validateRoomMember(ChatRoom room, Long memberId) {
