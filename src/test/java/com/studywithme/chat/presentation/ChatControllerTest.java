@@ -365,6 +365,28 @@ class ChatControllerTest {
 	}
 
 	@Test
+	@DisplayName("채팅 메시지 신고 처리 메모는 500자를 초과할 수 없다")
+	void rejectTooLongReportHandlingNote() throws Exception {
+		Member reporter = saveMember("note-reporter");
+		Member target = saveMember("note-target");
+		Member admin = saveAdmin("note-admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		var message = chatService.sendMessage(room.id(), target.getId(), new ChatMessageCreateCommand("신고 대상 메시지"));
+		var report = chatService.reportMessage(room.id(), message.id(), reporter.getId(), "관리자 확인이 필요합니다.");
+
+		mockMvc.perform(post("/api/v1/admin/chat-message-reports/{reportId}/handle", report.id())
+				.header("Authorization", "Bearer " + accessToken(admin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new ChatMessageReportHandleRequest(
+					ChatMessageReportStatus.RESOLVED,
+					"a".repeat(501)
+				))))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("GLOBAL-400"));
+	}
+
+	@Test
 	@DisplayName("관리자는 채팅 메시지 신고를 전체와 처리 상태별로 조회할 수 있다")
 	void findReportsByStatusForAdmin() throws Exception {
 		Member reporter = saveMember("history-reporter");
