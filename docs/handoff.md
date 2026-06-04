@@ -739,6 +739,10 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - User is a beginner/new-grad backend developer. Explain important decisions briefly while working.
 - Prefer simple Spring Boot conventions over clever abstractions.
 - Use TDD for authentication, authorization, token, migration, and other high-risk behavior.
+- Choose the most practical efficient workflow for the task: enough planning, TDD, review, or subagent support to reduce rework and risk, without adding ceremony that does not improve the outcome.
+- Use Superpowers `subagent-driven-development` when a reviewable deliverable has at least two independent checkbox tasks, file-conflict risk is low, and implementer/reviewer separation would add real value.
+- Keep tightly coupled backend/frontend contract work in the main Codex flow with TDD when steps depend on each other, such as DB shape -> service contract -> API response -> frontend type/UI.
+- Use Superpowers `executing-plans` when there is a written implementation plan to execute task-by-task but subagent coordination is unavailable or not worth the overhead.
 - Run feasible verification before claiming completion.
 - Keep Notion structure as:
   - `작업일지 > StudyWithMe`
@@ -824,6 +828,7 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - When the user does not name a milestone, infer and state a reasonable milestone before coding instead of defaulting to the next tiny TODO.
 - Ask one or two direct questions only when the milestone, priority, or acceptance criteria would be risky to infer.
 - Use `deep-interview` or planning skills only when direct questions are not enough for broad or ambiguous work; do not make heavy planning the default.
+- Use checkbox plans before broad implementation slices. If 2+ tasks are independent and reviewable, consider `subagent-driven-development`; if the tasks are strongly coupled, stay in main flow with TDD.
 - Do not let old handoff wording such as "검증 후 PR 머지" override the readiness gate. Verification is necessary, but not sufficient for opening a PR.
 - If several upcoming changes are all part of the same browser/user flow, keep them on one branch and use checkpoint commits until the full slice is ready.
 - Example: frontend route restoration should be one reviewable deliverable when it covers home/workspace routes, community detail/write/edit, study detail/new/edit, chat room detail, post-login return, and back/cancel/delete URL cleanup. Splitting those into separate PRs is too narrow unless one part is an urgent fix or the user explicitly asks for that narrow PR.
