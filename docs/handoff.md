@@ -958,3 +958,12 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Frontend My Page admin report panel has `대기`, `처리 완료`, `기각`, and `전체` filters.
 - Only `PENDING` reports show handling actions; handled reports are displayed as read-only history with status and handled time.
 - Clicking a `CHAT_REPORT` notification still switches admins to the pending report filter because new notifications represent actionable reports.
+
+### 74. Admin chat report context panel
+
+- Admin chat message report list/handle responses now include `reporterNickname`, `reportedNickname`, and `handlerNickname` when those members still have nicknames.
+- Normal report creation responses keep those nickname fields empty because the member context is only needed for admin operation.
+- The backend enriches report responses from member ids, while keeping report list and handle endpoints service-guarded to ADMIN.
+- Frontend My Page admin report rows now show 신고자, 피신고자, 처리자, original message, and report reason as separate operator-facing blocks.
+- Pending reports still show handling actions; resolved/rejected reports remain read-only history.
+- Missing nicknames are rendered as `탈퇴한 회원` on the frontend so numeric ids are not the primary admin label.

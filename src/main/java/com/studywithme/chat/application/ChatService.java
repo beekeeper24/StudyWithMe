@@ -24,8 +24,10 @@ import com.studywithme.study.repository.StudyMemberRepository;
 import com.studywithme.study.repository.StudyRepository;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -226,7 +228,7 @@ public class ChatService {
 			reason
 		));
 		outboxEventPublisher.publishChatMessageReported(report.getId(), reporterMemberId, findActiveAdminIds());
-		return ChatMessageReportResult.from(report, message);
+		return toReportResult(report, message);
 	}
 
 	public List<ChatMessageReportResult> findMessageReports(Long requesterMemberId, ChatMessageReportStatus status) {
@@ -234,9 +236,7 @@ public class ChatService {
 		List<ChatMessageReport> reports = status == null
 			? chatMessageReportRepository.findAllByOrderByCreatedAtDescIdDesc()
 			: chatMessageReportRepository.findAllByStatusOrderByCreatedAtDescIdDesc(status);
-		return reports.stream()
-			.map(report -> ChatMessageReportResult.from(report, findMessage(report.getRoomId(), report.getMessageId())))
-			.toList();
+		return toReportResults(reports);
 	}
 
 	@Transactional
@@ -261,7 +261,7 @@ public class ChatService {
 		} catch (ObjectOptimisticLockingFailureException exception) {
 			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_HANDLED);
 		}
-		return ChatMessageReportResult.from(report, findMessage(report.getRoomId(), report.getMessageId()));
+		return toReportResult(report, findMessage(report.getRoomId(), report.getMessageId()));
 	}
 
 	public void validateRoomMembership(Long roomId, Long memberId) {
@@ -299,6 +299,31 @@ public class ChatService {
 			.stream()
 			.map(Member::getId)
 			.toList();
+	}
+
+	private ChatMessageReportResult toReportResult(ChatMessageReport report, ChatMessage message) {
+		return ChatMessageReportResult.from(report, message, findReportMembers(List.of(report)));
+	}
+
+	private List<ChatMessageReportResult> toReportResults(List<ChatMessageReport> reports) {
+		Map<Long, Member> members = findReportMembers(reports);
+		return reports.stream()
+			.map(report -> ChatMessageReportResult.from(report, findMessage(report.getRoomId(), report.getMessageId()), members))
+			.toList();
+	}
+
+	private Map<Long, Member> findReportMembers(List<ChatMessageReport> reports) {
+		Set<Long> memberIds = new LinkedHashSet<>();
+		for (ChatMessageReport report : reports) {
+			memberIds.add(report.getReporterMemberId());
+			memberIds.add(report.getReportedMemberId());
+			if (report.getHandlerMemberId() != null) {
+				memberIds.add(report.getHandlerMemberId());
+			}
+		}
+		return memberRepository.findAllById(memberIds)
+			.stream()
+			.collect(Collectors.toMap(Member::getId, Function.identity()));
 	}
 
 	private void validateRoomMember(ChatRoom room, Long memberId) {

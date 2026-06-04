@@ -310,7 +310,9 @@ class ChatControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.messageId").value(message.id()))
 			.andExpect(jsonPath("$.data.reporterMemberId").value(requester.getId()))
+			.andExpect(jsonPath("$.data.reporterNickname").isEmpty())
 			.andExpect(jsonPath("$.data.reportedMemberId").value(target.getId()))
+			.andExpect(jsonPath("$.data.reportedNickname").isEmpty())
 			.andExpect(jsonPath("$.data.status").value("PENDING"));
 	}
 
@@ -330,6 +332,9 @@ class ChatControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data[0].id").value(report.id()))
+			.andExpect(jsonPath("$.data[0].reporterNickname").value("reporter"))
+			.andExpect(jsonPath("$.data[0].reportedNickname").value("target"))
+			.andExpect(jsonPath("$.data[0].handlerNickname").isEmpty())
 			.andExpect(jsonPath("$.data[0].messageContent").value("신고 대상 메시지"));
 
 		mockMvc.perform(post("/api/v1/admin/chat-message-reports/{reportId}/handle", report.id())
@@ -343,6 +348,7 @@ class ChatControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.status").value("RESOLVED"))
 			.andExpect(jsonPath("$.data.handlerMemberId").value(admin.getId()))
+			.andExpect(jsonPath("$.data.handlerNickname").value("admin"))
 			.andExpect(jsonPath("$.data.handlingNote").value("확인 완료"));
 	}
 
