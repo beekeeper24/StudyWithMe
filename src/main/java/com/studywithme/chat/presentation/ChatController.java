@@ -134,7 +134,7 @@ public class ChatController {
 		@Valid @RequestBody ChatMessageReportRequest request
 	) {
 		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
-		return ApiResponse.success(ChatMessageReportResponse.from(chatService.reportMessage(
+		return ApiResponse.success(ChatMessageReportResponse.fromReportCreation(chatService.reportMessage(
 			roomId,
 			messageId,
 			authenticatedPrincipal.memberId(),

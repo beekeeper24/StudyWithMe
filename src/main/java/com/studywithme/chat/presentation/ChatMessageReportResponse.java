@@ -9,27 +9,41 @@ public record ChatMessageReportResponse(
 	Long roomId,
 	Long messageId,
 	Long reporterMemberId,
+	String reporterNickname,
 	Long reportedMemberId,
+	String reportedNickname,
 	String messageContent,
 	String reason,
 	ChatMessageReportStatus status,
 	Long handlerMemberId,
+	String handlerNickname,
 	String handlingNote,
 	LocalDateTime createdAt,
 	LocalDateTime handledAt
 ) {
 
 	public static ChatMessageReportResponse from(ChatMessageReportResult result) {
+		return from(result, true);
+	}
+
+	public static ChatMessageReportResponse fromReportCreation(ChatMessageReportResult result) {
+		return from(result, false);
+	}
+
+	private static ChatMessageReportResponse from(ChatMessageReportResult result, boolean includeMemberContext) {
 		return new ChatMessageReportResponse(
 			result.id(),
 			result.roomId(),
 			result.messageId(),
 			result.reporterMemberId(),
+			includeMemberContext ? result.reporterNickname() : null,
 			result.reportedMemberId(),
+			includeMemberContext ? result.reportedNickname() : null,
 			result.messageContent(),
 			result.reason(),
 			result.status(),
 			result.handlerMemberId(),
+			includeMemberContext ? result.handlerNickname() : null,
 			result.handlingNote(),
 			result.createdAt(),
 			result.handledAt()

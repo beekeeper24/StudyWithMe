@@ -32,6 +32,9 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - Admins can query a specific report state with `PENDING`, `RESOLVED`, or `REJECTED`.
 - Pending reports are the actionable queue.
 - Resolved and rejected reports are read-only history for operational review.
+- Admin report responses include reporter, reported member, and handler nicknames when available.
+- Normal report creation responses do not include those nicknames because the context is only needed for admin operation.
+- Missing nicknames can happen for withdrawn or incomplete accounts; clients should render a safe fallback instead of relying on numeric ids as the primary operator label.
 
 ## Future Assignment Policy
 

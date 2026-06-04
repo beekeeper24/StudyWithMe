@@ -318,7 +318,9 @@ class ChatServiceTest {
 
 		assertThat(report.messageId()).isEqualTo(message.id());
 		assertThat(report.reporterMemberId()).isEqualTo(requester.getId());
+		assertThat(report.reporterNickname()).isEqualTo("requester");
 		assertThat(report.reportedMemberId()).isEqualTo(target.getId());
+		assertThat(report.reportedNickname()).isEqualTo("target");
 		assertThat(report.messageContent()).isEqualTo("신고 대상 메시지");
 		assertThat(report.status()).isEqualTo(ChatMessageReportStatus.PENDING);
 	}
@@ -417,8 +419,13 @@ class ChatServiceTest {
 		);
 
 		assertThat(chatService.findMessageReports(admin.getId(), ChatMessageReportStatus.PENDING))
-			.extracting(ChatMessageReportResult::id)
-			.containsExactly(report.id());
+			.singleElement()
+			.satisfies(result -> {
+				assertThat(result.id()).isEqualTo(report.id());
+				assertThat(result.reporterNickname()).isEqualTo("reporter");
+				assertThat(result.reportedNickname()).isEqualTo("target");
+				assertThat(result.handlerNickname()).isNull();
+			});
 
 		ChatMessageReportResult handled = chatService.handleMessageReport(
 			report.id(),
@@ -429,6 +436,7 @@ class ChatServiceTest {
 
 		assertThat(handled.status()).isEqualTo(ChatMessageReportStatus.RESOLVED);
 		assertThat(handled.handlerMemberId()).isEqualTo(admin.getId());
+		assertThat(handled.handlerNickname()).isEqualTo("admin");
 		assertThat(handled.handlingNote()).isEqualTo("확인 완료");
 		assertThat(handled.handledAt()).isNotNull();
 		assertThat(chatMessageReportRepository.findById(report.id())).get()
