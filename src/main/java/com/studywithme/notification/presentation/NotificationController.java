@@ -45,6 +45,16 @@ public class NotificationController {
 		));
 	}
 
+	@PostMapping("/read-all")
+	public ApiResponse<List<NotificationResponse>> markAllRead(
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(notificationService.markAllRead(authenticatedPrincipal.memberId()).stream()
+			.map(NotificationResponse::from)
+			.toList());
+	}
+
 	@DeleteMapping("/{notificationId}")
 	public ApiResponse<Void> delete(
 		@PathVariable Long notificationId,

@@ -42,6 +42,15 @@ public class NotificationService {
 	}
 
 	@Transactional
+	public List<NotificationResult> markAllRead(Long requesterMemberId) {
+		return notificationRepository.findAllByReceiverMemberIdOrderByCreatedAtDesc(requesterMemberId)
+			.stream()
+			.peek(notification -> notification.markRead(requesterMemberId))
+			.map(this::toResult)
+			.toList();
+	}
+
+	@Transactional
 	public void delete(Long notificationId, Long requesterMemberId) {
 		Notification notification = notificationRepository.findById(notificationId)
 			.orElseThrow(() -> new BusinessException(NotificationErrorCode.NOTIFICATION_NOT_FOUND));
