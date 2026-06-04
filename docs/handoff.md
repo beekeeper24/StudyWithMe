@@ -883,6 +883,16 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Frontend copy now says the room was removed from "my list" so users do not confuse the action with global deletion.
 - Existing live WebSocket subscriptions are not forcibly disconnected server-side when a member archives a room; the frontend clears selection/disconnects on the user action. Server-side session eviction remains a separate future real-time lifecycle task.
 
+### 68. Chat realtime member fan-out
+
+- Chat WebSocket delivery no longer broadcasts room messages to public `/topic/chat.rooms.{roomId}`.
+- Clients subscribe to `/user/queue/chat.rooms.{roomId}` for the active room.
+- `ChatWebSocketDestination` accepts chat SUBSCRIBE destinations only in the user-queue form and rejects public room topic subscriptions.
+- `ChatWebSocketController` stores the message, then loads current accessible room members with `chatService.findRoomMembers(roomId, senderMemberId)` and sends the response via `convertAndSendToUser(memberId, "/queue/chat.rooms.{roomId}", response)`.
+- Because `findRoomMembers` uses the normal room membership policy, archived/hidden, left, deleted-study, or otherwise unusable members are excluded from realtime fan-out.
+- Frontend `createRealtimeClient` subscribes to the matching user queue destination.
+- The actual STOMP integration test now verifies chat receive through the user queue.
+
 ### 60. Frontend auth action guard polish
 
 - Frontend user actions that require authentication now use a shared `requireAuthenticated` guard instead of silently returning on missing access token.

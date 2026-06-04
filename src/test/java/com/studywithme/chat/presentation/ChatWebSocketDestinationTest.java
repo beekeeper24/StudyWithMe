@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
 class ChatWebSocketDestinationTest {
 
 	@Test
-	@DisplayName("채팅 구독 destination에서 room id를 추출한다")
-	void parseSubscribeRoomId() {
-		Long roomId = ChatWebSocketDestination.parseRoomId("/topic/chat.rooms.1");
+	@DisplayName("채팅 user queue 구독 destination에서 room id를 추출한다")
+	void parseUserQueueSubscribeRoomId() {
+		Long roomId = ChatWebSocketDestination.parseRoomId("/user/queue/chat.rooms.1");
 
 		assertThat(roomId).isEqualTo(1L);
 	}
@@ -30,6 +30,15 @@ class ChatWebSocketDestinationTest {
 	@DisplayName("형식이 맞지 않는 채팅 destination은 거부한다")
 	void rejectMalformedDestination() {
 		assertThatThrownBy(() -> ChatWebSocketDestination.parseRoomId("/topic/chat.rooms.bad"))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("공용 room topic 구독 destination은 거부한다")
+	void rejectPublicTopicSubscribeDestination() {
+		assertThatThrownBy(() -> ChatWebSocketDestination.parseRoomId("/topic/chat.rooms.1"))
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(ChatErrorCode.CHAT_ROOM_NOT_FOUND);

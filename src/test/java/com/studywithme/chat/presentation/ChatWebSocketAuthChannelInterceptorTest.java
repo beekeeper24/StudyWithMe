@@ -70,12 +70,23 @@ class ChatWebSocketAuthChannelInterceptorTest {
 		doThrow(new BusinessException(ChatErrorCode.NOT_CHAT_ROOM_MEMBER))
 			.when(chatService)
 			.validateRoomMembership(10L, principal.memberId());
-		Message<byte[]> message = stompMessage(StompCommand.SUBSCRIBE, "/topic/chat.rooms.10", principal, null);
+		Message<byte[]> message = stompMessage(StompCommand.SUBSCRIBE, "/user/queue/chat.rooms.10", principal, null);
 
 		assertThatThrownBy(() -> interceptor.preSend(message, null))
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(ChatErrorCode.NOT_CHAT_ROOM_MEMBER);
+	}
+
+	@Test
+	@DisplayName("채팅방 참여자는 STOMP user queue SUBSCRIBE를 통과한다")
+	void allowUserQueueSubscribeByRoomMember() {
+		AuthenticatedMemberPrincipal principal = new AuthenticatedMemberPrincipal(1L, java.util.Set.of("USER"));
+		Message<byte[]> message = stompMessage(StompCommand.SUBSCRIBE, "/user/queue/chat.rooms.10", principal, null);
+
+		Message<?> result = interceptor.preSend(message, null);
+
+		assertThat(result).isSameAs(message);
 	}
 
 	@Test
