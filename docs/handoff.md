@@ -874,6 +874,15 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Frontend chat messages show a small read state only for messages sent by the current user: `읽지 않음` or `읽음 n`.
 - This is a read-count receipt only; detailed per-member read lists are not implemented.
 
+### 67. Chat room archive policy
+
+- `DELETE /api/v1/chat/rooms/{roomId}` remains a per-member archive action, not a physical room/message delete.
+- Archived chat rooms are hidden from the requester by `chat_room_members.hidden_at`.
+- Hidden room members are no longer treated as active room members for direct message list reads, message sends, room member list reads, or WebSocket SUBSCRIBE/SEND validation because `validateRoomMembership` now checks `hidden_at`.
+- Reopening an existing 1:1 chat room restores the requester, and if the target had hidden the room, restores the target and sends the private-chat request notification again.
+- Frontend copy now says the room was removed from "my list" so users do not confuse the action with global deletion.
+- Existing live WebSocket subscriptions are not forcibly disconnected server-side when a member archives a room; the frontend clears selection/disconnects on the user action. Server-side session eviction remains a separate future real-time lifecycle task.
+
 ### 60. Frontend auth action guard polish
 
 - Frontend user actions that require authentication now use a shared `requireAuthenticated` guard instead of silently returning on missing access token.
