@@ -8,9 +8,11 @@ import static org.mockito.Mockito.verify;
 
 import com.studywithme.chat.domain.ChatRoomType;
 import com.studywithme.chat.domain.ChatMessageReport;
+import com.studywithme.chat.domain.ChatMessageReportModerationAction;
 import com.studywithme.chat.domain.ChatMessageReportStatus;
 import com.studywithme.chat.exception.ChatErrorCode;
 import com.studywithme.chat.repository.ChatMessageReportRepository;
+import com.studywithme.chat.repository.ChatMessageRepository;
 import com.studywithme.chat.repository.ChatRoomMemberRepository;
 import com.studywithme.chat.repository.ChatRoomRepository;
 import com.studywithme.global.exception.BusinessException;
@@ -58,6 +60,9 @@ class ChatServiceTest {
 
 	@Autowired
 	private ChatMessageReportRepository chatMessageReportRepository;
+
+	@Autowired
+	private ChatMessageRepository chatMessageRepository;
 
 	@Autowired
 	private NotificationRepository notificationRepository;
@@ -458,6 +463,77 @@ class ChatServiceTest {
 		assertThat(chatMessageReportRepository.findById(report.id())).get()
 			.extracting("status")
 			.isEqualTo(ChatMessageReportStatus.RESOLVED);
+	}
+
+	@Test
+	@DisplayName("관리자는 채팅 메시지 신고 처리 시 신고 대상 메시지를 삭제할 수 있다")
+	void handleReportWithDeleteMessageAction() {
+		Member reporter = saveMember("delete-report-reporter");
+		Member target = saveMember("delete-report-target");
+		Member admin = saveAdmin("delete-report-admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("삭제 대상 메시지")
+		);
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			reporter.getId(),
+			"삭제가 필요합니다."
+		);
+		chatService.assignMessageReport(report.id(), admin.getId());
+
+		ChatMessageReportResult handled = chatService.handleMessageReport(
+			report.id(),
+			admin.getId(),
+			ChatMessageReportStatus.RESOLVED,
+			ChatMessageReportModerationAction.DELETE_TARGET,
+			"메시지 삭제"
+		);
+
+		assertThat(handled.status()).isEqualTo(ChatMessageReportStatus.RESOLVED);
+		assertThat(handled.moderationAction()).isEqualTo(ChatMessageReportModerationAction.DELETE_TARGET);
+		assertThat(chatMessageRepository.findById(message.id()).orElseThrow().isDeleted()).isTrue();
+		assertThat(chatService.findMessages(room.id(), reporter.getId())).singleElement().satisfies(result -> {
+			assertThat(result.id()).isEqualTo(message.id());
+			assertThat(result.deleted()).isTrue();
+			assertThat(result.content()).isEqualTo("삭제된 메시지입니다.");
+		});
+	}
+
+	@Test
+	@DisplayName("채팅 메시지 신고 기각 처리에는 신고 대상 삭제 액션을 사용할 수 없다")
+	void rejectDeleteMessageActionWhenRejectingReport() {
+		Member reporter = saveMember("reject-delete-reporter");
+		Member target = saveMember("reject-delete-target");
+		Member admin = saveAdmin("reject-delete-admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("기각 대상 메시지")
+		);
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			reporter.getId(),
+			"확인 필요"
+		);
+		chatService.assignMessageReport(report.id(), admin.getId());
+
+		assertThatThrownBy(() -> chatService.handleMessageReport(
+				report.id(),
+				admin.getId(),
+				ChatMessageReportStatus.REJECTED,
+				ChatMessageReportModerationAction.DELETE_TARGET,
+				"기각하면서 삭제"
+			))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.INVALID_CHAT_REPORT_MODERATION_ACTION);
+		assertThat(chatMessageRepository.findById(message.id()).orElseThrow().isDeleted()).isFalse();
 	}
 
 	@Test

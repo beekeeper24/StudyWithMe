@@ -78,6 +78,11 @@ public enum ChatErrorCode implements ErrorCode {
 		"CHAT-015",
 		"담당 관리자만 신고를 처리할 수 있습니다.",
 		HttpStatus.FORBIDDEN
+	),
+	INVALID_CHAT_REPORT_MODERATION_ACTION(
+		"CHAT-016",
+		"신고 처리 액션이 올바르지 않습니다.",
+		HttpStatus.BAD_REQUEST
 	);
 
 	private final String code;

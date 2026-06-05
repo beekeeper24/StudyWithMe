@@ -60,6 +60,15 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - Deleted posts and comments are hidden through the existing published-content list/detail policies.
 - This is content takedown only. Member-level sanctions such as warnings, suspensions, or bans are a later feature.
 
+## Chat Message Moderation Action Policy
+
+- Chat message reports can be handled with moderation action `NONE` or `DELETE_TARGET`.
+- `NONE` only records the report decision and leaves the reported chat message unchanged.
+- `DELETE_TARGET` soft-deletes the reported chat message through the existing deleted-message display policy.
+- `DELETE_TARGET` is allowed only with `RESOLVED`; rejected reports cannot delete the target message.
+- Deleted chat messages remain as room history rows and are rendered with the existing deleted-message placeholder.
+- This is message takedown only. Member-level warnings, suspensions, bans, and chat-room restrictions are later sanctions work.
+
 ## Admin Report History Policy
 
 - Admins can query all chat message reports or community content reports by omitting the status filter.
@@ -67,6 +76,7 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - Pending reports are the actionable queue.
 - Resolved and rejected reports are read-only history for operational review.
 - Admin report responses include reporter, reported member, assigned admin, and handler nicknames when available.
+- Chat message report responses include the selected moderation action.
 - Community content report responses include the selected moderation action.
 - Normal report creation responses do not include those nicknames because the context is only needed for admin operation.
 - Missing nicknames can happen for withdrawn or incomplete accounts; clients should render a safe fallback instead of relying on numeric ids as the primary operator label.

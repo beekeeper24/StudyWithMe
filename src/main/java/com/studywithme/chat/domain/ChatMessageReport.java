@@ -46,6 +46,10 @@ public class ChatMessageReport {
 	@Column(nullable = false, length = 20)
 	private ChatMessageReportStatus status = ChatMessageReportStatus.PENDING;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "moderation_action", nullable = false, length = 30)
+	private ChatMessageReportModerationAction moderationAction = ChatMessageReportModerationAction.NONE;
+
 	@Column(name = "handler_member_id")
 	private Long handlerMemberId;
 
@@ -89,14 +93,24 @@ public class ChatMessageReport {
 		return new ChatMessageReport(roomId, messageId, reporterMemberId, reportedMemberId, reason);
 	}
 
-	public void handle(Long handlerMemberId, ChatMessageReportStatus nextStatus, String handlingNote) {
+	public void handle(
+		Long handlerMemberId,
+		ChatMessageReportStatus nextStatus,
+		ChatMessageReportModerationAction moderationAction,
+		String handlingNote
+	) {
 		if (nextStatus == ChatMessageReportStatus.PENDING) {
 			throw new IllegalArgumentException("Pending is not a handled report status.");
 		}
 		this.status = nextStatus;
+		this.moderationAction = moderationAction == null ? ChatMessageReportModerationAction.NONE : moderationAction;
 		this.handlerMemberId = handlerMemberId;
 		this.handlingNote = handlingNote;
 		this.handledAt = LocalDateTime.now();
+	}
+
+	public void handle(Long handlerMemberId, ChatMessageReportStatus nextStatus, String handlingNote) {
+		handle(handlerMemberId, nextStatus, ChatMessageReportModerationAction.NONE, handlingNote);
 	}
 
 	public void assignTo(Long adminMemberId) {
@@ -138,6 +152,10 @@ public class ChatMessageReport {
 
 	public ChatMessageReportStatus getStatus() {
 		return status;
+	}
+
+	public ChatMessageReportModerationAction getModerationAction() {
+		return moderationAction;
 	}
 
 	public Long getHandlerMemberId() {
