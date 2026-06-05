@@ -49,6 +49,12 @@ public class ChatMessageReport {
 	@Column(name = "handler_member_id")
 	private Long handlerMemberId;
 
+	@Column(name = "assigned_admin_member_id")
+	private Long assignedAdminMemberId;
+
+	@Column(name = "assigned_at")
+	private LocalDateTime assignedAt;
+
 	@Column(name = "handling_note", length = 500)
 	private String handlingNote;
 
@@ -93,6 +99,14 @@ public class ChatMessageReport {
 		this.handledAt = LocalDateTime.now();
 	}
 
+	public void assignTo(Long adminMemberId) {
+		if (assignedAdminMemberId != null && assignedAdminMemberId.equals(adminMemberId)) {
+			return;
+		}
+		this.assignedAdminMemberId = adminMemberId;
+		this.assignedAt = LocalDateTime.now();
+	}
+
 	@PrePersist
 	void prePersist() {
 		this.createdAt = LocalDateTime.now();
@@ -128,6 +142,14 @@ public class ChatMessageReport {
 
 	public Long getHandlerMemberId() {
 		return handlerMemberId;
+	}
+
+	public Long getAssignedAdminMemberId() {
+		return assignedAdminMemberId;
+	}
+
+	public LocalDateTime getAssignedAt() {
+		return assignedAt;
 	}
 
 	public String getHandlingNote() {
