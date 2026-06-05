@@ -11,14 +11,26 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - Deleted chat messages cannot be newly reported from the UI or API.
 - Reports start as `PENDING` and can be handled as `RESOLVED` or `REJECTED`.
 
+## Community Content Reports
+
+- A signed-in member can report another member's published community post or published comment/reply.
+- A member cannot report their own post, comment, or reply.
+- A member cannot report the same target more than once.
+- Reports store a snapshot of the reported content so admins can review the original context even if the content changes later.
+- Post reports store the post id as both `targetId` and `postId`.
+- Comment/reply reports store the comment id as `targetId` and the parent post id as `postId`.
+- Reports start as `PENDING` and can be handled as `RESOLVED` or `REJECTED`.
+
 ## MVP Admin Notification Policy
 
-- For MVP, when a chat message report is created, active `ADMIN` members receive an admin notification.
+- For MVP, when a chat message report or community content report is created, active `ADMIN` members receive an admin notification.
 - Withdrawn admin accounts do not receive report notifications.
 - If the reporter is also an admin, the existing self-notification suppression keeps that reporter from receiving their own report notification.
 - This is a temporary MVP policy to reduce the chance that a report is missed before an admin claims the report.
 - The notification target is `CHAT_REPORT`, and the target id is the chat message report id.
+- For community content reports, the notification target is `CONTENT_REPORT`, and the target id is the content report id.
 - When an admin claims a report, unread `CHAT_REPORT` notifications for that report are marked read so it no longer remains as a fresh unclaimed alert for admins.
+- When an admin claims a community content report, unread `CONTENT_REPORT` notifications for that report are marked read.
 - If the report notification outbox is processed after the report has already been assigned or handled, the processor skips creating new admin notifications for that report.
 - Realtime read-state push is not part of the MVP; clients refresh through the existing notification list loading and polling path.
 
@@ -41,7 +53,7 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 
 ## Admin Report History Policy
 
-- Admins can query all chat message reports by omitting the status filter.
+- Admins can query all chat message reports or community content reports by omitting the status filter.
 - Admins can query a specific report state with `PENDING`, `RESOLVED`, or `REJECTED`.
 - Pending reports are the actionable queue.
 - Resolved and rejected reports are read-only history for operational review.

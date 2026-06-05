@@ -999,3 +999,13 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - This prevents stale notifications both when notifications already exist at assignment time and when outbox processing runs late after assignment.
 - Frontend `assignChatReport` reloads notifications after the claim request succeeds so the current admin's local notification state catches up.
 - `docs/product/moderation.md` records the MVP policy: all active admins may receive the initial report alert, but claimed or handled reports should not continue to appear as new unclaimed alerts.
+
+### 78. Community content report moderation branch
+
+- Active branch in both repos: `feature/content-report-moderation`.
+- Backend adds `content_reports` with Flyway V21 and supports post/comment report creation plus ADMIN list, assign, and handle APIs.
+- Community report notifications use `CONTENT_REPORT`; assignment marks unread report notifications read and late outbox processing skips already assigned/handled reports.
+- Frontend adds report actions on another member's community post/comment/reply, a community report modal, and a My Page `커뮤니티 신고` admin panel with the same status and assignment filters as chat reports.
+- Notification popup target type `CONTENT_REPORT` opens My Page and reloads the pending content report queue for admins.
+- Focused backend verification passed for `ContentReportServiceTest`, `ContentReportControllerTest`, `SecurityConfigRouteContractTest`, and `NotificationOutboxProcessorTest`.
+- Frontend `npm run lint` and `npm run build` passed after the content report UI wiring.
