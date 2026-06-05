@@ -9,6 +9,8 @@ public interface ChatMessageReportRepository extends JpaRepository<ChatMessageRe
 
 	boolean existsByMessageIdAndReporterMemberId(Long messageId, Long reporterMemberId);
 
+	boolean existsByIdAndStatusAndAssignedAdminMemberIdIsNull(Long id, ChatMessageReportStatus status);
+
 	List<ChatMessageReport> findAllByStatusOrderByCreatedAtDescIdDesc(ChatMessageReportStatus status);
 
 	List<ChatMessageReport> findAllByOrderByCreatedAtDescIdDesc();

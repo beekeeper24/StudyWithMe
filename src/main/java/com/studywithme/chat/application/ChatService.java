@@ -15,6 +15,7 @@ import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.notification.application.NotificationService;
 import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.study.domain.Study;
 import com.studywithme.study.domain.StudyMemberStatus;
@@ -46,6 +47,7 @@ public class ChatService {
 	private final StudyRepository studyRepository;
 	private final StudyMemberRepository studyMemberRepository;
 	private final OutboxEventPublisher outboxEventPublisher;
+	private final NotificationService notificationService;
 
 	public ChatService(
 		ChatRoomRepository chatRoomRepository,
@@ -55,7 +57,8 @@ public class ChatService {
 		MemberRepository memberRepository,
 		StudyRepository studyRepository,
 		StudyMemberRepository studyMemberRepository,
-		OutboxEventPublisher outboxEventPublisher
+		OutboxEventPublisher outboxEventPublisher,
+		NotificationService notificationService
 	) {
 		this.chatRoomRepository = chatRoomRepository;
 		this.chatRoomMemberRepository = chatRoomMemberRepository;
@@ -65,6 +68,7 @@ public class ChatService {
 		this.studyRepository = studyRepository;
 		this.studyMemberRepository = studyMemberRepository;
 		this.outboxEventPublisher = outboxEventPublisher;
+		this.notificationService = notificationService;
 	}
 
 	@Transactional
@@ -257,6 +261,7 @@ public class ChatService {
 		} catch (ObjectOptimisticLockingFailureException exception) {
 			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_ASSIGNED);
 		}
+		notificationService.markChatReportNotificationsRead(report.getId());
 		return toReportResult(report, findMessage(report.getRoomId(), report.getMessageId()));
 	}
 

@@ -18,6 +18,9 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - If the reporter is also an admin, the existing self-notification suppression keeps that reporter from receiving their own report notification.
 - This is a temporary MVP policy to reduce the chance that a report is missed before an admin claims the report.
 - The notification target is `CHAT_REPORT`, and the target id is the chat message report id.
+- When an admin claims a report, unread `CHAT_REPORT` notifications for that report are marked read so it no longer remains as a fresh unclaimed alert for admins.
+- If the report notification outbox is processed after the report has already been assigned or handled, the processor skips creating new admin notifications for that report.
+- Realtime read-state push is not part of the MVP; clients refresh through the existing notification list loading and polling path.
 
 ## Admin Assignment Policy
 
@@ -50,6 +53,6 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 
 When admin volume grows, replace the all-admin notification policy with automatic or manual assignment notification.
 
-- Add an `ASSIGNED` state or equivalent assignment timestamp.
-- Notify only the assigned admin for follow-up work.
+- Route new report notifications to a responsible admin or admin group instead of every active admin.
+- Keep `assignedAdminMemberId` as the admin who owns the pending report.
 - Keep `handlerMemberId` as the final admin who resolved or rejected the report.
