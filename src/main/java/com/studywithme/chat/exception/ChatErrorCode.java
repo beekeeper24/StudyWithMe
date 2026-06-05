@@ -68,6 +68,16 @@ public enum ChatErrorCode implements ErrorCode {
 		"CHAT-013",
 		"이미 다른 관리자가 처리한 신고입니다.",
 		HttpStatus.CONFLICT
+	),
+	CHAT_REPORT_ALREADY_ASSIGNED(
+		"CHAT-014",
+		"이미 다른 관리자가 담당 중인 신고입니다.",
+		HttpStatus.CONFLICT
+	),
+	CHAT_REPORT_ASSIGNEE_REQUIRED(
+		"CHAT-015",
+		"담당 관리자만 신고를 처리할 수 있습니다.",
+		HttpStatus.FORBIDDEN
 	);
 
 	private final String code;

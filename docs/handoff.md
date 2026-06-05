@@ -975,3 +975,14 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - The modal shows reporter, reported member, original message, and report reason before the admin submits the decision.
 - Admin handling notes are optional and are sent to the existing `handlingNote` request field.
 - Handled report history displays the handling note when one exists.
+
+### 76. Admin chat report assignment MVP
+
+- Flyway V20 adds `assigned_admin_member_id` and `assigned_at` to `chat_message_reports`.
+- `POST /api/v1/admin/chat-message-reports/{reportId}/assign` lets an ADMIN claim a pending unassigned report.
+- Pending reports assigned to another admin cannot be claimed or handled by the current admin.
+- `handleMessageReport` now requires the requester to be the assigned admin before resolving or rejecting.
+- Admin report responses include `assignedAdminMemberId`, `assignedAdminNickname`, and `assignedAt`.
+- Frontend admin report rows show 담당자 separately from 처리자.
+- Pending unassigned reports show `담당하기`; only reports assigned to the current admin show `처리 완료` and `기각`.
+- MVP all-admin `CHAT_REPORT` notification fan-out remains unchanged; future work can notify only the assigned admin after assignment.

@@ -240,6 +240,27 @@ public class ChatService {
 	}
 
 	@Transactional
+	public ChatMessageReportResult assignMessageReport(Long reportId, Long requesterMemberId) {
+		ensureAdmin(requesterMemberId);
+		ChatMessageReport report = chatMessageReportRepository.findById(reportId)
+			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+		if (report.getStatus() != ChatMessageReportStatus.PENDING) {
+			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_HANDLED);
+		}
+		if (report.getAssignedAdminMemberId() != null
+			&& !report.getAssignedAdminMemberId().equals(requesterMemberId)) {
+			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_ASSIGNED);
+		}
+		try {
+			report.assignTo(requesterMemberId);
+			chatMessageReportRepository.flush();
+		} catch (ObjectOptimisticLockingFailureException exception) {
+			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_ASSIGNED);
+		}
+		return toReportResult(report, findMessage(report.getRoomId(), report.getMessageId()));
+	}
+
+	@Transactional
 	public ChatMessageReportResult handleMessageReport(
 		Long reportId,
 		Long requesterMemberId,
@@ -254,6 +275,9 @@ public class ChatService {
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
 		if (report.getStatus() != ChatMessageReportStatus.PENDING) {
 			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_HANDLED);
+		}
+		if (!requesterMemberId.equals(report.getAssignedAdminMemberId())) {
+			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ASSIGNEE_REQUIRED);
 		}
 		try {
 			report.handle(requesterMemberId, nextStatus, handlingNote);
@@ -317,6 +341,9 @@ public class ChatService {
 		for (ChatMessageReport report : reports) {
 			memberIds.add(report.getReporterMemberId());
 			memberIds.add(report.getReportedMemberId());
+			if (report.getAssignedAdminMemberId() != null) {
+				memberIds.add(report.getAssignedAdminMemberId());
+			}
 			if (report.getHandlerMemberId() != null) {
 				memberIds.add(report.getHandlerMemberId());
 			}

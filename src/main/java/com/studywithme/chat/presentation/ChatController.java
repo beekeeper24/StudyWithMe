@@ -168,6 +168,18 @@ public class ChatController {
 		)));
 	}
 
+	@PostMapping("/admin/chat-message-reports/{reportId}/assign")
+	public ApiResponse<ChatMessageReportResponse> assignMessageReport(
+		@PathVariable Long reportId,
+		@AuthenticationPrincipal AuthenticatedMemberPrincipal principal
+	) {
+		AuthenticatedMemberPrincipal authenticatedPrincipal = requirePrincipal(principal);
+		return ApiResponse.success(ChatMessageReportResponse.from(chatService.assignMessageReport(
+			reportId,
+			authenticatedPrincipal.memberId()
+		)));
+	}
+
 	private void publishRoomMessage(Long roomId, Long requesterMemberId, ChatMessageResponse response) {
 		chatService.findRoomMembers(roomId, requesterMemberId)
 			.forEach(member -> messagingTemplate.convertAndSendToUser(

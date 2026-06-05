@@ -424,8 +424,15 @@ class ChatServiceTest {
 				assertThat(result.id()).isEqualTo(report.id());
 				assertThat(result.reporterNickname()).isEqualTo("reporter");
 				assertThat(result.reportedNickname()).isEqualTo("target");
+				assertThat(result.assignedAdminNickname()).isNull();
 				assertThat(result.handlerNickname()).isNull();
 			});
+
+		ChatMessageReportResult assigned = chatService.assignMessageReport(report.id(), admin.getId());
+
+		assertThat(assigned.assignedAdminMemberId()).isEqualTo(admin.getId());
+		assertThat(assigned.assignedAdminNickname()).isEqualTo("admin");
+		assertThat(assigned.assignedAt()).isNotNull();
 
 		ChatMessageReportResult handled = chatService.handleMessageReport(
 			report.id(),
@@ -463,6 +470,7 @@ class ChatServiceTest {
 			reporter.getId(),
 			"관리자 확인이 필요합니다."
 		);
+		chatService.assignMessageReport(report.id(), firstAdmin.getId());
 		chatService.handleMessageReport(report.id(), firstAdmin.getId(), ChatMessageReportStatus.RESOLVED, "확인 완료");
 
 		assertThatThrownBy(() -> chatService.handleMessageReport(
@@ -474,6 +482,42 @@ class ChatServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(ChatErrorCode.CHAT_REPORT_ALREADY_HANDLED);
+	}
+
+	@Test
+	@DisplayName("다른 관리자가 담당 중인 신고는 가져가거나 처리할 수 없다")
+	void rejectAssignAndHandleReportAssignedToAnotherAdmin() {
+		Member reporter = saveMember("assigned-reporter");
+		Member target = saveMember("assigned-target");
+		Member firstAdmin = saveAdmin("assigned-first-admin");
+		Member secondAdmin = saveAdmin("assigned-second-admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("신고 대상 메시지")
+		);
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			reporter.getId(),
+			"관리자 확인이 필요합니다."
+		);
+		chatService.assignMessageReport(report.id(), firstAdmin.getId());
+
+		assertThatThrownBy(() -> chatService.assignMessageReport(report.id(), secondAdmin.getId()))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.CHAT_REPORT_ALREADY_ASSIGNED);
+		assertThatThrownBy(() -> chatService.handleMessageReport(
+			report.id(),
+			secondAdmin.getId(),
+			ChatMessageReportStatus.RESOLVED,
+			"확인 완료"
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ChatErrorCode.CHAT_REPORT_ASSIGNEE_REQUIRED);
 	}
 
 	@Test
@@ -495,6 +539,7 @@ class ChatServiceTest {
 			reporter.getId(),
 			"처리 대상입니다."
 		);
+		chatService.assignMessageReport(resolvedReport.id(), admin.getId());
 		chatService.handleMessageReport(
 			resolvedReport.id(),
 			admin.getId(),

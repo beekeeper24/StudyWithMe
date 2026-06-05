@@ -88,6 +88,7 @@ public class SecurityConfig {
 					"/api/v1/chat/private-rooms",
 					"/api/v1/chat/rooms/*/messages",
 					"/api/v1/chat/rooms/*/messages/*/reports",
+					"/api/v1/admin/chat-message-reports/*/assign",
 					"/api/v1/admin/chat-message-reports/*/handle"
 				).authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()

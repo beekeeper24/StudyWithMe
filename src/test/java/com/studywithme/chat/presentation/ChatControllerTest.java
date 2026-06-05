@@ -337,6 +337,14 @@ class ChatControllerTest {
 			.andExpect(jsonPath("$.data[0].handlerNickname").isEmpty())
 			.andExpect(jsonPath("$.data[0].messageContent").value("신고 대상 메시지"));
 
+		mockMvc.perform(post("/api/v1/admin/chat-message-reports/{reportId}/assign", report.id())
+				.header("Authorization", "Bearer " + accessToken(admin)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.assignedAdminMemberId").value(admin.getId()))
+			.andExpect(jsonPath("$.data.assignedAdminNickname").value("admin"))
+			.andExpect(jsonPath("$.data.assignedAt").exists());
+
 		mockMvc.perform(post("/api/v1/admin/chat-message-reports/{reportId}/handle", report.id())
 				.header("Authorization", "Bearer " + accessToken(admin))
 				.contentType(MediaType.APPLICATION_JSON)
@@ -405,6 +413,7 @@ class ChatControllerTest {
 			reporter.getId(),
 			"처리 대상입니다."
 		);
+		chatService.assignMessageReport(resolvedReport.id(), admin.getId());
 		chatService.handleMessageReport(
 			resolvedReport.id(),
 			admin.getId(),
