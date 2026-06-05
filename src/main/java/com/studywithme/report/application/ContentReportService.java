@@ -16,6 +16,7 @@ import com.studywithme.post.domain.PostStatus;
 import com.studywithme.post.exception.PostErrorCode;
 import com.studywithme.post.repository.PostRepository;
 import com.studywithme.report.domain.ContentReport;
+import com.studywithme.report.domain.ContentReportModerationAction;
 import com.studywithme.report.domain.ContentReportStatus;
 import com.studywithme.report.domain.ContentReportTargetType;
 import com.studywithme.report.exception.ContentReportErrorCode;
@@ -137,11 +138,16 @@ public class ContentReportService {
 		Long reportId,
 		Long requesterMemberId,
 		ContentReportStatus nextStatus,
+		ContentReportModerationAction moderationAction,
 		String handlingNote
 	) {
 		ensureAdmin(requesterMemberId);
 		if (nextStatus == ContentReportStatus.PENDING) {
 			throw new BusinessException(ContentReportErrorCode.INVALID_CONTENT_REPORT_STATUS);
+		}
+		ContentReportModerationAction normalizedAction = normalizeModerationAction(moderationAction);
+		if (nextStatus != ContentReportStatus.RESOLVED && normalizedAction != ContentReportModerationAction.NONE) {
+			throw new BusinessException(ContentReportErrorCode.INVALID_CONTENT_REPORT_MODERATION_ACTION);
 		}
 		ContentReport report = findReport(reportId);
 		if (report.getStatus() != ContentReportStatus.PENDING) {
@@ -151,12 +157,36 @@ public class ContentReportService {
 			throw new BusinessException(ContentReportErrorCode.CONTENT_REPORT_ASSIGNEE_REQUIRED);
 		}
 		try {
-			report.handle(requesterMemberId, nextStatus, handlingNote);
+			if (normalizedAction == ContentReportModerationAction.DELETE_TARGET) {
+				deleteReportedTarget(report);
+			}
+			report.handle(requesterMemberId, nextStatus, normalizedAction, handlingNote);
 			contentReportRepository.flush();
 		} catch (ObjectOptimisticLockingFailureException exception) {
 			throw new BusinessException(ContentReportErrorCode.CONTENT_REPORT_ALREADY_HANDLED);
 		}
 		return toResult(report);
+	}
+
+	public ContentReportResult handleReport(
+		Long reportId,
+		Long requesterMemberId,
+		ContentReportStatus nextStatus,
+		String handlingNote
+	) {
+		return handleReport(reportId, requesterMemberId, nextStatus, ContentReportModerationAction.NONE, handlingNote);
+	}
+
+	private ContentReportModerationAction normalizeModerationAction(ContentReportModerationAction moderationAction) {
+		return moderationAction == null ? ContentReportModerationAction.NONE : moderationAction;
+	}
+
+	private void deleteReportedTarget(ContentReport report) {
+		if (report.getTargetType() == ContentReportTargetType.POST) {
+			postRepository.findById(report.getTargetId()).ifPresent(Post::delete);
+			return;
+		}
+		commentRepository.findById(report.getTargetId()).ifPresent(Comment::delete);
 	}
 
 	private ContentReport findReport(Long reportId) {

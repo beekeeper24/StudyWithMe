@@ -48,8 +48,17 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - The service rejects any report handling request when the report is no longer `PENDING`.
 - The service rejects handling by an admin who is not assigned to the report.
 - Admin handling notes are optional and limited to 500 characters.
-- `chat_message_reports.version` is used as a JPA optimistic lock.
+- `chat_message_reports.version` and `content_reports.version` are used as JPA optimistic locks.
 - If two admins claim or handle a report at nearly the same time, the first successful commit wins and the later stale update fails with the already-assigned or already-handled report error.
+
+## Community Moderation Action Policy
+
+- Community content reports can be handled with moderation action `NONE` or `DELETE_TARGET`.
+- `NONE` only records the report decision and leaves the reported content unchanged.
+- `DELETE_TARGET` soft-deletes the reported post, comment, or reply while preserving the original row and report snapshot for audit history.
+- `DELETE_TARGET` is allowed only with `RESOLVED`; rejected reports cannot delete the target content.
+- Deleted posts and comments are hidden through the existing published-content list/detail policies.
+- This is content takedown only. Member-level sanctions such as warnings, suspensions, or bans are a later feature.
 
 ## Admin Report History Policy
 
@@ -58,6 +67,7 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - Pending reports are the actionable queue.
 - Resolved and rejected reports are read-only history for operational review.
 - Admin report responses include reporter, reported member, assigned admin, and handler nicknames when available.
+- Community content report responses include the selected moderation action.
 - Normal report creation responses do not include those nicknames because the context is only needed for admin operation.
 - Missing nicknames can happen for withdrawn or incomplete accounts; clients should render a safe fallback instead of relying on numeric ids as the primary operator label.
 

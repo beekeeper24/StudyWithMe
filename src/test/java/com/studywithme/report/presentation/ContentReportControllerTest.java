@@ -19,7 +19,9 @@ import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.post.application.PostCreateCommand;
 import com.studywithme.post.application.PostResult;
 import com.studywithme.post.application.PostService;
+import com.studywithme.post.domain.PostStatus;
 import com.studywithme.post.repository.PostRepository;
+import com.studywithme.report.domain.ContentReportModerationAction;
 import com.studywithme.report.domain.ContentReportStatus;
 import com.studywithme.report.repository.ContentReportRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -157,9 +159,43 @@ class ContentReportControllerTest {
 				))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.status").value("RESOLVED"))
+			.andExpect(jsonPath("$.data.moderationAction").value("NONE"))
 			.andExpect(jsonPath("$.data.handlerMemberId").value(admin.getId()))
 			.andExpect(jsonPath("$.data.handlerNickname").value("admin-report-admin"))
 			.andExpect(jsonPath("$.data.handlingNote").value("처리 완료"));
+	}
+
+	@Test
+	@DisplayName("관리자는 콘텐츠 신고 처리 시 신고 대상 게시글 삭제 액션을 선택할 수 있다")
+	void handleContentReportWithDeleteTargetAction() throws Exception {
+		Member author = saveMember("admin-delete-author");
+		Member reporter = saveMember("admin-delete-reporter");
+		Member admin = saveAdmin("admin-delete-admin");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("삭제 대상 글", "본문"));
+		mockMvc.perform(post("/api/v1/posts/{postId}/reports", post.id())
+				.header("Authorization", "Bearer " + accessToken(reporter))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new ContentReportRequest("삭제 필요"))))
+			.andExpect(status().isOk());
+		Long reportId = contentReportRepository.findAll().getFirst().getId();
+		mockMvc.perform(post("/api/v1/admin/content-reports/{reportId}/assign", reportId)
+				.header("Authorization", "Bearer " + accessToken(admin)))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(post("/api/v1/admin/content-reports/{reportId}/handle", reportId)
+				.header("Authorization", "Bearer " + accessToken(admin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new ContentReportHandleRequest(
+					ContentReportStatus.RESOLVED,
+					ContentReportModerationAction.DELETE_TARGET,
+					"게시글 삭제"
+				))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.status").value("RESOLVED"))
+			.andExpect(jsonPath("$.data.moderationAction").value("DELETE_TARGET"));
+
+		org.assertj.core.api.Assertions.assertThat(postRepository.findById(post.id()).orElseThrow().getStatus())
+			.isEqualTo(PostStatus.DELETED);
 	}
 
 	private Member saveMember(String name) {

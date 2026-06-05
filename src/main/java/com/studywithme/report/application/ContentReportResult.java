@@ -2,6 +2,7 @@ package com.studywithme.report.application;
 
 import com.studywithme.member.domain.Member;
 import com.studywithme.report.domain.ContentReport;
+import com.studywithme.report.domain.ContentReportModerationAction;
 import com.studywithme.report.domain.ContentReportStatus;
 import com.studywithme.report.domain.ContentReportTargetType;
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ public record ContentReportResult(
 	String reportedNickname,
 	String reason,
 	ContentReportStatus status,
+	ContentReportModerationAction moderationAction,
 	Long assignedAdminMemberId,
 	String assignedAdminNickname,
 	LocalDateTime assignedAt,
@@ -44,6 +46,7 @@ public record ContentReportResult(
 			nicknameOf(members, report.getReportedMemberId()),
 			report.getReason(),
 			report.getStatus(),
+			report.getModerationAction(),
 			report.getAssignedAdminMemberId(),
 			nicknameOf(members, report.getAssignedAdminMemberId()),
 			report.getAssignedAt(),

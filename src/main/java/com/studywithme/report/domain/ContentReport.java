@@ -56,6 +56,10 @@ public class ContentReport {
 	@Column(nullable = false, length = 20)
 	private ContentReportStatus status = ContentReportStatus.PENDING;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "moderation_action", nullable = false, length = 30)
+	private ContentReportModerationAction moderationAction = ContentReportModerationAction.NONE;
+
 	@Column(name = "assigned_admin_member_id")
 	private Long assignedAdminMemberId;
 
@@ -131,11 +135,17 @@ public class ContentReport {
 		this.assignedAt = LocalDateTime.now();
 	}
 
-	public void handle(Long handlerMemberId, ContentReportStatus nextStatus, String handlingNote) {
+	public void handle(
+		Long handlerMemberId,
+		ContentReportStatus nextStatus,
+		ContentReportModerationAction moderationAction,
+		String handlingNote
+	) {
 		if (nextStatus == ContentReportStatus.PENDING) {
 			throw new IllegalArgumentException("Pending is not a handled report status.");
 		}
 		this.status = nextStatus;
+		this.moderationAction = moderationAction == null ? ContentReportModerationAction.NONE : moderationAction;
 		this.handlerMemberId = handlerMemberId;
 		this.handlingNote = handlingNote;
 		this.handledAt = LocalDateTime.now();
@@ -184,6 +194,10 @@ public class ContentReport {
 
 	public ContentReportStatus getStatus() {
 		return status;
+	}
+
+	public ContentReportModerationAction getModerationAction() {
+		return moderationAction;
 	}
 
 	public Long getAssignedAdminMemberId() {
