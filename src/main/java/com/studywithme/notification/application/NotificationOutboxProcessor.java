@@ -13,6 +13,8 @@ import com.studywithme.notification.repository.NotificationRepository;
 import com.studywithme.outbox.domain.OutboxEvent;
 import com.studywithme.outbox.domain.OutboxEventStatus;
 import com.studywithme.outbox.repository.OutboxEventRepository;
+import com.studywithme.report.domain.ContentReportStatus;
+import com.studywithme.report.repository.ContentReportRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +34,7 @@ public class NotificationOutboxProcessor {
 	private final NotificationRepository notificationRepository;
 	private final CommentRepository commentRepository;
 	private final ChatMessageReportRepository chatMessageReportRepository;
+	private final ContentReportRepository contentReportRepository;
 	private final ObjectProvider<NotificationRealtimePublisher> notificationRealtimePublisher;
 
 	public NotificationOutboxProcessor(
@@ -40,6 +43,7 @@ public class NotificationOutboxProcessor {
 		NotificationRepository notificationRepository,
 		CommentRepository commentRepository,
 		ChatMessageReportRepository chatMessageReportRepository,
+		ContentReportRepository contentReportRepository,
 		ObjectProvider<NotificationRealtimePublisher> notificationRealtimePublisher
 	) {
 		this.objectMapper = objectMapper;
@@ -47,6 +51,7 @@ public class NotificationOutboxProcessor {
 		this.notificationRepository = notificationRepository;
 		this.commentRepository = commentRepository;
 		this.chatMessageReportRepository = chatMessageReportRepository;
+		this.contentReportRepository = contentReportRepository;
 		this.notificationRealtimePublisher = notificationRealtimePublisher;
 	}
 
@@ -104,6 +109,8 @@ public class NotificationOutboxProcessor {
 			processChatSingleReceiver(sourceEventId, payload, NotificationType.PRIVATE_CHAT_REQUESTED, "1:1 채팅 요청이 도착했습니다.");
 		} else if ("CHAT_MESSAGE_REPORTED".equals(eventType)) {
 			processChatReportMultiReceiver(sourceEventId, payload);
+		} else if ("CONTENT_REPORTED".equals(eventType)) {
+			processContentReportMultiReceiver(sourceEventId, payload);
 		}
 	}
 
@@ -230,6 +237,29 @@ public class NotificationOutboxProcessor {
 				NotificationTargetType.CHAT_REPORT,
 				reportId,
 				"채팅 메시지 신고가 접수되었습니다."
+			);
+		}
+	}
+
+	private void processContentReportMultiReceiver(String sourceEventId, String eventPayload) throws Exception {
+		JsonNode payload = objectMapper.readTree(eventPayload);
+		Long actorMemberId = payload.required("actorMemberId").asLong();
+		Long reportId = payload.required("reportId").asLong();
+		if (!contentReportRepository.existsByIdAndStatusAndAssignedAdminMemberIdIsNull(
+			reportId,
+			ContentReportStatus.PENDING
+		)) {
+			return;
+		}
+		for (Long receiverMemberId : readLongArray(payload.required("receiverMemberIds"))) {
+			createTargetNotificationIfNeeded(
+				sourceEventId,
+				receiverMemberId,
+				actorMemberId,
+				NotificationType.CONTENT_REPORTED,
+				NotificationTargetType.CONTENT_REPORT,
+				reportId,
+				"커뮤니티 신고가 접수되었습니다."
 			);
 		}
 	}

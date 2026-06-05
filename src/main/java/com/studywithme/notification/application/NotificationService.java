@@ -60,6 +60,15 @@ public class NotificationService {
 	}
 
 	@Transactional
+	public void markContentReportNotificationsRead(Long reportId) {
+		notificationRepository.findAllByTargetTypeAndTargetIdAndReadAtIsNull(
+				NotificationTargetType.CONTENT_REPORT,
+				reportId
+			)
+			.forEach(notification -> notification.markRead(notification.getReceiverMemberId()));
+	}
+
+	@Transactional
 	public void delete(Long notificationId, Long requesterMemberId) {
 		Notification notification = notificationRepository.findById(notificationId)
 			.orElseThrow(() -> new BusinessException(NotificationErrorCode.NOTIFICATION_NOT_FOUND));

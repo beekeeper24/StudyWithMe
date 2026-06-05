@@ -4,5 +4,6 @@ public enum NotificationTargetType {
 	COMMENT,
 	STUDY,
 	CHAT_ROOM,
-	CHAT_REPORT
+	CHAT_REPORT,
+	CONTENT_REPORT
 }

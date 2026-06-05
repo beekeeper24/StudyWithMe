@@ -84,12 +84,16 @@ public class SecurityConfig {
 					"/api/v1/studies/*/chat-room",
 					"/api/v1/posts",
 					"/api/v1/posts/*/comments",
+					"/api/v1/posts/*/reports",
 					"/api/v1/comments/*/replies",
+					"/api/v1/comments/*/reports",
 					"/api/v1/chat/private-rooms",
 					"/api/v1/chat/rooms/*/messages",
 					"/api/v1/chat/rooms/*/messages/*/reports",
 					"/api/v1/admin/chat-message-reports/*/assign",
-					"/api/v1/admin/chat-message-reports/*/handle"
+					"/api/v1/admin/chat-message-reports/*/handle",
+					"/api/v1/admin/content-reports/*/assign",
+					"/api/v1/admin/content-reports/*/handle"
 				).authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/studies/me/history").authenticated()
@@ -105,7 +109,8 @@ public class SecurityConfig {
 					"/api/v1/chat/rooms",
 					"/api/v1/chat/rooms/*/messages",
 					"/api/v1/chat/rooms/*/members",
-					"/api/v1/admin/chat-message-reports"
+					"/api/v1/admin/chat-message-reports",
+					"/api/v1/admin/content-reports"
 				).authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/read-all").authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/v1/notifications/*/read").authenticated()

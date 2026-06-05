@@ -29,6 +29,9 @@ import com.studywithme.outbox.repository.OutboxEventRepository;
 import com.studywithme.post.application.PostCreateCommand;
 import com.studywithme.post.application.PostResult;
 import com.studywithme.post.application.PostService;
+import com.studywithme.report.application.ContentReportService;
+import com.studywithme.report.domain.ContentReport;
+import com.studywithme.report.repository.ContentReportRepository;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,10 +45,12 @@ import org.springframework.context.annotation.Import;
 	CommentService.class,
 	OutboxEventPublisher.class,
 	MentionExtractor.class,
-	MentionTargetResolver.class,
-	NotificationOutboxProcessor.class,
-	ObjectMapper.class
-})
+		MentionTargetResolver.class,
+		NotificationOutboxProcessor.class,
+		NotificationService.class,
+		ContentReportService.class,
+		ObjectMapper.class
+	})
 class NotificationOutboxProcessorTest {
 
 	@Autowired
@@ -71,6 +76,12 @@ class NotificationOutboxProcessorTest {
 
 	@Autowired
 	private ChatMessageRepository chatMessageRepository;
+
+	@Autowired
+	private ContentReportRepository contentReportRepository;
+
+	@Autowired
+	private ContentReportService contentReportService;
 
 	@Autowired
 	private NotificationOutboxProcessor processor;
@@ -127,6 +138,57 @@ class NotificationOutboxProcessorTest {
 			assertThat(notification.getTargetId()).isEqualTo(report.getId());
 			assertThat(notification.getMessage()).isEqualTo("채팅 메시지 신고가 접수되었습니다.");
 		});
+	}
+
+	@Test
+	@DisplayName("CONTENT_REPORTED event를 처리하면 관리자들에게 커뮤니티 신고 알림을 만든다")
+	void processContentReportedCreatesNotificationsForAdmins() {
+		Member author = saveMember("content-reported-author");
+		Member reporter = saveMember("content-reporter");
+		Member firstAdmin = saveAdmin("content-first-admin");
+		Member secondAdmin = saveAdmin("content-second-admin");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("신고 대상 글", "본문"));
+		outboxEventRepository.deleteAll();
+		notificationRepository.deleteAll();
+
+		contentReportService.reportPost(post.id(), reporter.getId(), "확인 필요");
+
+		int processedCount = processor.processPending(10);
+
+		ContentReport report = contentReportRepository.findAll().getFirst();
+		List<Notification> notifications = notificationRepository.findAll();
+		assertThat(processedCount).isEqualTo(1);
+		assertThat(notifications).hasSize(2);
+		assertThat(notifications).extracting(Notification::getReceiverMemberId)
+			.containsExactlyInAnyOrder(firstAdmin.getId(), secondAdmin.getId());
+		assertThat(notifications).allSatisfy(notification -> {
+			assertThat(notification.getActorMemberId()).isEqualTo(reporter.getId());
+			assertThat(notification.getType()).isEqualTo(NotificationType.CONTENT_REPORTED);
+			assertThat(notification.getTargetType()).isEqualTo(NotificationTargetType.CONTENT_REPORT);
+			assertThat(notification.getTargetId()).isEqualTo(report.getId());
+			assertThat(notification.getMessage()).isEqualTo("커뮤니티 신고가 접수되었습니다.");
+		});
+	}
+
+	@Test
+	@DisplayName("이미 담당자가 지정된 콘텐츠 신고 event는 관리자 신고 알림을 만들지 않는다")
+	void skipContentReportNotificationsWhenReportAlreadyAssigned() {
+		Member author = saveMember("assigned-content-author");
+		Member reporter = saveMember("assigned-content-reporter");
+		Member admin = saveAdmin("assigned-content-admin");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("신고 대상 글", "본문"));
+		outboxEventRepository.deleteAll();
+		notificationRepository.deleteAll();
+		contentReportService.reportPost(post.id(), reporter.getId(), "확인 필요");
+		ContentReport report = contentReportRepository.findAll().getFirst();
+		report.assignTo(admin.getId());
+		contentReportRepository.saveAndFlush(report);
+
+		int processedCount = processor.processPending(10);
+
+		assertThat(processedCount).isEqualTo(1);
+		assertThat(notificationRepository.findAll()).isEmpty();
+		assertThat(outboxEventRepository.findAll().getFirst().getStatus()).isEqualTo(OutboxEventStatus.PROCESSED);
 	}
 
 	@Test
