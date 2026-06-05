@@ -2,6 +2,7 @@ package com.studywithme.chat.application;
 
 import com.studywithme.chat.domain.ChatMessage;
 import com.studywithme.chat.domain.ChatMessageReport;
+import com.studywithme.chat.domain.ChatMessageReportModerationAction;
 import com.studywithme.chat.domain.ChatMessageReportStatus;
 import com.studywithme.member.domain.Member;
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ public record ChatMessageReportResult(
 	String messageContent,
 	String reason,
 	ChatMessageReportStatus status,
+	ChatMessageReportModerationAction moderationAction,
 	Long assignedAdminMemberId,
 	String assignedAdminNickname,
 	LocalDateTime assignedAt,
@@ -44,6 +46,7 @@ public record ChatMessageReportResult(
 			message.getContent(),
 			report.getReason(),
 			report.getStatus(),
+			report.getModerationAction(),
 			report.getAssignedAdminMemberId(),
 			nicknameOf(members, report.getAssignedAdminMemberId()),
 			report.getAssignedAt(),

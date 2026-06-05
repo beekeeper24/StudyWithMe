@@ -49,6 +49,10 @@ public class ChatMessage {
 		if (!senderMemberId.equals(requesterMemberId)) {
 			throw new IllegalArgumentException("Only sender can delete chat message.");
 		}
+		delete();
+	}
+
+	public void delete() {
 		if (deletedAt == null) {
 			deletedAt = LocalDateTime.now();
 		}

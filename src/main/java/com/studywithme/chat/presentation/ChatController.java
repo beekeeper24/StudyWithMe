@@ -164,6 +164,7 @@ public class ChatController {
 			reportId,
 			authenticatedPrincipal.memberId(),
 			request.status(),
+			request.moderationAction(),
 			request.handlingNote()
 		)));
 	}

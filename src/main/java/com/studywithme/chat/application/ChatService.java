@@ -2,6 +2,7 @@ package com.studywithme.chat.application;
 
 import com.studywithme.chat.domain.ChatMessage;
 import com.studywithme.chat.domain.ChatMessageReport;
+import com.studywithme.chat.domain.ChatMessageReportModerationAction;
 import com.studywithme.chat.domain.ChatMessageReportStatus;
 import com.studywithme.chat.domain.ChatRoom;
 import com.studywithme.chat.domain.ChatRoomMember;
@@ -270,11 +271,17 @@ public class ChatService {
 		Long reportId,
 		Long requesterMemberId,
 		ChatMessageReportStatus nextStatus,
+		ChatMessageReportModerationAction moderationAction,
 		String handlingNote
 	) {
 		ensureAdmin(requesterMemberId);
 		if (nextStatus == ChatMessageReportStatus.PENDING) {
 			throw new BusinessException(ChatErrorCode.INVALID_CHAT_REPORT_STATUS);
+		}
+		ChatMessageReportModerationAction normalizedAction = normalizeModerationAction(moderationAction);
+		if (nextStatus != ChatMessageReportStatus.RESOLVED
+			&& normalizedAction != ChatMessageReportModerationAction.NONE) {
+			throw new BusinessException(ChatErrorCode.INVALID_CHAT_REPORT_MODERATION_ACTION);
 		}
 		ChatMessageReport report = chatMessageReportRepository.findById(reportId)
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
@@ -285,7 +292,11 @@ public class ChatService {
 			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ASSIGNEE_REQUIRED);
 		}
 		try {
-			report.handle(requesterMemberId, nextStatus, handlingNote);
+			ChatMessage message = findMessage(report.getRoomId(), report.getMessageId());
+			if (normalizedAction == ChatMessageReportModerationAction.DELETE_TARGET) {
+				message.delete();
+			}
+			report.handle(requesterMemberId, nextStatus, normalizedAction, handlingNote);
 			chatMessageReportRepository.flush();
 		} catch (ObjectOptimisticLockingFailureException exception) {
 			throw new BusinessException(ChatErrorCode.CHAT_REPORT_ALREADY_HANDLED);
@@ -293,9 +304,31 @@ public class ChatService {
 		return toReportResult(report, findMessage(report.getRoomId(), report.getMessageId()));
 	}
 
+	@Transactional
+	public ChatMessageReportResult handleMessageReport(
+		Long reportId,
+		Long requesterMemberId,
+		ChatMessageReportStatus nextStatus,
+		String handlingNote
+	) {
+		return handleMessageReport(
+			reportId,
+			requesterMemberId,
+			nextStatus,
+			ChatMessageReportModerationAction.NONE,
+			handlingNote
+		);
+	}
+
 	public void validateRoomMembership(Long roomId, Long memberId) {
 		ChatRoom room = findRoom(roomId);
 		validateRoomMember(room, memberId);
+	}
+
+	private ChatMessageReportModerationAction normalizeModerationAction(
+		ChatMessageReportModerationAction moderationAction
+	) {
+		return moderationAction == null ? ChatMessageReportModerationAction.NONE : moderationAction;
 	}
 
 	private void validateActiveTargetMember(Long targetMemberId) {

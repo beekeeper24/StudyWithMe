@@ -1018,3 +1018,14 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - `REJECTED + DELETE_TARGET` is rejected as an invalid moderation action.
 - Frontend adds a `신고 대상 삭제` checkbox in the `커뮤니티 신고` resolve modal and shows `대상 삭제` in handled report history.
 - This is content takedown only; member-level warnings/suspensions/bans remain future sanctions work.
+
+### 80. Chat report moderation action branch
+
+- Active branch in both repos: `feature/chat-report-moderation-action`.
+- Backend adds `ChatMessageReportModerationAction` with `NONE` and `DELETE_TARGET`.
+- Flyway V23 adds `chat_message_reports.moderation_action`, defaulting existing reports to `NONE`.
+- `RESOLVED + DELETE_TARGET` soft-deletes the reported chat message through the existing deleted-message placeholder policy.
+- `REJECTED + DELETE_TARGET` is rejected as an invalid moderation action.
+- Existing 4-argument `handleMessageReport` calls remain transactional so older internal callers still persist handled status changes.
+- Frontend adds a `신고 대상 메시지 삭제` checkbox in the `채팅 신고` resolve modal and shows `대상 삭제` in handled chat report history.
+- This is message takedown only; member-level warnings/suspensions/bans and room restrictions remain future sanctions work.

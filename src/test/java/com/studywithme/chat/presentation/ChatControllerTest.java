@@ -14,6 +14,7 @@ import com.studywithme.auth.token.RefreshTokenRepository;
 import com.studywithme.chat.application.ChatMessageCreateCommand;
 import com.studywithme.chat.application.ChatRoomResult;
 import com.studywithme.chat.application.ChatService;
+import com.studywithme.chat.domain.ChatMessageReportModerationAction;
 import com.studywithme.chat.domain.ChatMessageReportStatus;
 import com.studywithme.chat.repository.ChatMessageReportRepository;
 import com.studywithme.chat.repository.ChatMessageRepository;
@@ -355,9 +356,38 @@ class ChatControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.status").value("RESOLVED"))
+			.andExpect(jsonPath("$.data.moderationAction").value("NONE"))
 			.andExpect(jsonPath("$.data.handlerMemberId").value(admin.getId()))
 			.andExpect(jsonPath("$.data.handlerNickname").value("admin"))
 			.andExpect(jsonPath("$.data.handlingNote").value("확인 완료"));
+	}
+
+	@Test
+	@DisplayName("관리자는 채팅 메시지 신고 처리 시 신고 대상 메시지를 삭제할 수 있다")
+	void handleReportWithDeleteMessageAction() throws Exception {
+		Member reporter = saveMember("delete-report-reporter");
+		Member target = saveMember("delete-report-target");
+		Member admin = saveAdmin("delete-report-admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		var message = chatService.sendMessage(room.id(), target.getId(), new ChatMessageCreateCommand("삭제 대상 메시지"));
+		var report = chatService.reportMessage(room.id(), message.id(), reporter.getId(), "삭제가 필요합니다.");
+		chatService.assignMessageReport(report.id(), admin.getId());
+
+		mockMvc.perform(post("/api/v1/admin/chat-message-reports/{reportId}/handle", report.id())
+				.header("Authorization", "Bearer " + accessToken(admin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new ChatMessageReportHandleRequest(
+					ChatMessageReportStatus.RESOLVED,
+					ChatMessageReportModerationAction.DELETE_TARGET,
+					"메시지 삭제"
+				))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.status").value("RESOLVED"))
+			.andExpect(jsonPath("$.data.moderationAction").value("DELETE_TARGET"));
+
+		org.assertj.core.api.Assertions.assertThat(chatMessageRepository.findById(message.id()).orElseThrow().isDeleted())
+			.isTrue();
 	}
 
 	@Test
