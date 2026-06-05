@@ -87,6 +87,7 @@ public class ContentReportController {
 			reportId,
 			authenticatedPrincipal.memberId(),
 			request.status(),
+			request.moderationAction(),
 			request.handlingNote()
 		)));
 	}

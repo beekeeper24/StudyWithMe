@@ -70,6 +70,10 @@ public class Comment {
 
 	public void delete(Long requesterMemberId) {
 		requireAuthor(requesterMemberId);
+		delete();
+	}
+
+	public void delete() {
 		this.status = CommentStatus.DELETED;
 	}
 

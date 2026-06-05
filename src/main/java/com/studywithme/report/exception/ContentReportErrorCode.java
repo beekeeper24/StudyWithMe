@@ -43,6 +43,11 @@ public enum ContentReportErrorCode implements ErrorCode {
 		"REPORT-008",
 		"담당 관리자만 신고를 처리할 수 있습니다.",
 		HttpStatus.FORBIDDEN
+	),
+	INVALID_CONTENT_REPORT_MODERATION_ACTION(
+		"REPORT-009",
+		"신고 처리 액션이 올바르지 않습니다.",
+		HttpStatus.BAD_REQUEST
 	);
 
 	private final String code;

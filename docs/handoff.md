@@ -1009,3 +1009,12 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Notification popup target type `CONTENT_REPORT` opens My Page and reloads the pending content report queue for admins.
 - Focused backend verification passed for `ContentReportServiceTest`, `ContentReportControllerTest`, `SecurityConfigRouteContractTest`, and `NotificationOutboxProcessorTest`.
 - Frontend `npm run lint` and `npm run build` passed after the content report UI wiring.
+
+### 79. Moderation content action branch
+
+- Active branch in both repos: `feature/moderation-content-action`.
+- Backend adds `ContentReportModerationAction` with `NONE` and `DELETE_TARGET`.
+- `RESOLVED + DELETE_TARGET` soft-deletes the reported post/comment/reply through the existing `PUBLISHED`/`DELETED` visibility policy.
+- `REJECTED + DELETE_TARGET` is rejected as an invalid moderation action.
+- Frontend adds a `신고 대상 삭제` checkbox in the `커뮤니티 신고` resolve modal and shows `대상 삭제` in handled report history.
+- This is content takedown only; member-level warnings/suspensions/bans remain future sanctions work.

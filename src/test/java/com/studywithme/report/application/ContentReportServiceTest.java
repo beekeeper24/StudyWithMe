@@ -20,10 +20,13 @@ import com.studywithme.mention.application.MentionExtractor;
 import com.studywithme.mention.application.MentionTargetResolver;
 import com.studywithme.notification.application.NotificationService;
 import com.studywithme.outbox.application.OutboxEventPublisher;
+import com.studywithme.comment.domain.CommentStatus;
 import com.studywithme.post.application.PostCreateCommand;
 import com.studywithme.post.application.PostResult;
 import com.studywithme.post.application.PostService;
+import com.studywithme.post.domain.PostStatus;
 import com.studywithme.post.repository.PostRepository;
+import com.studywithme.report.domain.ContentReportModerationAction;
 import com.studywithme.report.domain.ContentReportStatus;
 import com.studywithme.report.domain.ContentReportTargetType;
 import com.studywithme.report.exception.ContentReportErrorCode;
@@ -171,14 +174,90 @@ class ContentReportServiceTest {
 			report.id(),
 			admin.getId(),
 			ContentReportStatus.RESOLVED,
+			ContentReportModerationAction.NONE,
 			"처리 완료"
 		);
 
 		assertThat(handled.status()).isEqualTo(ContentReportStatus.RESOLVED);
+		assertThat(handled.moderationAction()).isEqualTo(ContentReportModerationAction.NONE);
 		assertThat(handled.handlerMemberId()).isEqualTo(admin.getId());
 		assertThat(handled.handlerNickname()).isEqualTo("handle-admin");
 		assertThat(handled.handlingNote()).isEqualTo("처리 완료");
 		assertThat(handled.handledAt()).isNotNull();
+	}
+
+	@Test
+	@DisplayName("관리자는 게시글 신고 처리 시 신고 대상 게시글을 삭제할 수 있다")
+	void handlePostReportWithDeleteTargetAction() {
+		Member author = saveMember("delete-post-author");
+		Member reporter = saveMember("delete-post-reporter");
+		Member admin = saveAdmin("delete-post-admin");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("삭제 대상 글", "본문"));
+		ContentReportResult report = contentReportService.reportPost(post.id(), reporter.getId(), "삭제 필요");
+		contentReportService.assignReport(report.id(), admin.getId());
+
+		ContentReportResult handled = contentReportService.handleReport(
+			report.id(),
+			admin.getId(),
+			ContentReportStatus.RESOLVED,
+			ContentReportModerationAction.DELETE_TARGET,
+			"게시글 삭제"
+		);
+
+		assertThat(handled.status()).isEqualTo(ContentReportStatus.RESOLVED);
+		assertThat(handled.moderationAction()).isEqualTo(ContentReportModerationAction.DELETE_TARGET);
+		assertThat(postRepository.findById(post.id()).orElseThrow().getStatus()).isEqualTo(PostStatus.DELETED);
+	}
+
+	@Test
+	@DisplayName("관리자는 댓글 신고 처리 시 신고 대상 댓글을 삭제할 수 있다")
+	void handleCommentReportWithDeleteTargetAction() {
+		Member postAuthor = saveMember("delete-comment-post-author");
+		Member commentAuthor = saveMember("delete-comment-author");
+		Member reporter = saveMember("delete-comment-reporter");
+		Member admin = saveAdmin("delete-comment-admin");
+		PostResult post = postService.create(postAuthor.getId(), new PostCreateCommand("글", "본문"));
+		CommentResult comment = commentService.create(
+			post.id(),
+			commentAuthor.getId(),
+			new CommentCreateCommand("삭제 대상 댓글")
+		);
+		ContentReportResult report = contentReportService.reportComment(comment.id(), reporter.getId(), "삭제 필요");
+		contentReportService.assignReport(report.id(), admin.getId());
+
+		ContentReportResult handled = contentReportService.handleReport(
+			report.id(),
+			admin.getId(),
+			ContentReportStatus.RESOLVED,
+			ContentReportModerationAction.DELETE_TARGET,
+			"댓글 삭제"
+		);
+
+		assertThat(handled.status()).isEqualTo(ContentReportStatus.RESOLVED);
+		assertThat(handled.moderationAction()).isEqualTo(ContentReportModerationAction.DELETE_TARGET);
+		assertThat(commentRepository.findById(comment.id()).orElseThrow().getStatus()).isEqualTo(CommentStatus.DELETED);
+	}
+
+	@Test
+	@DisplayName("기각 처리에는 신고 대상 삭제 액션을 사용할 수 없다")
+	void rejectDeleteTargetActionWhenRejectingReport() {
+		Member author = saveMember("reject-action-author");
+		Member reporter = saveMember("reject-action-reporter");
+		Member admin = saveAdmin("reject-action-admin");
+		PostResult post = postService.create(author.getId(), new PostCreateCommand("글", "본문"));
+		ContentReportResult report = contentReportService.reportPost(post.id(), reporter.getId(), "확인 필요");
+		contentReportService.assignReport(report.id(), admin.getId());
+
+		assertThatThrownBy(() -> contentReportService.handleReport(
+				report.id(),
+				admin.getId(),
+				ContentReportStatus.REJECTED,
+				ContentReportModerationAction.DELETE_TARGET,
+				"기각하면서 삭제"
+			))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(ContentReportErrorCode.INVALID_CONTENT_REPORT_MODERATION_ACTION);
 	}
 
 	@Test
@@ -222,6 +301,7 @@ class ContentReportServiceTest {
 				report.id(),
 				otherAdmin.getId(),
 				ContentReportStatus.RESOLVED,
+				ContentReportModerationAction.NONE,
 				"처리 시도"
 			))
 			.isInstanceOf(BusinessException.class)
