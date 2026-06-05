@@ -2,6 +2,8 @@ package com.studywithme.notification.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.studywithme.chat.domain.ChatMessageReportStatus;
+import com.studywithme.chat.repository.ChatMessageReportRepository;
 import com.studywithme.comment.domain.Comment;
 import com.studywithme.comment.repository.CommentRepository;
 import com.studywithme.notification.domain.Notification;
@@ -29,6 +31,7 @@ public class NotificationOutboxProcessor {
 	private final OutboxEventRepository outboxEventRepository;
 	private final NotificationRepository notificationRepository;
 	private final CommentRepository commentRepository;
+	private final ChatMessageReportRepository chatMessageReportRepository;
 	private final ObjectProvider<NotificationRealtimePublisher> notificationRealtimePublisher;
 
 	public NotificationOutboxProcessor(
@@ -36,12 +39,14 @@ public class NotificationOutboxProcessor {
 		OutboxEventRepository outboxEventRepository,
 		NotificationRepository notificationRepository,
 		CommentRepository commentRepository,
+		ChatMessageReportRepository chatMessageReportRepository,
 		ObjectProvider<NotificationRealtimePublisher> notificationRealtimePublisher
 	) {
 		this.objectMapper = objectMapper;
 		this.outboxEventRepository = outboxEventRepository;
 		this.notificationRepository = notificationRepository;
 		this.commentRepository = commentRepository;
+		this.chatMessageReportRepository = chatMessageReportRepository;
 		this.notificationRealtimePublisher = notificationRealtimePublisher;
 	}
 
@@ -210,6 +215,12 @@ public class NotificationOutboxProcessor {
 		JsonNode payload = objectMapper.readTree(eventPayload);
 		Long actorMemberId = payload.required("actorMemberId").asLong();
 		Long reportId = payload.required("reportId").asLong();
+		if (!chatMessageReportRepository.existsByIdAndStatusAndAssignedAdminMemberIdIsNull(
+			reportId,
+			ChatMessageReportStatus.PENDING
+		)) {
+			return;
+		}
 		for (Long receiverMemberId : readLongArray(payload.required("receiverMemberIds"))) {
 			createTargetNotificationIfNeeded(
 				sourceEventId,

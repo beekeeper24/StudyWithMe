@@ -304,6 +304,11 @@ Completed and merged into `develop`:
 48. Post search null keyword runtime fix:
    - when `keyword` is blank or omitted, `PostService` uses the existing published-list repository methods instead of the keyword JPQL query;
    - this avoids PostgreSQL treating nullable keyword expressions as `bytea` in `LOWER(...)` and returning `GLOBAL-500` for the default community list.
+49. Chat report assignment notification sync:
+   - assigning a pending chat message report marks unread `CHAT_REPORT` notifications for that report as read;
+   - if the report notification outbox is processed after the report has already been assigned or handled, the processor skips creating fresh admin notifications;
+   - frontend reloads notifications after an admin claims a report so the current admin's badge/popup catches up immediately;
+   - moderation product policy documents this MVP all-admin notification cleanup behavior.
 
 Active feature work in progress:
 
@@ -985,4 +990,12 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Admin report responses include `assignedAdminMemberId`, `assignedAdminNickname`, and `assignedAt`.
 - Frontend admin report rows show 담당자 separately from 처리자.
 - Pending unassigned reports show `담당하기`; only reports assigned to the current admin show `처리 완료` and `기각`.
-- MVP all-admin `CHAT_REPORT` notification fan-out remains unchanged; future work can notify only the assigned admin after assignment.
+- MVP all-admin `CHAT_REPORT` notification fan-out remains for newly created unassigned reports; assigned reports need notification cleanup so they do not remain as fresh unclaimed alerts.
+
+### 77. Admin chat report assignment notification sync
+
+- `ChatService.assignMessageReport` now marks unread `CHAT_REPORT` notifications for the assigned report as read after the assignment update succeeds.
+- `NotificationOutboxProcessor` checks that a `CHAT_MESSAGE_REPORTED` target report is still `PENDING` and unassigned before creating admin notifications.
+- This prevents stale notifications both when notifications already exist at assignment time and when outbox processing runs late after assignment.
+- Frontend `assignChatReport` reloads notifications after the claim request succeeds so the current admin's local notification state catches up.
+- `docs/product/moderation.md` records the MVP policy: all active admins may receive the initial report alert, but claimed or handled reports should not continue to appear as new unclaimed alerts.

@@ -3,6 +3,12 @@ package com.studywithme.notification.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.studywithme.chat.domain.ChatMessage;
+import com.studywithme.chat.domain.ChatMessageReport;
+import com.studywithme.chat.domain.ChatRoom;
+import com.studywithme.chat.repository.ChatMessageReportRepository;
+import com.studywithme.chat.repository.ChatMessageRepository;
+import com.studywithme.chat.repository.ChatRoomRepository;
 import com.studywithme.comment.application.CommentCreateCommand;
 import com.studywithme.comment.application.CommentResult;
 import com.studywithme.comment.application.CommentService;
@@ -58,6 +64,15 @@ class NotificationOutboxProcessorTest {
 	private NotificationRepository notificationRepository;
 
 	@Autowired
+	private ChatMessageReportRepository chatMessageReportRepository;
+
+	@Autowired
+	private ChatRoomRepository chatRoomRepository;
+
+	@Autowired
+	private ChatMessageRepository chatMessageRepository;
+
+	@Autowired
 	private NotificationOutboxProcessor processor;
 
 	@Test
@@ -89,13 +104,14 @@ class NotificationOutboxProcessorTest {
 	@DisplayName("CHAT_MESSAGE_REPORTED event를 처리하면 관리자들에게 신고 알림을 만든다")
 	void processChatMessageReportedCreatesNotificationsForAdmins() {
 		Member reporter = saveMember("reporter");
+		Member reported = saveMember("reported");
 		Member firstAdmin = saveAdmin("first-admin");
 		Member secondAdmin = saveAdmin("second-admin");
-		Long reportId = 501L;
+		ChatMessageReport report = saveChatReport("report-notification", reporter, reported);
 		outboxEventRepository.deleteAll();
 		notificationRepository.deleteAll();
 		OutboxEventPublisher publisher = new OutboxEventPublisher(new ObjectMapper(), outboxEventRepository);
-		publisher.publishChatMessageReported(reportId, reporter.getId(), List.of(firstAdmin.getId(), secondAdmin.getId()));
+		publisher.publishChatMessageReported(report.getId(), reporter.getId(), List.of(firstAdmin.getId(), secondAdmin.getId()));
 
 		int processedCount = processor.processPending(10);
 
@@ -108,9 +124,30 @@ class NotificationOutboxProcessorTest {
 			assertThat(notification.getActorMemberId()).isEqualTo(reporter.getId());
 			assertThat(notification.getType()).isEqualTo(NotificationType.CHAT_MESSAGE_REPORTED);
 			assertThat(notification.getTargetType()).isEqualTo(NotificationTargetType.CHAT_REPORT);
-			assertThat(notification.getTargetId()).isEqualTo(reportId);
+			assertThat(notification.getTargetId()).isEqualTo(report.getId());
 			assertThat(notification.getMessage()).isEqualTo("채팅 메시지 신고가 접수되었습니다.");
 		});
+	}
+
+	@Test
+	@DisplayName("이미 담당자가 지정된 신고 event는 관리자 신고 알림을 만들지 않는다")
+	void skipChatReportNotificationsWhenReportAlreadyAssigned() {
+		Member reporter = saveMember("assigned-reporter");
+		Member reported = saveMember("assigned-reported");
+		Member admin = saveAdmin("assigned-admin");
+		ChatMessageReport report = saveChatReport("assigned-report-notification", reporter, reported);
+		report.assignTo(admin.getId());
+		chatMessageReportRepository.saveAndFlush(report);
+		outboxEventRepository.deleteAll();
+		notificationRepository.deleteAll();
+		OutboxEventPublisher publisher = new OutboxEventPublisher(new ObjectMapper(), outboxEventRepository);
+		publisher.publishChatMessageReported(report.getId(), reporter.getId(), List.of(admin.getId()));
+
+		int processedCount = processor.processPending(10);
+
+		assertThat(processedCount).isEqualTo(1);
+		assertThat(notificationRepository.findAll()).isEmpty();
+		assertThat(outboxEventRepository.findAll().getFirst().getStatus()).isEqualTo(OutboxEventStatus.PROCESSED);
 	}
 
 	@Test
@@ -344,5 +381,21 @@ class NotificationOutboxProcessorTest {
 		);
 		member.grantRole(MemberRole.ADMIN);
 		return memberRepository.saveAndFlush(member);
+	}
+
+	private ChatMessageReport saveChatReport(String roomKey, Member reporter, Member reported) {
+		ChatRoom room = chatRoomRepository.saveAndFlush(ChatRoom.privateRoom(roomKey));
+		ChatMessage message = chatMessageRepository.saveAndFlush(ChatMessage.create(
+			room.getId(),
+			reported.getId(),
+			"신고 대상 메시지"
+		));
+		return chatMessageReportRepository.saveAndFlush(ChatMessageReport.create(
+			room.getId(),
+			message.getId(),
+			reporter.getId(),
+			reported.getId(),
+			"신고 사유"
+		));
 	}
 }

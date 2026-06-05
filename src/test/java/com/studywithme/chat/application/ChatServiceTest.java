@@ -18,6 +18,11 @@ import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.MemberRole;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
+import com.studywithme.notification.application.NotificationService;
+import com.studywithme.notification.domain.Notification;
+import com.studywithme.notification.domain.NotificationTargetType;
+import com.studywithme.notification.domain.NotificationType;
+import com.studywithme.notification.repository.NotificationRepository;
 import com.studywithme.outbox.application.OutboxEventPublisher;
 import com.studywithme.study.application.StudyCreateCommand;
 import com.studywithme.study.application.StudyResult;
@@ -40,7 +45,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @DataJpaTest
 @Import({
 	ChatService.class,
-	StudyService.class
+	StudyService.class,
+	NotificationService.class
 })
 class ChatServiceTest {
 
@@ -52,6 +58,9 @@ class ChatServiceTest {
 
 	@Autowired
 	private ChatMessageReportRepository chatMessageReportRepository;
+
+	@Autowired
+	private NotificationRepository notificationRepository;
 
 	@Autowired
 	private ChatRoomMemberRepository chatRoomMemberRepository;
@@ -518,6 +527,60 @@ class ChatServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(ChatErrorCode.CHAT_REPORT_ASSIGNEE_REQUIRED);
+	}
+
+	@Test
+	@DisplayName("신고를 담당하면 해당 신고의 관리자 알림을 읽음 처리한다")
+	void assignReportMarksReportNotificationsRead() {
+		Member reporter = saveMember("notification-reporter");
+		Member target = saveMember("notification-target");
+		Member firstAdmin = saveAdmin("notification-first-admin");
+		Member secondAdmin = saveAdmin("notification-second-admin");
+		ChatRoomResult room = chatService.createPrivateRoom(reporter.getId(), target.getId());
+		ChatMessageResult message = chatService.sendMessage(
+			room.id(),
+			target.getId(),
+			new ChatMessageCreateCommand("신고 대상 메시지")
+		);
+		ChatMessageReportResult report = chatService.reportMessage(
+			room.id(),
+			message.id(),
+			reporter.getId(),
+			"관리자 확인이 필요합니다."
+		);
+		Notification firstNotification = notificationRepository.saveAndFlush(Notification.create(
+			firstAdmin.getId(),
+			reporter.getId(),
+			NotificationType.CHAT_MESSAGE_REPORTED,
+			NotificationTargetType.CHAT_REPORT,
+			report.id(),
+			"chat-report-assigned-first",
+			"채팅 메시지 신고가 접수되었습니다."
+		));
+		Notification secondNotification = notificationRepository.saveAndFlush(Notification.create(
+			secondAdmin.getId(),
+			reporter.getId(),
+			NotificationType.CHAT_MESSAGE_REPORTED,
+			NotificationTargetType.CHAT_REPORT,
+			report.id(),
+			"chat-report-assigned-second",
+			"채팅 메시지 신고가 접수되었습니다."
+		));
+		Notification otherReportNotification = notificationRepository.saveAndFlush(Notification.create(
+			secondAdmin.getId(),
+			reporter.getId(),
+			NotificationType.CHAT_MESSAGE_REPORTED,
+			NotificationTargetType.CHAT_REPORT,
+			report.id() + 1000,
+			"chat-report-assigned-other",
+			"채팅 메시지 신고가 접수되었습니다."
+		));
+
+		chatService.assignMessageReport(report.id(), firstAdmin.getId());
+
+		assertThat(notificationRepository.findById(firstNotification.getId()).orElseThrow().isRead()).isTrue();
+		assertThat(notificationRepository.findById(secondNotification.getId()).orElseThrow().isRead()).isTrue();
+		assertThat(notificationRepository.findById(otherReportNotification.getId()).orElseThrow().isRead()).isFalse();
 	}
 
 	@Test
