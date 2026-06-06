@@ -94,7 +94,8 @@ public class SecurityConfig {
 					"/api/v1/admin/chat-message-reports/*/handle",
 					"/api/v1/admin/content-reports/*/assign",
 					"/api/v1/admin/content-reports/*/handle",
-					"/api/v1/admin/member-sanctions"
+					"/api/v1/admin/member-sanctions",
+					"/api/v1/admin/members/*/restore"
 				).authenticated()
 				.requestMatchers(HttpMethod.PUT, "/api/v1/studies/*", "/api/v1/posts/*").authenticated()
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/studies/me/history").authenticated()

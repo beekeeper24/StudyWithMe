@@ -37,6 +37,9 @@ public class MemberSanctionService {
 	@Transactional
 	public MemberSanctionResult createSanction(Long requesterMemberId, MemberSanctionCreateCommand command) {
 		ensureAdmin(requesterMemberId);
+		if (command.type() == MemberSanctionType.RESTORE) {
+			throw new BusinessException(MemberSanctionErrorCode.MEMBER_SANCTION_RESTORE_TYPE_NOT_ALLOWED);
+		}
 		Member target = memberRepository.findById(command.targetMemberId())
 			.filter(member -> member.getStatus() == MemberStatus.ACTIVE)
 			.orElseThrow(() -> new BusinessException(MemberSanctionErrorCode.MEMBER_SANCTION_TARGET_NOT_FOUND));
@@ -49,6 +52,27 @@ public class MemberSanctionService {
 			command.sourceId()
 		));
 		applySanction(target, command.type());
+		return toResult(sanction);
+	}
+
+	@Transactional
+	public MemberSanctionResult restoreMember(Long requesterMemberId, MemberSanctionRestoreCommand command) {
+		ensureAdmin(requesterMemberId);
+		Member target = memberRepository.findById(command.targetMemberId())
+			.filter(member -> member.getStatus() != MemberStatus.WITHDRAWN)
+			.orElseThrow(() -> new BusinessException(MemberSanctionErrorCode.MEMBER_SANCTION_TARGET_NOT_FOUND));
+		if (target.getStatus() != MemberStatus.SUSPENDED && target.getStatus() != MemberStatus.BANNED) {
+			throw new BusinessException(MemberSanctionErrorCode.MEMBER_SANCTION_RESTORE_TARGET_NOT_RESTRICTED);
+		}
+		MemberSanction sanction = memberSanctionRepository.save(MemberSanction.create(
+			target.getId(),
+			requesterMemberId,
+			MemberSanctionType.RESTORE,
+			command.reason(),
+			normalizeSourceType(command.sourceType()),
+			command.sourceId()
+		));
+		target.restore();
 		return toResult(sanction);
 	}
 

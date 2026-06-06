@@ -151,6 +151,27 @@ class MemberSanctionServiceTest {
 	}
 
 	@Test
+	@DisplayName("복구 이력은 일반 제재 생성 흐름으로 기록할 수 없다")
+	void rejectCreateRestoreSanction() {
+		Member target = saveMember("create-restore-target");
+		Member admin = saveAdmin("create-restore-admin");
+
+		assertThatThrownBy(() -> memberSanctionService.createSanction(
+				admin.getId(),
+				new MemberSanctionCreateCommand(
+					target.getId(),
+					MemberSanctionType.RESTORE,
+					"전용 복구 API를 사용해야 함",
+					MemberSanctionSourceType.MANUAL,
+					null
+				)
+			))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(MemberSanctionErrorCode.MEMBER_SANCTION_RESTORE_TYPE_NOT_ALLOWED);
+	}
+
+	@Test
 	@DisplayName("관리자는 특정 회원의 제재 이력을 최신순으로 조회할 수 있다")
 	void findSanctionsByTargetMember() {
 		Member target = saveMember("history-sanction-target");
@@ -172,6 +193,75 @@ class MemberSanctionServiceTest {
 		assertThat(memberSanctionService.findSanctions(admin.getId(), target.getId()))
 			.extracting(MemberSanctionResult::id)
 			.containsExactly(second.id(), first.id());
+	}
+
+	@Test
+	@DisplayName("관리자는 정지 회원을 활성 상태로 복구하고 복구 이력을 남길 수 있다")
+	void restoreSuspendedMemberByAdmin() {
+		Member target = saveMember("restore-suspended-target");
+		Member admin = saveAdmin("restore-suspended-admin");
+		memberSanctionService.createSanction(
+			admin.getId(),
+			new MemberSanctionCreateCommand(
+				target.getId(),
+				MemberSanctionType.SUSPENSION,
+				"정지 처리",
+				MemberSanctionSourceType.MANUAL,
+				null
+			)
+		);
+
+		MemberSanctionResult result = memberSanctionService.restoreMember(
+			admin.getId(),
+			new MemberSanctionRestoreCommand(
+				target.getId(),
+				"소명 확인 후 복구",
+				MemberSanctionSourceType.MANUAL,
+				null
+			)
+		);
+
+		assertThat(result.type()).isEqualTo(MemberSanctionType.RESTORE);
+		assertThat(result.reason()).isEqualTo("소명 확인 후 복구");
+		assertThat(memberRepository.findById(target.getId()).orElseThrow().getStatus())
+			.isEqualTo(MemberStatus.ACTIVE);
+		assertThat(memberSanctionService.findSanctions(admin.getId(), target.getId()))
+			.extracting(MemberSanctionResult::type)
+			.containsExactly(MemberSanctionType.RESTORE, MemberSanctionType.SUSPENSION);
+	}
+
+	@Test
+	@DisplayName("관리자는 차단 회원을 활성 상태로 복구할 수 있다")
+	void restoreBannedMemberByAdmin() {
+		Member target = saveMember("restore-banned-target");
+		Member admin = saveAdmin("restore-banned-admin");
+		memberSanctionService.createSanction(
+			admin.getId(),
+			new MemberSanctionCreateCommand(target.getId(), MemberSanctionType.BAN, "차단 처리", MemberSanctionSourceType.MANUAL, null)
+		);
+
+		memberSanctionService.restoreMember(
+			admin.getId(),
+			new MemberSanctionRestoreCommand(target.getId(), "오인 차단 복구", MemberSanctionSourceType.MANUAL, null)
+		);
+
+		assertThat(memberRepository.findById(target.getId()).orElseThrow().getStatus())
+			.isEqualTo(MemberStatus.ACTIVE);
+	}
+
+	@Test
+	@DisplayName("활성 회원은 복구 대상으로 처리하지 않는다")
+	void rejectRestoreActiveMember() {
+		Member target = saveMember("restore-active-target");
+		Member admin = saveAdmin("restore-active-admin");
+
+		assertThatThrownBy(() -> memberSanctionService.restoreMember(
+				admin.getId(),
+				new MemberSanctionRestoreCommand(target.getId(), "이미 활성", MemberSanctionSourceType.MANUAL, null)
+			))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(MemberSanctionErrorCode.MEMBER_SANCTION_RESTORE_TARGET_NOT_RESTRICTED);
 	}
 
 	private Member saveMember(String name) {

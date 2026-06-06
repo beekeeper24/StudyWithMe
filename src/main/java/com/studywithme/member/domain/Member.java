@@ -165,6 +165,10 @@ public class Member {
 		this.status = MemberStatus.BANNED;
 	}
 
+	public void restore() {
+		this.status = MemberStatus.ACTIVE;
+	}
+
 	public void withdraw() {
 		this.status = MemberStatus.WITHDRAWN;
 	}

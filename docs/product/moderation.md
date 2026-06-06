@@ -80,10 +80,12 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - `SUSPENDED` and `BANNED` members cannot receive newly issued token pairs or refresh access tokens.
 - Existing refresh token rows are not proactively revoked by this policy; they remain unusable while the member status is restricted.
 - New sanctions can be recorded only for active target members.
+- Admins can restore a suspended or banned member through `POST /api/v1/admin/members/{targetMemberId}/restore`.
+- Restore actions set the member status back to `ACTIVE` and record a `RESTORE` entry in member sanction history.
+- `RESTORE` entries can be created only through the restore endpoint, not through the generic sanction creation endpoint.
 - Existing sanction history can still be reviewed for any existing member record.
 - A sanction can be linked to a manual action, chat message report, or community content report through optional `sourceType` and `sourceId`.
 - Only `ADMIN` members can create or query sanction history.
-- There is no unsuspend/unban endpoint yet; restoration policy is a later admin workflow.
 
 ## Admin Report History Policy
 
