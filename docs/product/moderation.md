@@ -69,6 +69,17 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - Deleted chat messages remain as room history rows and are rendered with the existing deleted-message placeholder.
 - This is message takedown only. Member-level warnings, suspensions, bans, and chat-room restrictions are later sanctions work.
 
+## Member Sanction Baseline Policy
+
+- Admins can record member-level sanction history through `POST /api/v1/admin/member-sanctions`.
+- Admins can review one member's sanction history through `GET /api/v1/admin/member-sanctions?targetMemberId={memberId}`.
+- This baseline is record-only. It does not block login, invalidate tokens, suspend accounts, ban members, or restrict chat-room access.
+- The only current sanction type is `WARNING`.
+- New sanctions can be recorded only for active target members.
+- Existing sanction history can still be reviewed for any existing member record.
+- A sanction can be linked to a manual action, chat message report, or community content report through optional `sourceType` and `sourceId`.
+- Only `ADMIN` members can create or query sanction history.
+
 ## Admin Report History Policy
 
 - Admins can query all chat message reports or community content reports by omitting the status filter.
