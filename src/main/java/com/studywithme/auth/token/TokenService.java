@@ -74,6 +74,7 @@ public class TokenService {
 
 	@Transactional
 	public TokenPair issue(Member member) {
+		ensureActiveMember(member);
 		AccessToken accessToken = jwtTokenProvider.createAccessToken(member);
 		String refreshToken = refreshTokenGenerator.generate();
 		Instant issuedAt = clock.instant();
@@ -106,7 +107,7 @@ public class TokenService {
 		Member member = memberRepository.findById(refreshToken.getMember().getId())
 			.orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 		if (member.getStatus() != MemberStatus.ACTIVE) {
-			throw new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+			throw new BusinessException(refreshErrorCodeFor(member.getStatus()));
 		}
 		return issue(member);
 	}
@@ -122,5 +123,18 @@ public class TokenService {
 		Instant now = clock.instant();
 		refreshTokenRepository.findAllByMemberId(memberId)
 			.forEach(refreshToken -> refreshToken.revoke(now));
+	}
+
+	private void ensureActiveMember(Member member) {
+		if (member.getStatus() != MemberStatus.ACTIVE) {
+			throw new BusinessException(AuthErrorCode.ACCOUNT_RESTRICTED);
+		}
+	}
+
+	private AuthErrorCode refreshErrorCodeFor(MemberStatus status) {
+		if (status == MemberStatus.SUSPENDED || status == MemberStatus.BANNED) {
+			return AuthErrorCode.ACCOUNT_RESTRICTED;
+		}
+		return AuthErrorCode.INVALID_REFRESH_TOKEN;
 	}
 }

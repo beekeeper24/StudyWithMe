@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.studywithme.global.exception.BusinessException;
 import com.studywithme.member.domain.Member;
 import com.studywithme.member.domain.MemberRole;
+import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.domain.OAuthProvider;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.report.domain.MemberSanctionSourceType;
@@ -59,6 +60,50 @@ class MemberSanctionServiceTest {
 		assertThat(result.sourceId()).isEqualTo(10L);
 		assertThat(result.createdAt()).isNotNull();
 		assertThat(memberSanctionRepository.findAll()).hasSize(1);
+	}
+
+	@Test
+	@DisplayName("정지 제재를 기록하면 대상 회원 상태를 정지로 변경한다")
+	void suspendMemberBySanction() {
+		Member target = saveMember("suspended-sanction-target");
+		Member admin = saveAdmin("suspended-sanction-admin");
+
+		MemberSanctionResult result = memberSanctionService.createSanction(
+			admin.getId(),
+			new MemberSanctionCreateCommand(
+				target.getId(),
+				MemberSanctionType.SUSPENSION,
+				"반복적인 부적절한 채팅",
+				MemberSanctionSourceType.CHAT_MESSAGE_REPORT,
+				11L
+			)
+		);
+
+		assertThat(result.type()).isEqualTo(MemberSanctionType.SUSPENSION);
+		assertThat(memberRepository.findById(target.getId()).orElseThrow().getStatus())
+			.isEqualTo(MemberStatus.SUSPENDED);
+	}
+
+	@Test
+	@DisplayName("차단 제재를 기록하면 대상 회원 상태를 차단으로 변경한다")
+	void banMemberBySanction() {
+		Member target = saveMember("banned-sanction-target");
+		Member admin = saveAdmin("banned-sanction-admin");
+
+		MemberSanctionResult result = memberSanctionService.createSanction(
+			admin.getId(),
+			new MemberSanctionCreateCommand(
+				target.getId(),
+				MemberSanctionType.BAN,
+				"커뮤니티 악용",
+				MemberSanctionSourceType.CONTENT_REPORT,
+				12L
+			)
+		);
+
+		assertThat(result.type()).isEqualTo(MemberSanctionType.BAN);
+		assertThat(memberRepository.findById(target.getId()).orElseThrow().getStatus())
+			.isEqualTo(MemberStatus.BANNED);
 	}
 
 	@Test

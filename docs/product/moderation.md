@@ -69,16 +69,21 @@ Update it when moderation behavior changes. Keep `docs/handoff.md` for recent se
 - Deleted chat messages remain as room history rows and are rendered with the existing deleted-message placeholder.
 - This is message takedown only. Member-level warnings, suspensions, bans, and chat-room restrictions are later sanctions work.
 
-## Member Sanction Baseline Policy
+## Member Sanction Policy
 
 - Admins can record member-level sanction history through `POST /api/v1/admin/member-sanctions`.
 - Admins can review one member's sanction history through `GET /api/v1/admin/member-sanctions?targetMemberId={memberId}`.
-- This baseline is record-only. It does not block login, invalidate tokens, suspend accounts, ban members, or restrict chat-room access.
-- The only current sanction type is `WARNING`.
+- `WARNING` is record-only and does not change member account status.
+- `SUSPENSION` changes the target member status to `SUSPENDED`.
+- `BAN` changes the target member status to `BANNED`.
+- `SUSPENDED` and `BANNED` members cannot authenticate API requests with existing access tokens; the JWT filter rejects them with `AUTH-006`.
+- `SUSPENDED` and `BANNED` members cannot receive newly issued token pairs or refresh access tokens.
+- Existing refresh token rows are not proactively revoked by this policy; they remain unusable while the member status is restricted.
 - New sanctions can be recorded only for active target members.
 - Existing sanction history can still be reviewed for any existing member record.
 - A sanction can be linked to a manual action, chat message report, or community content report through optional `sourceType` and `sourceId`.
 - Only `ADMIN` members can create or query sanction history.
+- There is no unsuspend/unban endpoint yet; restoration policy is a later admin workflow.
 
 ## Admin Report History Policy
 

@@ -209,7 +209,7 @@ OAuth client credentials and the final success redirect flow are intentionally n
 StudyWithMe uses different strategies for access tokens and refresh tokens.
 
 ```text
-Access token  -> JWT, short-lived, stateless validation
+Access token  -> JWT, short-lived, signed claim validation plus member-status check
 Refresh token -> opaque random token, long-lived, hash stored in DB
 ```
 
@@ -218,7 +218,8 @@ Access token policy:
 - token type: JWT signed with HS256;
 - default TTL: `30m`;
 - claims include issuer, subject member id, and service roles;
-- API authentication can validate the access token without checking the refresh token table.
+- API authentication does not check the refresh token table;
+- API authentication does check the current member status and rejects non-active members.
 
 Refresh token policy:
 

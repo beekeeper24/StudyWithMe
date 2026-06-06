@@ -9,7 +9,11 @@ import com.studywithme.auth.exception.AuthErrorCode;
 import com.studywithme.auth.token.AccessTokenClaims;
 import com.studywithme.auth.token.JwtTokenProvider;
 import com.studywithme.global.exception.BusinessException;
+import com.studywithme.member.domain.Member;
+import com.studywithme.member.domain.OAuthProvider;
+import com.studywithme.member.repository.MemberRepository;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +27,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 class JwtAuthenticationFilterTest {
 
 	private final JwtTokenProvider jwtTokenProvider = Mockito.mock(JwtTokenProvider.class);
-	private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider);
+	private final MemberRepository memberRepository = Mockito.mock(MemberRepository.class);
+	private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, memberRepository);
 
 	@AfterEach
 	void tearDown() {
@@ -38,6 +43,7 @@ class JwtAuthenticationFilterTest {
 			Set.of("USER"),
 			Instant.parse("2026-05-21T00:30:00Z")
 		));
+		when(memberRepository.findById(1L)).thenReturn(Optional.of(saveMember()));
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/me");
 		request.addHeader("Authorization", "Bearer valid-token");
 		MockHttpServletResponse response = new MockHttpServletResponse();
@@ -80,5 +86,37 @@ class JwtAuthenticationFilterTest {
 		assertThat(response.getStatus()).isEqualTo(401);
 		assertThat(response.getContentAsString()).contains("\"code\":\"AUTH-003\"");
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+	}
+
+	@Test
+	@DisplayName("정지 회원의 기존 access token은 AUTH-006 응답으로 인증을 거절한다")
+	void rejectSuspendedMemberAccessToken() throws Exception {
+		Member member = saveMember();
+		member.suspend();
+		when(jwtTokenProvider.parse("suspended-token")).thenReturn(new AccessTokenClaims(
+			1L,
+			Set.of("USER"),
+			Instant.parse("2026-05-21T00:30:00Z")
+		));
+		when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/me");
+		request.addHeader("Authorization", "Bearer suspended-token");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+
+		filter.doFilter(request, response, new MockFilterChain());
+
+		assertThat(response.getStatus()).isEqualTo(403);
+		assertThat(response.getContentAsString()).contains("\"code\":\"AUTH-006\"");
+		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+	}
+
+	private Member saveMember() {
+		return Member.createOAuthMember(
+			"member@example.com",
+			"member",
+			OAuthProvider.GOOGLE,
+			"google-member",
+			null
+		);
 	}
 }

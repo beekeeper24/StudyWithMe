@@ -157,6 +157,14 @@ public class Member {
 		this.status = MemberStatus.WITHDRAWN;
 	}
 
+	public void suspend() {
+		this.status = MemberStatus.SUSPENDED;
+	}
+
+	public void ban() {
+		this.status = MemberStatus.BANNED;
+	}
+
 	public void withdraw() {
 		this.status = MemberStatus.WITHDRAWN;
 	}
