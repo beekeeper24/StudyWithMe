@@ -5,7 +5,10 @@ import com.studywithme.auth.exception.AuthErrorCode;
 import com.studywithme.auth.token.AccessTokenClaims;
 import com.studywithme.auth.token.JwtTokenProvider;
 import com.studywithme.global.exception.BusinessException;
+import com.studywithme.global.exception.ErrorCode;
 import com.studywithme.global.exception.ErrorResponse;
+import com.studywithme.member.domain.MemberStatus;
+import com.studywithme.member.repository.MemberRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,14 +28,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private static final String BEARER_PREFIX = "Bearer ";
 
 	private final JwtTokenProvider jwtTokenProvider;
+	private final MemberRepository memberRepository;
 	private final ObjectMapper objectMapper;
 
-	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
-		this(jwtTokenProvider, new ObjectMapper().findAndRegisterModules());
+	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, MemberRepository memberRepository) {
+		this(jwtTokenProvider, memberRepository, new ObjectMapper().findAndRegisterModules());
 	}
 
-	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, ObjectMapper objectMapper) {
+	public JwtAuthenticationFilter(
+		JwtTokenProvider jwtTokenProvider,
+		MemberRepository memberRepository,
+		ObjectMapper objectMapper
+	) {
 		this.jwtTokenProvider = jwtTokenProvider;
+		this.memberRepository = memberRepository;
 		this.objectMapper = objectMapper;
 	}
 
@@ -50,6 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 		try {
 			AccessTokenClaims claims = jwtTokenProvider.parse(authorization.substring(BEARER_PREFIX.length()));
+			ensureActiveMember(claims.memberId());
 			AuthenticatedMemberPrincipal principal = new AuthenticatedMemberPrincipal(
 				claims.memberId(),
 				claims.roles()
@@ -67,8 +77,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			filterChain.doFilter(request, response);
 		} catch (BusinessException exception) {
 			SecurityContextHolder.clearContext();
-			writeInvalidAccessTokenResponse(request, response);
+			writeAuthErrorResponse(request, response, exception.getErrorCode());
 		}
+	}
+
+	private void ensureActiveMember(Long memberId) {
+		MemberStatus status = memberRepository.findById(memberId)
+			.map(member -> member.getStatus())
+			.orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_ACCESS_TOKEN));
+		if (status != MemberStatus.ACTIVE) {
+			throw new BusinessException(authErrorCodeFor(status));
+		}
+	}
+
+	private AuthErrorCode authErrorCodeFor(MemberStatus status) {
+		if (status == MemberStatus.SUSPENDED || status == MemberStatus.BANNED) {
+			return AuthErrorCode.ACCOUNT_RESTRICTED;
+		}
+		return AuthErrorCode.INVALID_ACCESS_TOKEN;
 	}
 
 	private String toAuthority(String role) {
@@ -78,16 +104,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		return "ROLE_" + role;
 	}
 
-	private void writeInvalidAccessTokenResponse(
+	private void writeAuthErrorResponse(
 		HttpServletRequest request,
-		HttpServletResponse response
+		HttpServletResponse response,
+		ErrorCode errorCode
 	) throws IOException {
-		response.setStatus(AuthErrorCode.INVALID_ACCESS_TOKEN.getStatus().value());
+		response.setStatus(errorCode.getStatus().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 		response.setCharacterEncoding("UTF-8");
 		objectMapper.writeValue(
 			response.getWriter(),
-			ErrorResponse.of(AuthErrorCode.INVALID_ACCESS_TOKEN, request.getRequestURI())
+			ErrorResponse.of(errorCode, request.getRequestURI())
 		);
 	}
 }

@@ -49,6 +49,19 @@ class RefreshTokenServiceTest {
 	}
 
 	@Test
+	@DisplayName("정지 회원에게는 새 token pair를 발급하지 않는다")
+	void rejectIssueForSuspendedMember() {
+		TokenService tokenService = tokenService();
+		Member member = saveMember();
+		member.suspend();
+
+		assertThatThrownBy(() -> tokenService.issue(member))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(AuthErrorCode.ACCOUNT_RESTRICTED);
+	}
+
+	@Test
 	@DisplayName("refresh token으로 재발급하면 기존 refresh token은 회전 처리하고 새 refresh token을 저장한다")
 	void rotateRefreshToken() {
 		TokenService tokenService = tokenService();

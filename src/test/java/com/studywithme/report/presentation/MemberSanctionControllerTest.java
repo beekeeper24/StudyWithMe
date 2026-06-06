@@ -82,6 +82,33 @@ class MemberSanctionControllerTest {
 	}
 
 	@Test
+	@DisplayName("관리자가 차단 제재를 기록하면 대상 회원의 기존 access token은 거절된다")
+	void banMemberAndRejectExistingAccessToken() throws Exception {
+		Member target = saveMember("controller-ban-target");
+		String targetAccessToken = accessToken(target);
+		Member admin = saveAdmin("controller-ban-admin");
+
+		mockMvc.perform(post("/api/v1/admin/member-sanctions")
+				.header("Authorization", "Bearer " + accessToken(admin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new MemberSanctionCreateRequest(
+					target.getId(),
+					MemberSanctionType.BAN,
+					"반복적인 악용으로 차단",
+					MemberSanctionSourceType.CONTENT_REPORT,
+					31L
+				))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.type").value("BAN"));
+
+		mockMvc.perform(get("/api/v1/auth/me")
+				.header("Authorization", "Bearer " + targetAccessToken))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("AUTH-006"));
+	}
+
+	@Test
 	@DisplayName("관리자는 특정 회원의 제재 이력을 조회할 수 있다")
 	void findMemberSanctionsByAdmin() throws Exception {
 		Member target = saveMember("controller-history-target");

@@ -28,6 +28,11 @@ public enum AuthErrorCode implements ErrorCode {
 		"AUTH-005",
 		"Refresh token이 만료되었습니다.",
 		HttpStatus.UNAUTHORIZED
+	),
+	ACCOUNT_RESTRICTED(
+		"AUTH-006",
+		"이용이 제한된 계정입니다.",
+		HttpStatus.FORBIDDEN
 	);
 
 	private final String code;

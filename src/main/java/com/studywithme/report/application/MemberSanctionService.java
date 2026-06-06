@@ -7,6 +7,7 @@ import com.studywithme.member.domain.MemberStatus;
 import com.studywithme.member.repository.MemberRepository;
 import com.studywithme.report.domain.MemberSanction;
 import com.studywithme.report.domain.MemberSanctionSourceType;
+import com.studywithme.report.domain.MemberSanctionType;
 import com.studywithme.report.exception.MemberSanctionErrorCode;
 import com.studywithme.report.repository.MemberSanctionRepository;
 import java.util.LinkedHashSet;
@@ -47,6 +48,7 @@ public class MemberSanctionService {
 			normalizeSourceType(command.sourceType()),
 			command.sourceId()
 		));
+		applySanction(target, command.type());
 		return toResult(sanction);
 	}
 
@@ -68,6 +70,15 @@ public class MemberSanctionService {
 
 	private MemberSanctionSourceType normalizeSourceType(MemberSanctionSourceType sourceType) {
 		return sourceType == null ? MemberSanctionSourceType.MANUAL : sourceType;
+	}
+
+	private void applySanction(Member target, MemberSanctionType type) {
+		if (type == MemberSanctionType.SUSPENSION) {
+			target.suspend();
+		}
+		if (type == MemberSanctionType.BAN) {
+			target.ban();
+		}
 	}
 
 	private MemberSanctionResult toResult(MemberSanction sanction) {

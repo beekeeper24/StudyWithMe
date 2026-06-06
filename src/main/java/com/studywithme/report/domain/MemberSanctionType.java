@@ -1,5 +1,7 @@
 package com.studywithme.report.domain;
 
 public enum MemberSanctionType {
-	WARNING
+	WARNING,
+	SUSPENSION,
+	BAN
 }

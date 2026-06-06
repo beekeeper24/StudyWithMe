@@ -1039,3 +1039,17 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Current baseline supports `WARNING` only and is record-only: it does not block login, invalidate tokens, suspend, ban, or restrict chat access.
 - Optional `sourceType` and `sourceId` can link a sanction to manual admin action, chat message report, or community content report.
 - Frontend UI is intentionally not part of this backend API baseline branch.
+
+### 82. Member sanction enforcement branch
+
+- Active backend branch: `feature/member-sanction-enforcement`.
+- `MemberSanctionType` now includes `WARNING`, `SUSPENSION`, and `BAN`.
+- `MemberStatus` now includes `ACTIVE`, `SUSPENDED`, `BANNED`, and `WITHDRAWN`.
+- `WARNING` remains record-only.
+- Creating a `SUSPENSION` sanction changes the target member status to `SUSPENDED`.
+- Creating a `BAN` sanction changes the target member status to `BANNED`.
+- `JwtAuthenticationFilter` now checks the current member status after parsing a bearer access token and rejects `SUSPENDED`/`BANNED` members with `AUTH-006`.
+- `TokenService.issue` and `TokenService.refresh` reject `SUSPENDED`/`BANNED` members with `AUTH-006`.
+- `WITHDRAWN` keeps the existing invalid-token style behavior for old access/refresh tokens.
+- Existing refresh token rows are not proactively revoked in this slice; they remain unusable while the account is restricted.
+- Frontend sanction type selection and unsuspend/unban workflows remain separate future slices.
