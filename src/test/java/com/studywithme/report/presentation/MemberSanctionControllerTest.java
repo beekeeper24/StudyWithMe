@@ -109,6 +109,50 @@ class MemberSanctionControllerTest {
 	}
 
 	@Test
+	@DisplayName("관리자가 차단 회원을 복구하면 대상 회원의 기존 access token은 다시 허용된다")
+	void restoreBannedMemberAndAllowExistingAccessToken() throws Exception {
+		Member target = saveMember("controller-restore-target");
+		String targetAccessToken = accessToken(target);
+		Member admin = saveAdmin("controller-restore-admin");
+
+		mockMvc.perform(post("/api/v1/admin/member-sanctions")
+				.header("Authorization", "Bearer " + accessToken(admin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new MemberSanctionCreateRequest(
+					target.getId(),
+					MemberSanctionType.BAN,
+					"반복적인 악용으로 차단",
+					MemberSanctionSourceType.CONTENT_REPORT,
+					32L
+				))))
+			.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/auth/me")
+				.header("Authorization", "Bearer " + targetAccessToken))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.error.code").value("AUTH-006"));
+
+		mockMvc.perform(post("/api/v1/admin/members/" + target.getId() + "/restore")
+				.header("Authorization", "Bearer " + accessToken(admin))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new MemberSanctionRestoreRequest(
+					"소명 확인 후 복구",
+					MemberSanctionSourceType.MANUAL,
+					null
+				))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.targetMemberId").value(target.getId()))
+			.andExpect(jsonPath("$.data.type").value("RESTORE"))
+			.andExpect(jsonPath("$.data.reason").value("소명 확인 후 복구"));
+
+		mockMvc.perform(get("/api/v1/auth/me")
+			.header("Authorization", "Bearer " + targetAccessToken))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.id").value(target.getId()));
+	}
+
+	@Test
 	@DisplayName("관리자는 특정 회원의 제재 이력을 조회할 수 있다")
 	void findMemberSanctionsByAdmin() throws Exception {
 		Member target = saveMember("controller-history-target");

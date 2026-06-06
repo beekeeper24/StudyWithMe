@@ -1052,4 +1052,13 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - `TokenService.issue` and `TokenService.refresh` reject `SUSPENDED`/`BANNED` members with `AUTH-006`.
 - `WITHDRAWN` keeps the existing invalid-token style behavior for old access/refresh tokens.
 - Existing refresh token rows are not proactively revoked in this slice; they remain unusable while the account is restricted.
-- Frontend sanction type selection and unsuspend/unban workflows remain separate future slices.
+- Frontend sanction type selection has landed; unsuspend/unban is handled by the restore workflow below.
+
+### 83. Member sanction restore branch
+
+- Active backend branch: `feature/member-sanction-restore`.
+- Backend adds `MemberSanctionType.RESTORE` as an audit entry for account restoration.
+- `POST /api/v1/admin/members/{targetMemberId}/restore` restores a `SUSPENDED` or `BANNED` member to `ACTIVE`.
+- Restore records are returned as normal member sanction history entries.
+- The generic `POST /api/v1/admin/member-sanctions` flow rejects `RESTORE`; restore records must go through the dedicated restore endpoint.
+- A restored member's existing access token can authenticate again because `JwtAuthenticationFilter` checks the current member status at request time.
