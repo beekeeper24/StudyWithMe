@@ -1029,3 +1029,13 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Existing 4-argument `handleMessageReport` calls remain transactional so older internal callers still persist handled status changes.
 - Frontend adds a `신고 대상 메시지 삭제` checkbox in the `채팅 신고` resolve modal and shows `대상 삭제` in handled chat report history.
 - This is message takedown only; member-level warnings/suspensions/bans and room restrictions remain future sanctions work.
+
+### 81. Member sanction baseline branch
+
+- Active backend branch: `feature/member-sanction-baseline`.
+- Backend adds `member_sanctions` with Flyway V24 for ADMIN-only member-level sanction history.
+- `POST /api/v1/admin/member-sanctions` records a sanction for an active target member.
+- `GET /api/v1/admin/member-sanctions?targetMemberId={memberId}` returns one member's sanction history newest first.
+- Current baseline supports `WARNING` only and is record-only: it does not block login, invalidate tokens, suspend, ban, or restrict chat access.
+- Optional `sourceType` and `sourceId` can link a sanction to manual admin action, chat message report, or community content report.
+- Frontend UI is intentionally not part of this backend API baseline branch.
