@@ -28,6 +28,14 @@ class RefreshTokenCookiePropertiesTest {
 		assertThat(secure).hasToString("${REFRESH_TOKEN_COOKIE_SECURE:true}");
 	}
 
+	@Test
+	@DisplayName("prod profile은 배포 토폴로지에 맞게 refresh token cookie SameSite를 조정할 수 있게 둔다")
+	void prodProfileAllowsRefreshCookieSameSiteConfiguration() throws Exception {
+		Object sameSite = loadProperty("application-prod.yml", "app.auth.refresh-token-cookie.same-site");
+
+		assertThat(sameSite).hasToString("${REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}");
+	}
+
 	private Object loadProperty(String resourceName, String propertyName) throws IOException {
 		return loader.load(resourceName, new FileSystemResource("src/main/resources/" + resourceName))
 			.stream()

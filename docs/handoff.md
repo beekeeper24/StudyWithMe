@@ -1085,3 +1085,12 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 - Failed authenticated actions and expired sessions now use the same return-flow notice and save the current path before clearing authenticated state.
 - `test/auth.test.ts` covers the redirect policy with Node 24's built-in test runner, exposed through `npm test`.
 - Verification passed: `npm test`, `npm run lint`, `npm run build`, `git diff --check`, PR #90 GitHub Actions, and a focused `/cso` diff review.
+
+### 85. Production deployment cookie/CORS checklist
+
+- Active backend/frontend branch: `feature/production-deployment-hardening`.
+- `application-prod.yml` now explicitly exposes `app.auth.refresh-token-cookie.same-site` as `${REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}`.
+- Default production behavior remains `SameSite=Lax`, matching same-site frontend/API deployments.
+- Cross-site browser deployments, such as a Vercel frontend and a separate API site, should set `REFRESH_TOKEN_COOKIE_SAME_SITE=None` and keep `REFRESH_TOKEN_COOKIE_SECURE=true`.
+- Frontend requests already use `credentials: 'include'`; production refresh-token recovery depends on this frontend setting, exact backend CORS origin matching, and the SameSite cookie policy agreeing with the deployment topology.
+- The production deployment checklist lives at `docs/deployment/production.md`.
