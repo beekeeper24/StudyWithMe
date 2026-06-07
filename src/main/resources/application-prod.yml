@@ -8,3 +8,4 @@ app:
       secret: ${JWT_SECRET}
     refresh-token-cookie:
       secure: ${REFRESH_TOKEN_COOKIE_SECURE:true}
+      same-site: ${REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}
