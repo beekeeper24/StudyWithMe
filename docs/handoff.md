@@ -654,11 +654,16 @@ Completed OAuth frontend callback work on 2026-05-23:
 - Backend PR #33 updates `AGENTS.md` with the TDD test-design rule requested by the user.
 - Backend `develop` and frontend `develop` were clean and synced with origin after those merges.
 
-Next implementation tasks:
+Current next implementation candidates:
 
-1. Add authenticated frontend route guards and friendlier error states for failed create/join/comment/chat actions.
-2. Add notification reconnect/polling catch-up polish beyond the current login/connect-time sync.
-3. Keep backend route contracts aligned with the login-wall product policy when adding new API routes.
+1. Keep backend route contracts aligned with the login-wall product policy when adding new API routes.
+2. Add production deployment hardening once a real deployment target is chosen, especially HTTPS cookie security and OAuth redirect URI configuration.
+3. Consider deeper notification lifecycle work only when product scope requires it, such as server-side WebSocket session eviction or assignment-only admin notification routing.
+
+Recently completed from the older Next Work list:
+
+- Frontend notification reconnect/polling catch-up is already implemented: the client silently refreshes notifications on interval, browser focus, and visibility regain.
+- Frontend auth guard polish landed in StudyWithMe-Front PR #90: protected deep links are kept as post-login redirect targets, and login/session-expiry messages now tell users they will return to the current screen.
 
 Frontend community screen verification already completed:
 
@@ -1032,7 +1037,7 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 
 ### 81. Member sanction baseline branch
 
-- Active backend branch: `feature/member-sanction-baseline`.
+- Completed backend branch: `feature/member-sanction-baseline`.
 - Backend adds `member_sanctions` with Flyway V24 for ADMIN-only member-level sanction history.
 - `POST /api/v1/admin/member-sanctions` records a sanction for an active target member.
 - `GET /api/v1/admin/member-sanctions?targetMemberId={memberId}` returns one member's sanction history newest first.
@@ -1042,7 +1047,7 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 
 ### 82. Member sanction enforcement branch
 
-- Active backend branch: `feature/member-sanction-enforcement`.
+- Completed backend branch: `feature/member-sanction-enforcement`.
 - `MemberSanctionType` now includes `WARNING`, `SUSPENSION`, and `BAN`.
 - `MemberStatus` now includes `ACTIVE`, `SUSPENDED`, `BANNED`, and `WITHDRAWN`.
 - `WARNING` remains record-only.
@@ -1056,9 +1061,25 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 
 ### 83. Member sanction restore branch
 
-- Active backend branch: `feature/member-sanction-restore`.
+- Completed backend branch: `feature/member-sanction-restore`.
 - Backend adds `MemberSanctionType.RESTORE` as an audit entry for account restoration.
 - `POST /api/v1/admin/members/{targetMemberId}/restore` restores a `SUSPENDED` or `BANNED` member to `ACTIVE`.
 - Restore records are returned as normal member sanction history entries.
 - The generic `POST /api/v1/admin/member-sanctions` flow rejects `RESTORE`; restore records must go through the dedicated restore endpoint.
 - A restored member's existing access token can authenticate again because `JwtAuthenticationFilter` checks the current member status at request time.
+- Backend PR #106 and frontend PR #89 were merged into `develop`.
+- Frontend My Page admin report panels show a `복구` action when the latest member sanction is `SUSPENSION` or `BAN`.
+- The restore modal records a manual `RESTORE` reason and prepends the returned history entry to the local sanction history.
+- Focused backend tests, backend full tests, frontend lint/build, GitHub CI, and `/cso` daily security review passed for this restore slice.
+
+### 84. Frontend auth guard return-flow polish
+
+- Completed frontend branch: `feature/frontend-auth-guard-polish`.
+- StudyWithMe-Front PR #90 was merged into `develop`.
+- `src/auth.ts` now exposes helpers for safe post-login redirect storage and shared login/session-expiry notices.
+- Protected deep links such as `/studies/{id}`, `/community/{board}/{postId}`, and `/chat/{roomId}` are preserved for post-login return.
+- `/`, `/auth/callback`, and cross-origin URLs are not stored as post-login redirect targets.
+- When a protected deep link cannot restore a session, the login screen tells the user that login will return to the current screen.
+- Failed authenticated actions and expired sessions now use the same return-flow notice and save the current path before clearing authenticated state.
+- `test/auth.test.ts` covers the redirect policy with Node 24's built-in test runner, exposed through `npm test`.
+- Verification passed: `npm test`, `npm run lint`, `npm run build`, `git diff --check`, PR #90 GitHub Actions, and a focused `/cso` diff review.
