@@ -657,13 +657,14 @@ Completed OAuth frontend callback work on 2026-05-23:
 Current next implementation candidates:
 
 1. Keep backend route contracts aligned with the login-wall product policy when adding new API routes.
-2. Add production deployment hardening once a real deployment target is chosen, especially HTTPS cookie security and OAuth redirect URI configuration.
+2. Add remaining production deployment wiring once a real deployment target is chosen, especially provider redirect URI registration and deployment secret injection.
 3. Consider deeper notification lifecycle work only when product scope requires it, such as server-side WebSocket session eviction or assignment-only admin notification routing.
 
 Recently completed from the older Next Work list:
 
 - Frontend notification reconnect/polling catch-up is already implemented: the client silently refreshes notifications on interval, browser focus, and visibility regain.
 - Frontend auth guard polish landed in StudyWithMe-Front PR #90: protected deep links are kept as post-login redirect targets, and login/session-expiry messages now tell users they will return to the current screen.
+- Backend production auth config now requires `JWT_SECRET` in `application-prod.yml`, so the local development JWT secret fallback is not silently reused under the `prod` profile.
 
 Frontend community screen verification already completed:
 
@@ -828,8 +829,9 @@ PR-ready slice가 완성되고 검증과 CI가 통과하면 명시적 보류가 
 
 - `application-prod.yml` requires `APP_CORS_ALLOWED_ORIGINS` for production CORS allowed origins.
 - `application-prod.yml` requires `OAUTH_SUCCESS_FRONTEND_REDIRECT_URI` for the OAuth success callback.
+- `application-prod.yml` requires `JWT_SECRET` for JWT signing and does not inherit the local development secret fallback.
 - The local/default profile still keeps localhost `5173` and `5174` defaults for local browser testing.
-- Production profile property tests prevent localhost CORS/OAuth callback defaults from silently leaking into production.
+- Production profile property tests prevent localhost CORS/OAuth callback defaults and the local JWT secret fallback from silently leaking into production.
 
 ### 59. PR granularity gate
 

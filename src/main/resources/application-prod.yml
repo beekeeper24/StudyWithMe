@@ -4,5 +4,7 @@ app:
   auth:
     oauth-success:
       frontend-redirect-uri: ${OAUTH_SUCCESS_FRONTEND_REDIRECT_URI}
+    token:
+      secret: ${JWT_SECRET}
     refresh-token-cookie:
       secure: ${REFRESH_TOKEN_COOKIE_SECURE:true}

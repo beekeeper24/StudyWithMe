@@ -31,6 +31,14 @@ class ProductionProfilePropertiesTest {
 		assertThat(redirectUri).hasToString("${OAUTH_SUCCESS_FRONTEND_REDIRECT_URI}");
 	}
 
+	@Test
+	@DisplayName("prod profile은 JWT secret을 운영 환경변수로 받아 로컬 기본 secret 누수를 막는다")
+	void prodProfileRequiresJwtSecret() throws Exception {
+		Object secret = loadProperty("application-prod.yml", "app.auth.token.secret");
+
+		assertThat(secret).hasToString("${JWT_SECRET}");
+	}
+
 	private Object loadProperty(String resourceName, String propertyName) throws IOException {
 		return loader.load(resourceName, new FileSystemResource("src/main/resources/" + resourceName))
 			.stream()
